@@ -4,12 +4,9 @@ import android.content.Context
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
 
 class NetworkMonitor(context: Context) {
 
@@ -23,10 +20,8 @@ class NetworkMonitor(context: Context) {
 
     private val networkCallback = object : ConnectivityManager.NetworkCallback() {
         override fun onAvailable(network: Network) {
-            // Cuando una red está disponible, hacemos una comprobación activa.
-            CoroutineScope(Dispatchers.IO).launch {
-                _networkStatus.value = hasRealInternetAccess()
-            }
+            // Cuando una red está disponible, verificamos sus capacidades
+            _networkStatus.value = hasInternetConnection()
         }
 
         override fun onLost(network: Network) {
@@ -34,18 +29,24 @@ class NetworkMonitor(context: Context) {
         }
 
         override fun onCapabilitiesChanged(network: Network, networkCapabilities: NetworkCapabilities) {
-            val isConnected = networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+            val isConnected = networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+                    networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
             _networkStatus.value = isConnected
         }
     }
 
     init {
         // Comprobación inicial
-        CoroutineScope(Dispatchers.IO).launch {
-            _networkStatus.value = hasRealInternetAccess()
-        }
+        _networkStatus.value = hasInternetConnection()
 
         // Registrar el callback
         connectivityManager.registerDefaultNetworkCallback(networkCallback)
+    }
+
+    private fun hasInternetConnection(): Boolean {
+        val network = connectivityManager.activeNetwork ?: return false
+        val capabilities = connectivityManager.getNetworkCapabilities(network) ?: return false
+        return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+                capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
     }
 }

@@ -2,12 +2,16 @@ package com.example.testusoandroidstudio_1_usochicamocha.data.remote
 
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.FormDto
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.FormSyncResponse
+import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.InspeccionMotoRequest
+import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.DocumentoExistenteDto
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.LoginRequest
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.LoginResponse
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.MachineDto
+import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.MotoPlacaDto
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.NewAccessTokenResponse
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.OilDto
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.RefreshTokenRequest
+import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.UbicacionDto
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.request.OilChangeRequest
 import okhttp3.MultipartBody
 import retrofit2.Response
@@ -41,4 +45,21 @@ interface ApiService {
         @Path("id") formId: Long,
         @Part imagen: MultipartBody.Part
     ): Response<Unit>
+
+    // --- MOTO endpoints ---
+    @GET("v1/moto/placas")
+    suspend fun getMotocicletas(): Response<List<MotoPlacaDto>>
+
+    @POST("v1/moto/placas")
+    suspend fun registrarPlaca(@Body placa: String): Response<MotoPlacaDto>
+
+    @GET("v1/moto/ubicaciones")
+    suspend fun getUbicaciones(): Response<List<UbicacionDto>>
+
+    @GET("v1/moto/{placa}/documentos")
+    suspend fun getDocumentosByPlaca(@Path("placa") placa: String): Response<List<DocumentoExistenteDto>>
+
+    @POST("v1/moto/inspeccion")
+    suspend fun saveInspeccionMoto(@Body request: InspeccionMotoRequest): Response<Long>
 }
+

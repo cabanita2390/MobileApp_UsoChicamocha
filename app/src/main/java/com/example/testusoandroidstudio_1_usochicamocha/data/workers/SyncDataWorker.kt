@@ -17,6 +17,10 @@ import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.form.Sync
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.machine.SyncMachinesUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.maintenance.GetPendingMaintenanceFormsUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.maintenance.SyncMaintenanceFormsUseCase
+import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.moto.SyncMotosUseCase
+import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.moto.SyncUbicacionesUseCase
+import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.inspeccionmoto.GetPendingInspeccionesMotoUseCase
+import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.inspeccionmoto.SyncInspeccionMotoUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.oil.SyncOilsUseCase
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
@@ -37,7 +41,11 @@ class SyncDataWorker @AssistedInject constructor(
     private val getPendingMaintenanceFormsUseCase: GetPendingMaintenanceFormsUseCase,
     private val syncMaintenanceFormsUseCase: SyncMaintenanceFormsUseCase,
     private val syncMachinesUseCase: SyncMachinesUseCase,
-    private val syncOilsUseCase: SyncOilsUseCase
+    private val syncOilsUseCase: SyncOilsUseCase,
+    private val syncMotosUseCase: SyncMotosUseCase,
+    private val syncUbicacionesUseCase: SyncUbicacionesUseCase,
+    private val getPendingInspeccionesMotoUseCase: GetPendingInspeccionesMotoUseCase,
+    private val syncInspeccionMotoUseCase: SyncInspeccionMotoUseCase
 ) : CoroutineWorker(appContext, workerParams) {
 
     override suspend fun doWork(): Result {
@@ -152,6 +160,36 @@ class SyncDataWorker @AssistedInject constructor(
                 }
             }
 
+            // 3.5 INSPECCIONES MOTO pendientes
+            if (shouldSyncForms || syncAll) {
+                Log.d("SyncDataWorker", "🏍️ [$workId] Procesando inspecciones de moto pendientes...")
+                try {
+                    val pendingInspMoto = getPendingInspeccionesMotoUseCase.asList()
+                    Log.d("SyncDataWorker", "🏍️ [$workId] ${pendingInspMoto.size} inspecciones moto pendientes encontradas")
+
+                    pendingInspMoto.forEachIndexed { index, inspeccion ->
+                        try {
+                            Log.d("SyncDataWorker", "🏍️ [$workId] Sincronizando inspección moto ${index + 1}/${pendingInspMoto.size}: ${inspeccion.uuid}")
+                            val result = withTimeout(30000) {
+                                syncInspeccionMotoUseCase(inspeccion)
+                            }
+                            if (result.isSuccess) {
+                                Log.d("SyncDataWorker", "✅ [$workId] Inspección moto sincronizada: ${inspeccion.uuid}")
+                            } else {
+                                totalErrors++
+                                Log.e("SyncDataWorker", "❌ [$workId] Fallo al sincronizar inspección moto: ${inspeccion.uuid} - ${result.exceptionOrNull()?.message}")
+                            }
+                        } catch (e: Exception) {
+                            totalErrors++
+                            Log.e("SyncDataWorker", "❌ [$workId] Excepción sincronizando inspección moto ${inspeccion.uuid}", e)
+                        }
+                    }
+                } catch (e: Exception) {
+                    totalErrors++
+                    Log.e("SyncDataWorker", "❌ [$workId] Error al obtener inspecciones moto pendientes", e)
+                }
+            }
+
             // 4. IMÁGENES con timeout
             if (shouldSyncForms || shouldSyncMaintenance || syncImagesOnly) {
                 try {
@@ -187,12 +225,14 @@ class SyncDataWorker @AssistedInject constructor(
                         }
                         Log.d("SyncDataWorker", "✅ [$workId] Oils synced successfully")
                     } else {
-                        // Default: Sync both (MASTER_DATA or ALL_DATA)
+                        // Por defecto: sincroniza todo (MASTER_DATA o ALL_DATA)
                         withTimeout(120000) {
                             syncMachinesUseCase()
                             syncOilsUseCase()
+                            syncMotosUseCase()
+                            syncUbicacionesUseCase()
                         }
-                        Log.d("SyncDataWorker", "✅ [$workId] Master data (Machines & Oils) synced successfully")
+                        Log.d("SyncDataWorker", "✅ [$workId] Master data (Machines, Oils, Motos & Ubicaciones) synced successfully")
                     }
                 } catch (e: Exception) {
                     totalErrors++

@@ -8,13 +8,19 @@ import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.ImageDao
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.LogDao
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.MachineDao
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.MaintenanceDao
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.InspeccionMotoDao
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.MotoDao
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.OilDao
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.UbicacionDao
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.FormEntity
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.ImageEntity
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.InspeccionMotoEntity
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.LogEntity
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.MachineEntity
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.MaintenanceEntity
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.MotoEntity
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.OilEntity
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.UbicacionEntity
 
 @Database(
     entities = [
@@ -23,9 +29,12 @@ import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.OilEnt
         LogEntity::class,
         MaintenanceEntity::class,
         OilEntity::class,
-        ImageEntity::class
+        ImageEntity::class,
+        MotoEntity::class,
+        UbicacionEntity::class,
+        InspeccionMotoEntity::class
     ],
-    version = 3,
+    version = 5,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -35,4 +44,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun maintenanceDao(): MaintenanceDao
     abstract fun oilDao(): OilDao
     abstract fun imageDao(): ImageDao
+    abstract fun motoDao(): MotoDao
+    abstract fun ubicacionDao(): UbicacionDao
+    abstract fun inspeccionMotoDao(): InspeccionMotoDao
 }

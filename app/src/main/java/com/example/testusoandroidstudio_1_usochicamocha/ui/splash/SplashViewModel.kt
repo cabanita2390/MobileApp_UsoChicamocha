@@ -35,7 +35,7 @@ class SplashViewModel @Inject constructor(
 
             when (sessionStatus) {
                 SessionStatus.VALID, SessionStatus.REFRESHED, SessionStatus.VALID_OFFLINE -> {
-                    _destination.value = "main"
+                    _destination.value = "selection_hub"
                 }
                 SessionStatus.EXPIRED -> {
                     _destination.value = "login"

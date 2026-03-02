@@ -5,7 +5,6 @@ package com.example.testusoandroidstudio_1_usochicamocha
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.ComposeFoundationFlags
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
@@ -24,10 +23,13 @@ import com.example.testusoandroidstudio_1_usochicamocha.ui.login.LoginScreen
 import com.example.testusoandroidstudio_1_usochicamocha.ui.login.LoginViewModel
 import com.example.testusoandroidstudio_1_usochicamocha.ui.main.MainScreen
 import com.example.testusoandroidstudio_1_usochicamocha.ui.mantenimiento.MantenimientoScreen
+import com.example.testusoandroidstudio_1_usochicamocha.ui.motocicleta.MotocicletaScreen
+import com.example.testusoandroidstudio_1_usochicamocha.ui.selectionhub.SelectionHubScreen
 import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.ConnectionStatusTopBar
 import com.example.testusoandroidstudio_1_usochicamocha.ui.splash.SplashScreen
 import com.example.testusoandroidstudio_1_usochicamocha.ui.splash.SplashViewModel
 import com.example.testusoandroidstudio_1_usochicamocha.ui.theme.AppUsoChicamochaTheme
+import com.example.testusoandroidstudio_1_usochicamocha.ui.vehiculo.VehiculoScreen
 import com.example.testusoandroidstudio_1_usochicamocha.util.NetworkMonitor
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -41,9 +43,6 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        // Temporary fix for Compose clickable issue
-        ComposeFoundationFlags.isNonComposedClickableEnabled = false
 
         setContent {
             AppUsoChicamochaTheme {
@@ -65,7 +64,7 @@ class MainActivity : ComponentActivity() {
                                 LoginScreen(
                                     viewModel = loginViewModel,
                                     onLoginSuccess = {
-                                        navController.navigate("main") {
+                                        navController.navigate("selection_hub") {
                                             popUpTo("splash") { inclusive = true }
                                         }
                                     }
@@ -73,12 +72,33 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     }
+                    composable("selection_hub") {
+                        SelectionHubScreen(
+                            onNavigateToMaquinaria = {
+                                navController.navigate("main")
+                            },
+                            onNavigateToVehiculos = {
+                                navController.navigate("vehiculo")
+                            },
+                            onNavigateToMotocicletas = {
+                                navController.navigate("motocicleta")
+                            },
+                            onLogout = {
+                                navController.navigate("login") {
+                                    popUpTo("selection_hub") { inclusive = true }
+                                }
+                            }
+                        )
+                    }
                     composable("main") {
                         MainScreen(
                             networkStatus = networkStatus,
+                            onNavigateBack = {
+                                navController.popBackStack()
+                            },
                             onLogout = {
                                 navController.navigate("login") {
-                                    popUpTo("main") { inclusive = true }
+                                    popUpTo("selection_hub") { inclusive = true }
                                 }
                             },
                             onNavigateToLogs = {
@@ -93,6 +113,20 @@ class MainActivity : ComponentActivity() {
                             onNavigateToMantenimiento = { maintenanceId ->
                                 val route = if (maintenanceId != null) "mantenimiento?maintenanceId=$maintenanceId" else "mantenimiento"
                                 navController.navigate(route)
+                            }
+                        )
+                    }
+                    composable("vehiculo") {
+                        VehiculoScreen(
+                            onNavigateBack = {
+                                navController.popBackStack()
+                            }
+                        )
+                    }
+                    composable("motocicleta") {
+                        MotocicletaScreen(
+                            onNavigateBack = {
+                                navController.popBackStack()
                             }
                         )
                     }

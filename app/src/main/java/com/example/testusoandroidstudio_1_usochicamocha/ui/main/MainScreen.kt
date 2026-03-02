@@ -8,6 +8,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.History
@@ -37,6 +38,7 @@ import java.util.*
 fun MainScreen(
     networkStatus: Boolean,
     viewModel: MainViewModel = hiltViewModel(),
+    onNavigateBack: () -> Unit,
     onLogout: () -> Unit,
     onNavigateToForm: () -> Unit,
     onNavigateToLogs: () -> Unit,
@@ -95,6 +97,11 @@ fun MainScreen(
                 ConnectionStatusTopBar(isConnected = networkStatus)
                 TopAppBar(
                     title = { Text("Menú Principal") },
+                    navigationIcon = {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
+                        }
+                    },
                     actions = {
                         IconButton(onClick = onNavigateToLogs) {
                             Icon(Icons.Filled.History, contentDescription = "Ver Logs")

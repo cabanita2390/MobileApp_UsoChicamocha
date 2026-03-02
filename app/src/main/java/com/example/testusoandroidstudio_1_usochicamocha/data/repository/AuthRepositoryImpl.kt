@@ -30,6 +30,14 @@ class AuthRepositoryImpl @Inject constructor(
                 tokenManager.saveTokens(accessToken, refreshToken)
                 tokenManager.saveUserId(userId)
 
+                // Save inspector info: "FullName (ROLE)" or username as fallback
+                val displayInfo = if (!loginResponse.fullName.isNullOrBlank()) {
+                    "${loginResponse.fullName} (${loginResponse.role ?: "SIN ROL"})"
+                } else {
+                    loginResponse.username
+                }
+                tokenManager.saveInspectorInfo(displayInfo)
+
                 Result.success(UserSession(accessToken = accessToken, refreshToken = refreshToken))
             } else {
                 Result.failure(Exception("Usuario o contraseña incorrectos"))
