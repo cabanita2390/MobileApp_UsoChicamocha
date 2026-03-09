@@ -1,6 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <network-security-config>
+    <!-- Producción (HTTPS, no necesita cleartext, pero se deja por si acaso) -->
     <domain-config cleartextTrafficPermitted="true">
         <domain includeSubdomains="true">145.223.121.6</domain>
+    </domain-config>
+    <!-- Backend local - desarrollo (HTTP, dispositivo físico por WiFi) -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">10.2.236.89</domain>
+    </domain-config>
+    <!-- Backend local - desarrollo (HTTP, USB + adb reverse → localhost) -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">localhost</domain>
     </domain-config>
 </network-security-config>

@@ -10,6 +10,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.*
@@ -38,8 +39,9 @@ fun MainScreen(
     networkStatus: Boolean,
     viewModel: MainViewModel = hiltViewModel(),
     onLogout: () -> Unit,
-    onNavigateToForm: () -> Unit,
+    onNavigateBack: () -> Unit,
     onNavigateToLogs: () -> Unit,
+    onNavigateToForm: () -> Unit,
     onNavigateToImprevisto: () -> Unit,
     onNavigateToMantenimiento: (Int?) -> Unit
 ) {
@@ -95,6 +97,11 @@ fun MainScreen(
                 ConnectionStatusTopBar(isConnected = networkStatus)
                 TopAppBar(
                     title = { Text("Menú Principal") },
+                    navigationIcon = {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
+                        }
+                    },
                     actions = {
                         IconButton(onClick = onNavigateToLogs) {
                             Icon(Icons.Filled.History, contentDescription = "Ver Logs")

@@ -23,6 +23,7 @@ class TokenManager @Inject constructor(private val dataStore: DataStore<Preferen
         val ACCESS_TOKEN_KEY = stringPreferencesKey("access_token")
         val REFRESH_TOKEN_KEY = stringPreferencesKey("refresh_token")
         val USER_ID_KEY = intPreferencesKey("user_id")
+        val USERNAME_KEY = stringPreferencesKey("username")
     }
 
     // --- SAVE METHODS ---
@@ -37,6 +38,12 @@ class TokenManager @Inject constructor(private val dataStore: DataStore<Preferen
     suspend fun saveUserId(id: Int) {
         dataStore.edit { preferences ->
             preferences[USER_ID_KEY] = id
+        }
+    }
+
+    suspend fun saveUsername(username: String) {
+        dataStore.edit { preferences ->
+            preferences[USERNAME_KEY] = username
         }
     }
 
@@ -57,6 +64,12 @@ class TokenManager @Inject constructor(private val dataStore: DataStore<Preferen
     fun getUserId(): Flow<Int?> {
         return dataStore.data.map { preferences ->
             preferences[USER_ID_KEY]
+        }
+    }
+
+    fun getUsername(): Flow<String?> {
+        return dataStore.data.map { preferences ->
+            preferences[USERNAME_KEY]
         }
     }
 

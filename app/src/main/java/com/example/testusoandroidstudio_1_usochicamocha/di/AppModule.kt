@@ -23,6 +23,10 @@ import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.machine.S
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.maintenance.*
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.oil.GetLocalOilsUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.oil.SyncOilsUseCase
+import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.vehiculo.GetPendingVehiculoInspectionsUseCase
+import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.vehiculo.SaveVehiculoInspectionUseCase
+import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.vehiculo.SyncVehiculoInspectionUseCase
+import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.vehiculo.SyncVehiclesCatalogUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.util.AppLogger
 import com.example.testusoandroidstudio_1_usochicamocha.util.NetworkMonitor
 import dagger.Module
@@ -42,7 +46,9 @@ object AppModule {
 
     //private const val BASE_URL = "https://pdxs8r4k-8080.use2.devtunnels.ms/"+"api/"
     //private const val BASE_URL = "https://usochimochabackend.onrender.com/"+"api/"
-    private const val BASE_URL = "https://server.usochicamocha.co/"+"api/"
+    //private const val BASE_URL = "https://server.usochicamocha.co/"+"api/"  // ← PRODUCCIÓN
+    //private const val BASE_URL = "http://10.2.236.89:8080/"+"api/"          // ← LOCAL (WiFi, dispositivo físico)
+    private const val BASE_URL = "http://localhost:8080/"+"api/"               // ← LOCAL (USB + adb reverse)
     @Provides
     @Singleton
     fun provideWorkManager(@ApplicationContext context: Context): WorkManager {
@@ -50,6 +56,9 @@ object AppModule {
     }
 
     @Provides
+
+
+    
     @Singleton
     fun provideApiService(tokenAuthenticator: TokenAuthenticator, authInterceptor: AuthInterceptor): ApiService {
         val loggingInterceptor = HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BODY }
@@ -110,6 +119,14 @@ object AppModule {
         return MaintenanceRepositoryImpl(maintenanceDao, apiService)
     }
 
+    @Provides
+    @Singleton
+    fun provideVehiculoInspectionRepository(
+        vehiculoInspectionDao: VehiculoInspectionDao,
+        vehiculoDao: VehiculoDao,
+        apiService: ApiService
+    ): VehiculoInspectionRepository = VehiculoInspectionRepositoryImpl(vehiculoInspectionDao, vehiculoDao, apiService)
+
     // DAOs
     @Provides
     @Singleton
@@ -134,6 +151,14 @@ object AppModule {
     @Provides
     @Singleton
     fun provideOilDao(db: AppDatabase): OilDao = db.oilDao()
+
+    @Provides
+    @Singleton
+    fun provideVehiculoInspectionDao(db: AppDatabase): VehiculoInspectionDao = db.vehiculoInspectionDao()
+
+    @Provides
+    @Singleton
+    fun provideVehiculoDao(db: AppDatabase): VehiculoDao = db.vehiculoDao()
 
     // Use Cases
     @Provides
@@ -191,6 +216,22 @@ object AppModule {
     @Provides
     @Singleton
     fun provideSyncPendingImagesUseCase(repo: FormRepository): SyncPendingImagesUseCase = SyncPendingImagesUseCase(repo)
+
+    @Provides
+    @Singleton
+    fun provideSaveVehiculoInspectionUseCase(repo: VehiculoInspectionRepository): SaveVehiculoInspectionUseCase = SaveVehiculoInspectionUseCase(repo)
+
+    @Provides
+    @Singleton
+    fun provideGetPendingVehiculoInspectionsUseCase(repo: VehiculoInspectionRepository): GetPendingVehiculoInspectionsUseCase = GetPendingVehiculoInspectionsUseCase(repo)
+
+    @Provides
+    @Singleton
+    fun provideSyncVehiculoInspectionUseCase(repo: VehiculoInspectionRepository): SyncVehiculoInspectionUseCase = SyncVehiculoInspectionUseCase(repo)
+
+    @Provides
+    @Singleton
+    fun provideSyncVehiclesCatalogUseCase(repo: VehiculoInspectionRepository): SyncVehiclesCatalogUseCase = SyncVehiclesCatalogUseCase(repo)
 
     @Provides
     @Singleton

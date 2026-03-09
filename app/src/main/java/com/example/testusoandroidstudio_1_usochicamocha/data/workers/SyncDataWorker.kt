@@ -18,6 +18,9 @@ import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.machine.S
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.maintenance.GetPendingMaintenanceFormsUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.maintenance.SyncMaintenanceFormsUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.oil.SyncOilsUseCase
+import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.vehiculo.GetPendingVehiculoInspectionsUseCase
+import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.vehiculo.SyncVehiculoInspectionUseCase
+import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.vehiculo.SyncVehiclesCatalogUseCase
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.flow.first
@@ -37,7 +40,10 @@ class SyncDataWorker @AssistedInject constructor(
     private val getPendingMaintenanceFormsUseCase: GetPendingMaintenanceFormsUseCase,
     private val syncMaintenanceFormsUseCase: SyncMaintenanceFormsUseCase,
     private val syncMachinesUseCase: SyncMachinesUseCase,
-    private val syncOilsUseCase: SyncOilsUseCase
+    private val syncOilsUseCase: SyncOilsUseCase,
+    private val getPendingVehiculoInspectionsUseCase: GetPendingVehiculoInspectionsUseCase,
+    private val syncVehiculoInspectionUseCase: SyncVehiculoInspectionUseCase,
+    private val syncVehiclesCatalogUseCase: SyncVehiclesCatalogUseCase
 ) : CoroutineWorker(appContext, workerParams) {
 
     override suspend fun doWork(): Result {
@@ -68,15 +74,19 @@ class SyncDataWorker @AssistedInject constructor(
             val syncMachinesOnly = syncType == "MACHINES_ONLY"
             val syncOilsOnly = syncType == "OILS_ONLY"
             val syncMasterDataOnly = syncType == "MASTER_DATA"
+            val syncVehiclesOnly = syncType == "VEHICLES_ONLY"
 
             val shouldSyncForms = syncAll || syncFormsOnly
             val shouldSyncMaintenance = syncAll || syncMaintenanceOnly
+            val shouldSyncVehicles = syncAll || syncVehiclesOnly
             
             var formsSynced = 0
             var maintenanceSynced = 0
+            var vehiclesSynced = 0
             var totalErrors = 0
             var pendingForms: List<com.example.testusoandroidstudio_1_usochicamocha.domain.model.Form> = emptyList()
             var pendingMaintenance: List<com.example.testusoandroidstudio_1_usochicamocha.domain.model.Maintenance> = emptyList()
+            var pendingVehicles: List<com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.VehiculoInspectionEntity> = emptyList()
 
             // 2. FORMULARIOS con timeout por cada formulario
             if (shouldSyncForms) {
@@ -152,8 +162,45 @@ class SyncDataWorker @AssistedInject constructor(
                 }
             }
 
-            // 4. IMÁGENES con timeout
-            if (shouldSyncForms || shouldSyncMaintenance || syncImagesOnly) {
+            // 4. INSPECCIONES DE VEHÍCULOS
+            if (shouldSyncVehicles) {
+                Log.d("SyncDataWorker", "🚗 [$workId] Processing vehicle inspections...")
+                try {
+                    pendingVehicles = withTimeout(30000) {
+                        getPendingVehiculoInspectionsUseCase()
+                    }
+                    Log.d("SyncDataWorker", "📋 [$workId] Found ${pendingVehicles.size} pending vehicle inspections to sync")
+                    
+                    if (pendingVehicles.isNotEmpty()) {
+                        pendingVehicles.forEachIndexed { index, inspection ->
+                            try {
+                                Log.d("SyncDataWorker", "🚗 [$workId] Syncing vehicle inspection ${index + 1}/${pendingVehicles.size}: ${inspection.UUID}")
+                                
+                                val result = withTimeout(30000) {
+                                    syncVehiculoInspectionUseCase(inspection)
+                                }
+                                
+                                if (result.isSuccess) {
+                                    vehiclesSynced++
+                                    Log.d("SyncDataWorker", "✅ [$workId] Vehicle inspection synced successfully: ${inspection.UUID}")
+                                } else {
+                                    totalErrors++
+                                    Log.e("SyncDataWorker", "❌ [$workId] Vehicle inspection sync failed: ${inspection.UUID} - ${result.exceptionOrNull()?.message}")
+                                }
+                            } catch (e: Exception) {
+                                totalErrors++
+                                Log.e("SyncDataWorker", "❌ [$workId] Exception syncing vehicle inspection ${inspection.UUID}", e)
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    totalErrors++
+                    Log.e("SyncDataWorker", "❌ [$workId] Error fetching vehicle inspections", e)
+                }
+            }
+
+            // 5. IMÁGENES con timeout
+            if (shouldSyncForms || shouldSyncMaintenance || shouldSyncVehicles || syncImagesOnly) {
                 try {
                     Log.d("SyncDataWorker", "🖼️ [$workId] Enqueuing image sync...")
                     val imageWork = OneTimeWorkRequestBuilder<ImageSyncWorker>().build()
@@ -187,12 +234,13 @@ class SyncDataWorker @AssistedInject constructor(
                         }
                         Log.d("SyncDataWorker", "✅ [$workId] Oils synced successfully")
                     } else {
-                        // Default: Sync both (MASTER_DATA or ALL_DATA)
-                        withTimeout(120000) {
+                        // Default: Sync all (MASTER_DATA or ALL_DATA)
+                        withTimeout(180000) { // Incrementado timeout para incluir vehículos
                             syncMachinesUseCase()
                             syncOilsUseCase()
+                            syncVehiclesCatalogUseCase()
                         }
-                        Log.d("SyncDataWorker", "✅ [$workId] Master data (Machines & Oils) synced successfully")
+                        Log.d("SyncDataWorker", "✅ [$workId] Master data (Machines, Oils & Vehicles) synced successfully")
                     }
                 } catch (e: Exception) {
                     totalErrors++
@@ -202,10 +250,10 @@ class SyncDataWorker @AssistedInject constructor(
 
             // Log summary
             Log.d("SyncDataWorker", "🏁 [$workId] === SYNC SESSION COMPLETE ===")
-            Log.d("SyncDataWorker", "📊 [$workId] Summary - Forms: $formsSynced, Maintenance: $maintenanceSynced, Errors: $totalErrors")
+            Log.d("SyncDataWorker", "📊 [$workId] Summary - Forms: $formsSynced, Maintenance: $maintenanceSynced, Vehicles: $vehiclesSynced, Errors: $totalErrors")
             
             // CRITICAL FIX: Siempre devolver un resultado válido
-            val hasDataToProcess = pendingForms.isNotEmpty() || pendingMaintenance.isNotEmpty() || isExplicitMasterSync
+            val hasDataToProcess = pendingForms.isNotEmpty() || pendingMaintenance.isNotEmpty() || pendingVehicles.isNotEmpty() || isExplicitMasterSync
             
             return if (totalErrors == 0 && hasDataToProcess) {
                 Log.d("SyncDataWorker", "🎉 [$workId] All sync operations completed successfully")

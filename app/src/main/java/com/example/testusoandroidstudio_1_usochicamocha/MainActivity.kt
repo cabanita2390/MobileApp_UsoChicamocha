@@ -17,6 +17,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.example.testusoandroidstudio_1_usochicamocha.ui.home.HomeScreen
+import com.example.testusoandroidstudio_1_usochicamocha.ui.home.HomeViewModel
 import com.example.testusoandroidstudio_1_usochicamocha.ui.imprevisto.ImprevistoScreen
 import com.example.testusoandroidstudio_1_usochicamocha.ui.form.FormScreen
 import com.example.testusoandroidstudio_1_usochicamocha.ui.log.LogScreen
@@ -24,10 +26,13 @@ import com.example.testusoandroidstudio_1_usochicamocha.ui.login.LoginScreen
 import com.example.testusoandroidstudio_1_usochicamocha.ui.login.LoginViewModel
 import com.example.testusoandroidstudio_1_usochicamocha.ui.main.MainScreen
 import com.example.testusoandroidstudio_1_usochicamocha.ui.mantenimiento.MantenimientoScreen
+import com.example.testusoandroidstudio_1_usochicamocha.ui.motos.MotosScreen
 import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.ConnectionStatusTopBar
 import com.example.testusoandroidstudio_1_usochicamocha.ui.splash.SplashScreen
 import com.example.testusoandroidstudio_1_usochicamocha.ui.splash.SplashViewModel
 import com.example.testusoandroidstudio_1_usochicamocha.ui.theme.AppUsoChicamochaTheme
+import com.example.testusoandroidstudio_1_usochicamocha.ui.vehiculo.VehiculoScreen
+import com.example.testusoandroidstudio_1_usochicamocha.ui.vehiculo.VehiculoMainScreen
 import com.example.testusoandroidstudio_1_usochicamocha.util.NetworkMonitor
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -65,7 +70,7 @@ class MainActivity : ComponentActivity() {
                                 LoginScreen(
                                     viewModel = loginViewModel,
                                     onLoginSuccess = {
-                                        navController.navigate("main") {
+                                        navController.navigate("home") {
                                             popUpTo("splash") { inclusive = true }
                                         }
                                     }
@@ -73,13 +78,37 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     }
+                    composable("home") {
+                        val homeViewModel: HomeViewModel = hiltViewModel()
+                        HomeScreen(
+                            networkStatus = networkStatus,
+                            viewModel = homeViewModel,
+                            onLogout = {
+                                navController.navigate("login") {
+                                    popUpTo("home") { inclusive = true }
+                                }
+                            },
+                            onNavigateToMaquinaria = {
+                                navController.navigate("main")
+                            },
+                            onNavigateToVehicular = {
+                                navController.navigate("vehiculo_main")
+                            },
+                            onNavigateToMotos = {
+                                navController.navigate("motos")
+                            }
+                        )
+                    }
                     composable("main") {
                         MainScreen(
                             networkStatus = networkStatus,
                             onLogout = {
                                 navController.navigate("login") {
-                                    popUpTo("main") { inclusive = true }
+                                    popUpTo("home") { inclusive = true }
                                 }
+                            },
+                            onNavigateBack = {
+                                navController.popBackStack()
                             },
                             onNavigateToLogs = {
                                 navController.navigate("logs")
@@ -93,6 +122,38 @@ class MainActivity : ComponentActivity() {
                             onNavigateToMantenimiento = { maintenanceId ->
                                 val route = if (maintenanceId != null) "mantenimiento?maintenanceId=$maintenanceId" else "mantenimiento"
                                 navController.navigate(route)
+                            }
+                        )
+                    }
+                    composable("vehiculo_main") {
+                        VehiculoMainScreen(
+                            networkStatus = networkStatus,
+                            onLogout = {
+                                navController.navigate("login") {
+                                    popUpTo("home") { inclusive = true }
+                                }
+                            },
+                            onNavigateBack = {
+                                navController.popBackStack()
+                            },
+                            onNavigateToForm = {
+                                navController.navigate("vehiculo")
+                            }
+                        )
+                    }
+                    composable("vehiculo") {
+                        VehiculoScreen(
+                            networkStatus = networkStatus,
+                            onNavigateBack = {
+                                navController.popBackStack()
+                            }
+                        )
+                    }
+                    composable("motos") {
+                        MotosScreen(
+                            networkStatus = networkStatus,
+                            onNavigateBack = {
+                                navController.popBackStack()
                             }
                         )
                     }

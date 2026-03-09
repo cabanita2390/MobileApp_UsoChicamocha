@@ -26,9 +26,11 @@ class AuthRepositoryImpl @Inject constructor(
                 val accessToken = loginResponse.accessToken
                 val refreshToken = loginResponse.refreshToken
                 val userId = loginResponse.userId
+                val username = loginResponse.username
 
                 tokenManager.saveTokens(accessToken, refreshToken)
                 tokenManager.saveUserId(userId)
+                tokenManager.saveUsername(username)
 
                 Result.success(UserSession(accessToken = accessToken, refreshToken = refreshToken))
             } else {

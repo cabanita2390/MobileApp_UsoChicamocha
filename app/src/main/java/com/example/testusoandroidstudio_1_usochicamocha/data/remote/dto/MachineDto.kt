@@ -19,7 +19,7 @@ data class MachineDto(
     @SerializedName("runt") // Clave JSON del backend
     val runtExpirationDate: String?,
     @SerializedName("soat") // Clave JSON del backend
-    val soatExpirationDate: String?
+        val soatExpirationDate: String?
 )
 
 fun MachineDto.toEntity(): MachineEntity {
