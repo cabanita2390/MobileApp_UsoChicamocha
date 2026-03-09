@@ -30,6 +30,7 @@ import com.example.testusoandroidstudio_1_usochicamocha.ui.main.MainScreen
 import com.example.testusoandroidstudio_1_usochicamocha.ui.mantenimiento.MantenimientoScreen
 import com.example.testusoandroidstudio_1_usochicamocha.ui.motocicleta.MotocicletaScreen
 import com.example.testusoandroidstudio_1_usochicamocha.ui.motocicleta.MotoHubScreen
+import com.example.testusoandroidstudio_1_usochicamocha.ui.selectionhub.SelectionHubScreen
 import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.ConnectionStatusTopBar
 import com.example.testusoandroidstudio_1_usochicamocha.ui.splash.SplashScreen
 import com.example.testusoandroidstudio_1_usochicamocha.ui.splash.SplashViewModel
@@ -87,14 +88,30 @@ class MainActivity : ComponentActivity() {
                                 LoginScreen(
                                     viewModel = loginViewModel,
                                     onLoginSuccess = {
-                                        // TODO: Definir nueva ruta de destino
-                                        /*navController.navigate("selection_hub") {
+                                        navController.navigate("selection_hub") {
                                             popUpTo("splash") { inclusive = true }
-                                        }*/
+                                        }
                                     }
                                  )
                             }
                         }
+                    }
+
+                    composable("selection_hub") {
+                        SelectionHubScreen(
+                            networkStatus = networkStatus,
+                            onNavigateToMaquinaria = {
+                                navController.navigate("main")
+                            },
+                            onNavigateToMotocicletas = {
+                                navController.navigate("motocicleta")
+                            },
+                            onLogout = {
+                                navController.navigate("login") {
+                                    popUpTo("selection_hub") { inclusive = true }
+                                }
+                            }
+                        )
                     }
 
                     composable("main") {
@@ -105,7 +122,7 @@ class MainActivity : ComponentActivity() {
                             },
                             onLogout = {
                                 navController.navigate("login") {
-                                    popUpTo("main") { inclusive = true }
+                                    popUpTo("selection_hub") { inclusive = true }
                                 }
                             },
                             onNavigateToLogs = {
