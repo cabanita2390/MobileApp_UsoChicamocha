@@ -8,5 +8,6 @@ interface MotoRepository {
     suspend fun syncMotos(): Result<Unit>
     fun getLocalMotos(): Flow<List<Moto>>
     suspend fun syncUbicaciones(): Result<Unit>
+    suspend fun syncDocumentos(): Result<Unit>
     fun getLocalUbicaciones(): Flow<List<Ubicacion>>
 }

@@ -1,7 +1,6 @@
 package com.example.testusoandroidstudio_1_usochicamocha.ui.motocicleta
 
 import android.Manifest
-import android.app.DatePickerDialog
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -10,41 +9,46 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.*
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
-import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
+import coil.compose.AsyncImage
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.Moto
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.Ubicacion
-import coil.compose.AsyncImage
-import com.example.testusoandroidstudio_1_usochicamocha.ui.form.StatusSelector
 import java.io.File
 import java.util.Calendar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MotocicletaScreen(
+    networkStatus: Boolean,
     viewModel: MotocicletaViewModel = hiltViewModel(),
     onNavigateBack: () -> Unit
 ) {
@@ -53,7 +57,7 @@ fun MotocicletaScreen(
 
 
 
-    // Error snackbar
+
     val snackbarHostState = remember { SnackbarHostState() }
     LaunchedEffect(uiState.errorMessage) {
         uiState.errorMessage?.let {
@@ -64,18 +68,20 @@ fun MotocicletaScreen(
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = { Text("Inspección Motocicleta") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
+            Column {
+                com.example.testusoandroidstudio_1_usochicamocha.ui.shared.ConnectionStatusTopBar(isConnected = networkStatus)
+                TopAppBar(
+                    title = { Text("Inspección Motocicleta") },
+                    navigationIcon = {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
+                        }
                     }
-                }
-            )
+                )
+            }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { paddingValues ->
-
 
         LazyColumn(
             modifier = Modifier
@@ -87,73 +93,19 @@ fun MotocicletaScreen(
 
             // 1. PLACA
             item {
-                var showAddPlateDialog by remember { mutableStateOf(false) }
-                var newPlateText by remember { mutableStateOf("") }
-
-                if (showAddPlateDialog) {
-                    AlertDialog(
-                        onDismissRequest = { showAddPlateDialog = false },
-                        title = { Text("Registrar Nueva Placa") },
-                        text = {
-                            OutlinedTextField(
-                                value = newPlateText,
-                                onValueChange = { newPlateText = it.uppercase() },
-                                label = { Text("Placa") },
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        },
-                        confirmButton = {
-                            Button(
-                                onClick = {
-                                    if (newPlateText.isNotBlank()) {
-                                        viewModel.registrarNuevaPlaca(newPlateText)
-                                        showAddPlateDialog = false
-                                        newPlateText = ""
-                                    }
-                                }
-                            ) { Text("Registrar") }
-                        },
-                        dismissButton = {
-                            TextButton(onClick = { showAddPlateDialog = false }) { Text("Cancelar") }
-                        }
-                    )
-                }
-
                 if (uiState.isLoadingData) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
                         Text("Cargando placas...", style = MaterialTheme.typography.bodyMedium)
                     }
                 } else {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Box(modifier = Modifier.weight(1f)) {
-                            DropdownField(
-                                label = "Seleccione La PLACA de Su Motocicleta (*)",
-                                displayValue = uiState.selectedMoto?.placa ?: "Seleccione una placa",
-                                items = uiState.motocicletas,
-                                itemLabel = { it.placa },
-                                onItemSelected = { viewModel.onMotoSelected(it) }
-                            )
-                        }
-                        
-                        IconButton(
-                            onClick = { showAddPlateDialog = true },
-                            colors = IconButtonDefaults.iconButtonColors(
-                                containerColor = MaterialTheme.colorScheme.primaryContainer,
-                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                            ),
-                            modifier = Modifier.size(48.dp) // Quité el padding(top = 16.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Add, 
-                                contentDescription = "Añadir Placa"
-                            )
-                        }
-                    }
+                    DropdownField(
+                        label = "Seleccione La PLACA de Su Motocicleta (*)",
+                        displayValue = uiState.selectedMoto?.placa ?: "Seleccione una placa",
+                        items = uiState.motocicletas,
+                        itemLabel = { it.placa },
+                        onItemSelected = { viewModel.onMotoSelected(it) }
+                    )
                 }
             }
             item { HorizontalDivider() }
@@ -163,31 +115,56 @@ fun MotocicletaScreen(
                 if (uiState.isLoadingData) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-                        Text("Cargando ubicaciones...", style = MaterialTheme.typography.bodyMedium)
+                        Text("Cargando unidades...", style = MaterialTheme.typography.bodyMedium)
                     }
                 } else {
-                DropdownField(
-                    label = "Seleccione la UNIDAD a la que Pertenece (*)",
-                    displayValue = uiState.selectedUbicacion?.nombreUbicacion ?: "Seleccione la UNIDAD",
-                    items = uiState.ubicaciones,
-                    itemLabel = { it.nombreUbicacion },
-                    onItemSelected = { viewModel.onUbicacionSelected(it) }
-                )
+                    DropdownField(
+                        label = "Seleccione la UNIDAD a la que Pertenece (*)",
+                        displayValue = uiState.selectedUbicacion?.nombreUbicacion ?: "Seleccione la UNIDAD",
+                        items = uiState.ubicaciones,
+                        itemLabel = { it.nombreUbicacion },
+                        onItemSelected = { viewModel.onUbicacionSelected(it) }
+                    )
                 }
             }
             item { HorizontalDivider() }
 
             // 3. KILOMETRAJE
             item {
-                OutlinedTextField(
-                    value = uiState.kilometraje,
-                    onValueChange = { if (it.all { c -> c.isDigit() }) viewModel.onKilometrajeChange(it) },
-                    label = { Text("Escriba el KILOMETRAJE Actual de la Moto (*)", fontWeight = FontWeight.Bold, fontSize = 17.sp) },
-                    modifier = Modifier.fillMaxWidth(),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                )
+                Column {
+                    OutlinedTextField(
+                        value = uiState.kilometraje,
+                        onValueChange = { if (it.all { c -> c.isDigit() }) viewModel.onKilometrajeChange(it) },
+                        label = { Text("Escriba el KILOMETRAJE Actual de la Moto (*)", fontWeight = FontWeight.Bold, fontSize = 17.sp) },
+                        modifier = Modifier.fillMaxWidth(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        isError = uiState.kilometrajeError != null,
+                        supportingText = {
+                            if (uiState.kilometrajeError != null) {
+                                Text(uiState.kilometrajeError ?: "", color = MaterialTheme.colorScheme.error)
+                            } else if (uiState.kilometrajeMinimo > 0) {
+                                Text(
+                                    "Último kilometraje registrado: ${uiState.kilometrajeMinimo} km",
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    )
+                }
             }
             item { HorizontalDivider() }
+
+            // Título sección documentos
+            item {
+                Text(
+                    text = "Vigencia DOCUMENTACION",
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 18.sp
+                    ),
+                    modifier = Modifier.padding(vertical = 4.dp)
+                )
+            }
 
             // 4. SOAT
             item {
@@ -199,13 +176,10 @@ fun MotocicletaScreen(
                     }
                 } else {
                     DocumentoSection(
-                        titulo = "SOAT (Seguro Obligatorio)",
+                        titulo = "SOAT (Seguro Obligatorio) (*)",
                         state = uiState.soat,
-                        isLocked = false, // SOAT siempre se puede actualizar si se desea (o sigue su propia lógica de isDateLocked)
-                        onVigenciaSelected = { y, m, d -> viewModel.onSoatVigenciaChange(y, m, d) },
-                        onImagenSelected = { viewModel.onSoatImagenSelected(it) },
-                        onImagenRemoved = { viewModel.onSoatImagenRemoved() },
-                        context = context
+                        isLocked = false,
+                        onVigenciaSelected = { y, m, d -> viewModel.onSoatVigenciaChange(y, m, d) }
                     )
                 }
             }
@@ -214,42 +188,35 @@ fun MotocicletaScreen(
             // 5. REVISIÓN TÉCNICO-MECÁNICA
             item {
                 DocumentoSection(
-                    titulo = "Revisión TECNICOMECÁNICA",
+                    titulo = "Revisión TECNICOMECÁNICA (*)",
                     state = uiState.revisionTecno,
                     isLocked = false,
-                    onVigenciaSelected = { y, m, d -> viewModel.onRevisionVigenciaChange(y, m, d) },
-                    onImagenSelected = { viewModel.onRevisionImagenSelected(it) },
-                    onImagenRemoved = { viewModel.onRevisionImagenRemoved() },
-                    context = context
+                    onVigenciaSelected = { y, m, d -> viewModel.onRevisionVigenciaChange(y, m, d) }
                 )
             }
             item { HorizontalDivider() }
 
             // 6. LICENCIA DE CONDUCIR
             item {
-                // Requirement: Licencia se bloquea solo si YA está en el sistema y sigue vigente
                 val isLicenciaLocked = uiState.licencia.yaRegistrado && uiState.licencia.estadoDoc == "Vigente"
                 DocumentoSection(
-                    titulo = "LICENCIA de Conducción",
+                    titulo = "LICENCIA de Conducción (*)",
                     state = uiState.licencia,
                     isLocked = isLicenciaLocked,
-                    onVigenciaSelected = { y, m, d -> viewModel.onLicenciaVigenciaChange(y, m, d) },
-                    onImagenSelected = { viewModel.onLicenciaImagenSelected(it) },
-                    onImagenRemoved = { viewModel.onLicenciaImagenRemoved() },
-                    context = context
+                    onVigenciaSelected = { y, m, d -> viewModel.onLicenciaVigenciaChange(y, m, d) }
                 )
             }
             item { HorizontalDivider() }
 
             // 7. ESTADO GENERAL
             item {
-                StatusSelector(
+                MotoStatusSelector(
                     label = "Estado ACTUAL - GENERAL de La Motocicleta (*)",
-                    selectedOption = uiState.estadoGeneral,
-                    onOptionSelected = { viewModel.onEstadoGeneralChange(it) }
+                    selectedOption = uiState.estadoVehiculo,
+                    onOptionSelected = { viewModel.onEstadoVehiculoChange(it) }
                 )
             }
-            item { HorizontalDivider() }
+            item { Spacer(modifier = Modifier.height(8.dp)) }
 
             // 8. OBSERVACIONES
             item {
@@ -277,9 +244,7 @@ fun MotocicletaScreen(
                         focusedLabelColor = MaterialTheme.colorScheme.secondary,
                         cursorColor = Color.Transparent
                     ),
-                    leadingIcon = { 
-                        Icon(Icons.Default.AccountCircle, contentDescription = null, tint = MaterialTheme.colorScheme.secondary) 
-                    }
+                    leadingIcon = { Icon(Icons.Default.AccountCircle, contentDescription = null, tint = MaterialTheme.colorScheme.secondary) }
                 )
             }
 
@@ -298,22 +263,16 @@ fun MotocicletaScreen(
                 }
             }
 
-            item { Spacer(modifier = Modifier.height(24.dp)) }
+            item { Spacer(modifier = Modifier.height(48.dp)) }
         }
 
-        // Alerta de éxito
         if (uiState.saveCompleted) {
             AlertDialog(
                 onDismissRequest = { /* No hacer nada para forzar click en Aceptar */ },
                 title = { Text("Guardado Exitoso", fontWeight = FontWeight.Bold) },
                 text = { Text("La inspección se ha guardado correctamente.") },
                 confirmButton = {
-                    Button(
-                        onClick = {
-                            onNavigateBack()
-                            viewModel.onNavigationDone()
-                        }
-                    ) {
+                    Button(onClick = { onNavigateBack(); viewModel.onNavigationDone() }) {
                         Text("Aceptar")
                     }
                 }
@@ -321,181 +280,256 @@ fun MotocicletaScreen(
         }
     }
 }
+@Composable
+fun CheckDropdown(
+    label: String,
+    value: String,
+    onSelect: (String) -> Unit,
+    items: List<String> = listOf("Bueno", "Malo", "No Aplica")
+) {
+    DropdownField(
+        label = label,
+        displayValue = value.ifBlank { "Seleccione Una Opción" },
+        items = items,
+        itemLabel = { it },
+        onItemSelected = onSelect
+    )
+}
 
-/** Sección de un documento: título + indicador si ya está en BD + selector de fecha + botones de foto */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun <T> DropdownField(
+    label: String,
+    displayValue: String,
+    items: List<T>,
+    itemLabel: (T) -> String,
+    onItemSelected: (T) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = !expanded }) {
+        OutlinedTextField(
+            value = displayValue,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text(label, fontWeight = FontWeight.Bold, fontSize = 14.sp) },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            modifier = Modifier.menuAnchor().fillMaxWidth()
+        )
+        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            if (items.isEmpty()) {
+                DropdownMenuItem(text = { Text("No hay opciones disponibles") }, onClick = { expanded = false })
+            }
+            items.forEach { item ->
+                DropdownMenuItem(
+                    text = { Text(itemLabel(item)) },
+                    onClick = { onItemSelected(item); expanded = false }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun MotoStatusSelector(
+    label: String,
+    selectedOption: String,
+    onOptionSelected: (String) -> Unit
+) {
+    val options = listOf("Óptimo", "Regular", "Malo")
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(label, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, fontSize = 17.sp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            options.forEach { option ->
+                val isSelected = option == selectedOption
+                val backgroundColor = when (option) {
+                    "Óptimo" -> Color(0xFF4CAF50)
+                    "Regular" -> Color(0xFFFFA000)
+                    else -> Color(0xFFD32F2F)
+                }
+                val textColor = if (isSelected) Color.White
+                    else Color.Black
+
+                Surface(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(48.dp)
+                        .border(2.dp, if (isSelected) backgroundColor else Color.LightGray, RoundedCornerShape(8.dp))
+                        .clickable { onOptionSelected(option) },
+                    shape = RoundedCornerShape(8.dp),
+                    color = if (isSelected) backgroundColor else backgroundColor.copy(alpha = 0.2f)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text(
+                            text = option,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                            color = textColor,
+                            fontSize = 14.sp
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+
 @Composable
 fun DocumentoSection(
     titulo: String,
     state: DocumentoState,
     isLocked: Boolean,
     onVigenciaSelected: (year: Int, month: Int, day: Int) -> Unit,
-    onImagenSelected: (Uri) -> Unit,
-    onImagenRemoved: () -> Unit,
-    context: android.content.Context
 ) {
+    var showPicker by remember { mutableStateOf(false) }
+    var showFullImage by remember { mutableStateOf(false) }
+
     val calendar = Calendar.getInstance()
-
-    var showDateDialog by remember { mutableStateOf(false) }
-
-    // Camera / gallery launchers
-    val pickImageLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.GetContent(),
-        onResult = { uri: Uri? -> uri?.let(onImagenSelected) }
-    )
-    var tempUri by remember { mutableStateOf<Uri?>(null) }
-    val takePictureLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.TakePicture(),
-        onResult = { success -> if (success) tempUri?.let(onImagenSelected) }
-    )
-    val cameraPermissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission(),
-        onResult = { granted ->
-            if (granted) {
-                val file = File(context.cacheDir, "moto_doc_${System.currentTimeMillis()}.jpg")
-                val uri = FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
-                tempUri = uri
-                takePictureLauncher.launch(uri)
-            }
+    val (initialYear, initialMonth) = remember(state.vigencia) {
+        if (state.vigencia.contains("-")) {
+            val parts = state.vigencia.split("-")
+            Pair(
+                parts[0].toIntOrNull() ?: calendar.get(Calendar.YEAR),
+                (parts[1].toIntOrNull()?.minus(1)) ?: calendar.get(Calendar.MONTH)
+            )
+        } else {
+            Pair(calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH))
         }
-    )
+    }
 
-    // ALWAYS use Month/Year precision for all scenarios as requested
-    if (showDateDialog) {
-        val currentVigencia = state.vigencia
-        val parts = currentVigencia.split("-")
-        val yr = if (parts.size >= 1) parts[0].toIntOrNull() ?: calendar.get(Calendar.YEAR) else calendar.get(Calendar.YEAR)
-        val mt = if (parts.size >= 2) (parts[1].toIntOrNull() ?: (calendar.get(Calendar.MONTH) + 1)) - 1 else calendar.get(Calendar.MONTH)
-
-        MonthYearPickerDialog(
-            onDismissRequest = { showDateDialog = false },
-            onDateSelected = { y, m ->
-                onVigenciaSelected(y, m, -1) // -1 signifies only Year-Month approximation
-                showDateDialog = false
-            },
-            initialYear = yr,
-            initialMonth = mt
+    if (showPicker) {
+        DocumentoMonthYearPickerDialog(
+            onDismissRequest = { showPicker = false },
+            onDateSelected = { y, m -> onVigenciaSelected(y, m, 0); showPicker = false },
+            initialYear = initialYear,
+            initialMonth = initialMonth
         )
     }
 
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        // Título + badge si ya está registrado
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(titulo, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, fontSize = 17.sp))
-            if (state.yaRegistrado) {
-                Icon(Icons.Default.CheckCircle, contentDescription = "Ya registrado",
-                    tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
-                Text("Ya registrado", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
-            }
-        }
+    if (showFullImage && state.imagenUrl != null) {
+        ImageDialog(
+            imageUrl = state.imagenUrl,
+            onDismissRequest = { showFullImage = false }
+        )
+    }
 
-        // Nuevo: Estado Informativo (Automático)
-        val badgeColor = when (state.estadoDoc) {
-            "Vigente" -> Color(0xFF4CAF50)
-            "Próximo a vencer" -> Color(0xFFFFA000)
-            "Vencido" -> Color(0xFFD32F2F)
-            else -> Color.Gray
-        }
+    val statusClean = state.estadoDoc.trim().lowercase()
+    val statusColor = when {
+        statusClean == "vigente"           -> Color(0xFF43A047) // Verde
+        statusClean.contains("próximo")    -> Color(0xFFFFB300) // Amarillo/Ámbar vibrante
+        statusClean == "vencido"           -> Color(0xFFE53935) // Rojo vibrante
+        else                               -> Color(0xFF757575) // Gris
+    }
 
-        Surface(
-            modifier = Modifier.fillMaxWidth().height(40.dp),
-            shape = RoundedCornerShape(8.dp),
-            color = badgeColor.copy(alpha = 0.15f),
-            border = BorderStroke(1.dp, badgeColor)
-        ) {
-            Row(
-                modifier = Modifier.padding(horizontal = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+
+            // Título
+            Text(titulo, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
+
+            // Badge de estado
+            val isCalculado = state.estadoDoc.isNotBlank()
+            val badgeText = if (isCalculado) "Estado: ${state.estadoDoc}" else "Estado: Sin registro"
+
+            Surface(
+                color = statusColor.copy(alpha = 0.12f),
+                shape = RoundedCornerShape(4.dp),
+                border = BorderStroke(1.dp, statusColor),
+                modifier = Modifier.padding(bottom = 4.dp)
             ) {
                 Text(
-                    text = "Estado: ${state.estadoDoc.ifBlank { "Sin calcular" }}",
-                    fontWeight = FontWeight.Bold,
-                    color = badgeColor,
-                    fontSize = 14.sp
+                    text = badgeText.uppercase(),
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                    color = statusColor,
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontWeight = FontWeight.Black,
+                        fontSize = 12.sp,
+                        letterSpacing = 0.8.sp
+                    )
                 )
-                if (isLocked) {
-                    Icon(Icons.Default.Lock, contentDescription = "Bloqueado", tint = badgeColor, modifier = Modifier.size(18.dp))
-                }
             }
-        }
 
-        // Selector de fecha
-        val finalLocked = isLocked 
-        OutlinedTextField(
-            value = state.vigencia,
-            onValueChange = {},
-            readOnly = true,
-            label = { 
-                Text(
-                    if (finalLocked) "Vigencia (Bloqueado)" 
-                    else "Fecha Vencimiento (Mes/Año)"
-                ) 
-            },
-            placeholder = { Text("Toca para seleccionar") },
-            trailingIcon = {
-                if (!finalLocked) {
-                    IconButton(onClick = { showDateDialog = true }) {
-                        Icon(Icons.Default.DateRange, contentDescription = "Seleccionar fecha", tint = MaterialTheme.colorScheme.primary)
+            // Campo de fecha
+            OutlinedTextField(
+                value = state.vigencia,
+                onValueChange = {},
+                readOnly = true,
+                label = {
+                    Text(
+                        text = if (isLocked) "Vigencia (Bloqueado)" else "Fecha de Vencimiento (Mes/Año)",
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
+                    )
+                },
+                placeholder = { Text("Toca para seleccionar") },
+                trailingIcon = {
+                    if (!isLocked) {
+                        IconButton(onClick = { showPicker = true }) {
+                            Icon(Icons.Default.DateRange, contentDescription = "Seleccionar fecha",
+                                tint = MaterialTheme.colorScheme.primary)
+                        }
                     }
-                }
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .then(if (!finalLocked) Modifier.clickable { showDateDialog = true } else Modifier)
-        )
-
-        // Botones de subir imagen
-        if (!finalLocked) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(
-                    onClick = { pickImageLauncher.launch("image/*") },
-                    modifier = Modifier.weight(1f)
-                ) { Text("Subir foto") }
-
-                OutlinedButton(
-                    onClick = { cameraPermissionLauncher.launch(Manifest.permission.CAMERA) },
-                    modifier = Modifier.weight(1f)
-                ) { Text("Tomar foto") }
-            }
-        } else if (state.estadoDoc == "Vigente") {
-            Text(
-                "La información está vigente. Solo se podrá actualizar cuando esté próxima a vencer.",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.secondary,
-                modifier = Modifier.padding(horizontal = 4.dp)
-            )
-        }
-
-        // Vista previa solo para IMAGEN NUEVA
-        if (state.imagenUri != null) {
-            Row(
+                },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    tonalElevation = 2.dp,
-                    modifier = Modifier.size(80.dp).border(1.dp, Color.LightGray, RoundedCornerShape(8.dp))
+                    .then(if (!isLocked) Modifier.clickable { showPicker = true } else Modifier)
+            )
+
+            if (isLocked) {
+                Text(
+                    text = "La información está vigente. Solo se podrá actualizar cuando esté próxima a vencer.",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.secondary,
+                    modifier = Modifier.padding(horizontal = 4.dp)
+                )
+            }
+
+            // Imagen del documento (Solo lectura del servidor)
+            if (state.imagenUrl != null && state.imagenUrl.isNotBlank()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp)
+                        .border(1.dp, MaterialTheme.colorScheme.outline, RoundedCornerShape(8.dp))
+                        .clickable { showFullImage = true }
                 ) {
                     AsyncImage(
-                        model = state.imagenUri,
-                        contentDescription = "Vista previa del documento",
+                        model = state.imagenUrl,
+                        contentDescription = "Foto $titulo",
                         modifier = Modifier.fillMaxSize(),
-                        contentScale = androidx.compose.ui.layout.ContentScale.Crop
+                        contentScale = ContentScale.Crop
                     )
-                }
-
-                Column {
-                    Text("Nueva imagen seleccionada", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.secondary)
                     
-                    TextButton(
-                        onClick = onImagenRemoved,
-                        contentPadding = PaddingValues(0.dp)
+                    // Indicador de que es clicable
+                    Surface(
+                        color = Color.Black.copy(alpha = 0.5f),
+                        shape = RoundedCornerShape(bottomStart = 8.dp, topEnd = 8.dp),
+                        modifier = Modifier.align(Alignment.BottomStart)
                     ) {
-                        Text("Eliminar selección", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.labelLarge)
+                        Text(
+                            "Ver en grande",
+                            color = Color.White,
+                            style = MaterialTheme.typography.labelSmall,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+                }
+            } else {
+                // Placeholder o mensaje si no hay imagen
+                Surface(
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                    shape = RoundedCornerShape(8.dp),
+                    modifier = Modifier.fillMaxWidth().height(100.dp)
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Text("No hay imagen para este documento", 
+                             style = MaterialTheme.typography.bodySmall,
+                             color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
             }
@@ -504,7 +538,33 @@ fun DocumentoSection(
 }
 
 @Composable
-fun MonthYearPickerDialog(
+fun ImageDialog(imageUrl: String, onDismissRequest: () -> Unit) {
+    Dialog(onDismissRequest = onDismissRequest) {
+        Surface(
+            modifier = Modifier.fillMaxWidth().wrapContentHeight(),
+            shape = RoundedCornerShape(16.dp),
+            color = Color.Black
+        ) {
+            Box(modifier = Modifier.padding(8.dp)) {
+                AsyncImage(
+                    model = imageUrl,
+                    contentDescription = "Vista ampliada",
+                    modifier = Modifier.fillMaxWidth().height(400.dp),
+                    contentScale = ContentScale.Fit
+                )
+                IconButton(
+                    onClick = onDismissRequest,
+                    modifier = Modifier.align(Alignment.TopEnd)
+                ) {
+                    Icon(Icons.Default.CheckCircle, contentDescription = "Cerrar", tint = Color.White)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun DocumentoMonthYearPickerDialog(
     onDismissRequest: () -> Unit,
     onDateSelected: (year: Int, month: Int) -> Unit,
     initialYear: Int,
@@ -516,14 +576,14 @@ fun MonthYearPickerDialog(
         "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"
     )
 
-    androidx.compose.ui.window.Dialog(onDismissRequest = onDismissRequest) {
+    Dialog(onDismissRequest = onDismissRequest) {
         Card(
-            modifier = androidx.compose.ui.Modifier.width(320.dp),
+            modifier = Modifier.width(400.dp),
             shape = RoundedCornerShape(24.dp)
         ) {
             Column(
-                modifier = androidx.compose.ui.Modifier.padding(24.dp),
-                horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally
+                modifier = Modifier.padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -543,7 +603,7 @@ fun MonthYearPickerDialog(
                     }
                 }
 
-                Spacer(androidx.compose.ui.Modifier.height(20.dp))
+                Spacer(Modifier.height(20.dp))
 
                 LazyVerticalGrid(
                     columns = GridCells.Fixed(3),
@@ -554,7 +614,7 @@ fun MonthYearPickerDialog(
                         val isSelected = (selectedYear == initialYear && index == initialMonth)
                         OutlinedButton(
                             onClick = {
-                                onDateSelected(selectedYear, index)
+                                onDateSelected(selectedYear, index + 1)
                                 onDismissRequest()
                             },
                             modifier = Modifier.height(56.dp),
@@ -577,36 +637,4 @@ fun MonthYearPickerDialog(
     }
 }
 
-/** Dropdown genérico reutilizable */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun <T> DropdownField(
-    label: String,
-    displayValue: String,
-    items: List<T>,
-    itemLabel: (T) -> String,
-    onItemSelected: (T) -> Unit
-) {
-    var expanded by remember { mutableStateOf(false) }
-    ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = !expanded }) {
-        OutlinedTextField(
-            value = displayValue,
-            onValueChange = {},
-            readOnly = true,
-            label = { Text(label, fontWeight = FontWeight.Bold, fontSize = 15.sp) }, // Bajé de 17.sp a 15.sp para evitar cortes
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-            modifier = Modifier.menuAnchor().fillMaxWidth()
-        )
-        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            if (items.isEmpty()) {
-                DropdownMenuItem(text = { Text("No hay opciones disponibles") }, onClick = { expanded = false })
-            }
-            items.forEach { item ->
-                DropdownMenuItem(
-                    text = { Text(itemLabel(item)) },
-                    onClick = { onItemSelected(item); expanded = false }
-                )
-            }
-        }
-    }
-}
+

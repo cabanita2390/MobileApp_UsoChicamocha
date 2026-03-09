@@ -5,20 +5,27 @@ data class InspeccionMotoPendiente(
     val serverId: Long? = null,
     val uuid: String,
     val timestamp: Long,
+    
+    // Cabecera
     val idVehiculo: Int,
-    val idUbicacion: Int,
     val kilometrajeReportado: Int,
-    val estadoGeneral: String,
+    val estadoVehiculo: String,
     val observacionesFinales: String,
-    val vigenciaSoat: String?,
-    val estadoSoat: String?,
-    val vigenciaRevision: String?,
-    val estadoRevision: String?,
-    val vigenciaLicencia: String?,
-    val estadoLicencia: String?,
-    val imagenSoat: String?,
-    val imagenRevision: String?,
-    val imagenLicencia: String?,
+
+    // Documentos
+    val checkSoat: String,
+    val checkTecno: String,
+    val checkLicencia: String,
+    val checkExtintor: String,
+
+    // Fechas para persistencia/sincronización
+    val fechaSoat: String,
+    val fechaTecno: String,
+    val fechaLicencia: String,
+
+    // Ubicacion
+    val idUbicacion: Int,
+
     val isSynced: Boolean = false,
     val isSyncing: Boolean = false
 )

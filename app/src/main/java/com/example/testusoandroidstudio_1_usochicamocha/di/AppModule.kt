@@ -25,6 +25,7 @@ import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.moto.GetL
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.moto.GetLocalUbicacionesUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.moto.SyncMotosUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.moto.SyncUbicacionesUseCase
+import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.moto.SyncDocumentosUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.oil.GetLocalOilsUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.oil.SyncOilsUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.repository.MotoRepository
@@ -51,7 +52,7 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object AppModule {
 
-    private const val BASE_URL = "https://441d011v-8080.use2.devtunnels.ms/"+"api/" // DevTunnel (cualquier red)
+    private const val BASE_URL = "https://vjk67208-8080.use2.devtunnels.ms/"+"api/" // DevTunnel (cualquier red)
     //private const val BASE_URL = "https://usochimochabackend.onrender.com/"+"api/"
     //private const val BASE_URL = "https://server.usochicamocha.co/"+"api/"
     
@@ -149,11 +150,15 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideMotoDao(db: AppDatabase): com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.MotoDao = db.motoDao()
+    fun provideMotoDao(db: AppDatabase): MotoDao = db.motoDao()
 
     @Provides
     @Singleton
-    fun provideUbicacionDao(db: AppDatabase): com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.UbicacionDao = db.ubicacionDao()
+    fun provideUbicacionDao(db: AppDatabase): UbicacionDao = db.ubicacionDao()
+
+    @Provides
+    @Singleton
+    fun provideDocumentoMotoDao(db: AppDatabase): DocumentoMotoDao = db.documentoMotoDao()
 
     // Use Cases
     @Provides
@@ -204,9 +209,10 @@ object AppModule {
     @Singleton
     fun provideMotoRepository(
         apiService: ApiService,
-        motoDao: com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.MotoDao,
-        ubicacionDao: com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.UbicacionDao
-    ): MotoRepository = MotoRepositoryImpl(apiService, motoDao, ubicacionDao)
+        motoDao: MotoDao,
+        ubicacionDao: UbicacionDao,
+        documentoMotoDao: DocumentoMotoDao
+    ): MotoRepository = MotoRepositoryImpl(apiService, motoDao, ubicacionDao, documentoMotoDao)
 
     @Provides
     @Singleton
@@ -223,6 +229,10 @@ object AppModule {
     @Provides
     @Singleton
     fun provideSyncUbicacionesUseCase(repo: MotoRepository): SyncUbicacionesUseCase = SyncUbicacionesUseCase(repo)
+
+    @Provides
+    @Singleton
+    fun provideSyncDocumentosUseCase(repo: MotoRepository): SyncDocumentosUseCase = SyncDocumentosUseCase(repo)
 
     @Provides
     @Singleton

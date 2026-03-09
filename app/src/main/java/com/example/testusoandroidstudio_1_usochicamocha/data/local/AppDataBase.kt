@@ -8,12 +8,14 @@ import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.ImageDao
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.LogDao
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.MachineDao
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.MaintenanceDao
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.DocumentoMotoDao
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.InspeccionMotoDao
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.MotoDao
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.OilDao
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.UbicacionDao
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.FormEntity
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.ImageEntity
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.DocumentoMotoEntity
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.InspeccionMotoEntity
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.LogEntity
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.MachineEntity
@@ -32,9 +34,10 @@ import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.Ubicac
         ImageEntity::class,
         MotoEntity::class,
         UbicacionEntity::class,
-        InspeccionMotoEntity::class
+        InspeccionMotoEntity::class,
+        DocumentoMotoEntity::class
     ],
-    version = 5,
+    version = 11,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -47,4 +50,5 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun motoDao(): MotoDao
     abstract fun ubicacionDao(): UbicacionDao
     abstract fun inspeccionMotoDao(): InspeccionMotoDao
+    abstract fun documentoMotoDao(): DocumentoMotoDao
 }

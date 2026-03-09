@@ -38,45 +38,60 @@ class InspeccionMotoRepositoryImpl @Inject constructor(
             // 2. Obtener lock atómico (evita doble sincronización simultánea)
             val lockResult = dao.acquireLock(inspeccion.uuid)
             if (lockResult == 0) {
-                Log.d(TAG, "🔒 Inspección ${inspeccion.uuid} ya siendo sincronizada por otro proceso")
-                return Result.success(Unit)
+                val stillPending = !dao.isAlreadySynced(inspeccion.uuid)!!
+                if (stillPending) {
+                    Log.w(TAG, "🔒 Inspección ${inspeccion.uuid} ya está en proceso de sync por otro hilo. Abortando este intento.")
+                    // Devolvemos success porque alguien más lo está haciendo (o lo hará el worker)
+                    return Result.success(Unit)
+                } else {
+                    Log.d(TAG, "✅ Inspección ${inspeccion.uuid} terminó de sincronizarse justo ahora.")
+                    return Result.success(Unit)
+                }
             }
 
-            Log.d(TAG, "🔄 Sincronizando inspección ${inspeccion.uuid}...")
+            Log.i(TAG, "🚀 [syncOne] Iniciando POST a la API para inspección: ${inspeccion.uuid}")
 
             // 3. Construir el request y llamar a la API
             val request = InspeccionMotoRequest(
                 idVehiculo = inspeccion.idVehiculo,
-                idUbicacion = inspeccion.idUbicacion,
                 kilometrajeReportado = inspeccion.kilometrajeReportado,
-                estadoGeneral = inspeccion.estadoGeneral,
+                estadoVehiculo = inspeccion.estadoVehiculo,
                 observacionesFinales = inspeccion.observacionesFinales,
-                vigenciaSoat = inspeccion.vigenciaSoat,
-                estadoSoat = inspeccion.estadoSoat,
-                vigenciaRevision = inspeccion.vigenciaRevision,
-                estadoRevision = inspeccion.estadoRevision,
-                vigenciaLicencia = inspeccion.vigenciaLicencia,
-                estadoLicencia = inspeccion.estadoLicencia,
-                imagenSoat = inspeccion.imagenSoat,
-                imagenRevision = inspeccion.imagenRevision,
-                imagenLicencia = inspeccion.imagenLicencia
+                checkSoat = inspeccion.checkSoat,
+                checkTecno = inspeccion.checkTecno,
+                checkLicencia = inspeccion.checkLicencia,
+                checkExtintor = inspeccion.checkExtintor,
+                fechaSoat = inspeccion.fechaSoat,
+                fechaTecno = inspeccion.fechaTecno,
+                fechaLicencia = inspeccion.fechaLicencia,
+                idUbicacion = inspeccion.idUbicacion,
             )
 
             val response = apiService.saveInspeccionMoto(request)
 
-            if (response.isSuccessful && response.body() != null) {
-                val serverId = response.body()!!
+            if (response.isSuccessful) {
+                val serverId = response.body() ?: 0L
                 dao.markAsSynced(inspeccion.uuid, serverId)
-                Log.d(TAG, "✅ Inspección ${inspeccion.uuid} sincronizada con serverId=$serverId")
+                Log.d(TAG, "✅ [syncOne] ÉXITO: Inspección ${inspeccion.uuid} sincronizada. ServerId: $serverId")
                 Result.success(Unit)
             } else {
                 dao.releaseLock(inspeccion.uuid)
-                Log.e(TAG, "❌ Error al sincronizar inspección ${inspeccion.uuid}: ${response.code()}")
-                Result.failure(Exception("Error del servidor: ${response.code()}"))
+                val errorCode = response.code()
+                val errorBody = response.errorBody()?.string()
+                Log.e(TAG, "❌ [syncOne] ERROR API: ${inspeccion.uuid} - Code: $errorCode - Body: $errorBody")
+                
+                // Log específico para problemas comunes
+                when (errorCode) {
+                    401 -> Log.e(TAG, "🔑 [syncOne] Error de autenticación: Token expirado o inválido")
+                    403 -> Log.e(TAG, "🚫 [syncOne] Error de autorización: Usuario no tiene permisos (MECANIC/ADMIN)")
+                    404 -> Log.e(TAG, "📍 [syncOne] Error 404: Endpoint no encontrado")
+                }
+                
+                Result.failure(Exception("Error servidor ($errorCode): $errorBody"))
             }
         } catch (e: Exception) {
             dao.releaseLock(inspeccion.uuid)
-            Log.e(TAG, "❌ Excepción al sincronizar inspección ${inspeccion.uuid}", e)
+            Log.e(TAG, "❌ [syncOne] EXCEPCIÓN: ${inspeccion.uuid}", e)
             Result.failure(e)
         }
     }
