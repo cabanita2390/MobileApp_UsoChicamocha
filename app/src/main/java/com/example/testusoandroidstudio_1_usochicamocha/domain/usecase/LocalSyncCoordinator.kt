@@ -30,7 +30,30 @@ class LocalSyncCoordinator @Inject constructor(
         private const val TAG = "LocalSyncCoordinator"
         private const val COORDINATED_SYNC_WORK = "coordinated_sync_work"
         private const val CLEANUP_WORK = "periodic_cleanup_work"
-        private const val SYNC_TIMEOUT_MS = 300000L // 5 minutos timeout - más tiempo para operaciones grandes
+        private const val MASTER_DATA_PERIODIC_WORK = "master_data_periodic_sync"
+        private const val SYNC_TIMEOUT_MS = 300000L // 5 minutos timeout
+    }
+    
+    /**
+     * Programa sincronización periódica de datos maestros (Placas, Ubicaciones) cada 15 min.
+     */
+    fun schedulePeriodicMasterDataSync() {
+        val constraints = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .build()
+        
+        val periodicWork = PeriodicWorkRequestBuilder<SyncDataWorker>(15, TimeUnit.MINUTES)
+            .setConstraints(constraints)
+            .setInputData(workDataOf("SYNC_TYPE" to SyncType.MASTER_DATA.name))
+            .addTag(COORDINATED_SYNC_WORK)
+            .build()
+        
+        workManager.enqueueUniquePeriodicWork(
+            MASTER_DATA_PERIODIC_WORK,
+            ExistingPeriodicWorkPolicy.KEEP,
+            periodicWork
+        )
+        Log.d(TAG, "⚙️ Periodic master data sync (15m) scheduled")
     }
     
     private val activeSyncOperations = ConcurrentHashMap<String, Long>()
@@ -64,7 +87,10 @@ class LocalSyncCoordinator @Inject constructor(
         IMAGES_ONLY,
         MASTER_DATA,
         MACHINES_ONLY,
-        OILS_ONLY
+        OILS_ONLY,
+        MOTOS_ONLY,
+        UBICACIONES_ONLY,
+        DOCUMENTS_ONLY
     }
 
     enum class SyncStatus {
@@ -321,7 +347,14 @@ class LocalSyncCoordinator @Inject constructor(
                     .addTag(COORDINATED_SYNC_WORK)
                     .build()
             }
-            is SyncTrigger.FormSaved,
+            is SyncTrigger.FormSaved -> {
+                val inputData = workDataOf("SYNC_TYPE" to SyncType.FORMS_ONLY.name)
+                OneTimeWorkRequestBuilder<SyncDataWorker>()
+                    .setConstraints(constraints)
+                    .setInputData(inputData)
+                    .addTag(COORDINATED_SYNC_WORK)
+                    .build()
+            }
             is SyncTrigger.MaintenanceSaved,
             is SyncTrigger.AppStartSync,
             is SyncTrigger.PeriodicSync -> {

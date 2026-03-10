@@ -17,4 +17,7 @@ interface VehiculoDao {
 
     @Query("DELETE FROM vehiculos")
     suspend fun clearAllVehicles()
+
+    @Query("UPDATE vehiculos SET kilometrajeActual = :km WHERE placa = :placa")
+    suspend fun updateKilometraje(placa: String, km: Int)
 }

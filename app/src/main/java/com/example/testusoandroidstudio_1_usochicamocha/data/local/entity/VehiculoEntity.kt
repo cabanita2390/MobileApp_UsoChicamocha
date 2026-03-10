@@ -9,7 +9,8 @@ data class VehiculoEntity(
     @PrimaryKey val idVehiculo: Int,
     val placa: String,
     val marca: String,
-    val tipoVehiculo: String
+    val tipoVehiculo: String,
+    val kilometrajeActual: Int = 0
 )
 
 fun VehiculoEntity.toVehiculoItem(): VehiculoItem {
@@ -17,7 +18,8 @@ fun VehiculoEntity.toVehiculoItem(): VehiculoItem {
         idVehiculo = idVehiculo,
         placa = placa,
         marca = marca,
-        tipoVehiculo = tipoVehiculo
+        tipoVehiculo = tipoVehiculo,
+        kilometrajeActual = kilometrajeActual
     )
 }
 
@@ -26,6 +28,7 @@ fun VehiculoItem.toEntity(): VehiculoEntity {
         idVehiculo = idVehiculo,
         placa = placa,
         marca = marca,
-        tipoVehiculo = tipoVehiculo
+        tipoVehiculo = tipoVehiculo,
+        kilometrajeActual = kilometrajeActual
     )
 }

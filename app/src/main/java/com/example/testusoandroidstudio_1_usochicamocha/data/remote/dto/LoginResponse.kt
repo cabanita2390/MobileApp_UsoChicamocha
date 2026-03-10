@@ -17,6 +17,12 @@ data class LoginResponse(
     @SerializedName("refreshToken")
     val refreshToken: String,
 
+    @SerializedName("fullName")
+    val fullName: String?,
+
+    @SerializedName("role")
+    val role: String?,
+
     @SerializedName("status")
     val status: Boolean
 )

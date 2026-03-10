@@ -11,7 +11,9 @@ data class VehicleDto(
     @SerializedName("marca")
     val marca: String?,
     @SerializedName("tipoVehiculo")
-    val tipoVehiculo: String?
+    val tipoVehiculo: String?,
+    @SerializedName("kilometrajeActual")
+    val kilometrajeActual: Int?
 )
 
 fun VehicleDto.toVehiculoItem(): VehiculoItem {
@@ -19,6 +21,7 @@ fun VehicleDto.toVehiculoItem(): VehiculoItem {
         idVehiculo   = id,
         placa        = placa,
         marca        = marca        ?: "",
-        tipoVehiculo = tipoVehiculo ?: ""
+        tipoVehiculo = tipoVehiculo ?: "",
+        kilometrajeActual = kilometrajeActual ?: 0
     )
 }

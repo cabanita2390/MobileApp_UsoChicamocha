@@ -1,22 +1,24 @@
-// Archivo: /src/main/java/com/example/testusoandroidstudio_1_usochicamocha/MainActivity.kt
-
 package com.example.testusoandroidstudio_1_usochicamocha
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.ComposeFoundationFlags
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.scan
 import com.example.testusoandroidstudio_1_usochicamocha.ui.home.HomeScreen
 import com.example.testusoandroidstudio_1_usochicamocha.ui.home.HomeViewModel
 import com.example.testusoandroidstudio_1_usochicamocha.ui.imprevisto.ImprevistoScreen
@@ -26,7 +28,9 @@ import com.example.testusoandroidstudio_1_usochicamocha.ui.login.LoginScreen
 import com.example.testusoandroidstudio_1_usochicamocha.ui.login.LoginViewModel
 import com.example.testusoandroidstudio_1_usochicamocha.ui.main.MainScreen
 import com.example.testusoandroidstudio_1_usochicamocha.ui.mantenimiento.MantenimientoScreen
-import com.example.testusoandroidstudio_1_usochicamocha.ui.motos.MotosScreen
+import com.example.testusoandroidstudio_1_usochicamocha.ui.motocicleta.MotocicletaScreen
+import com.example.testusoandroidstudio_1_usochicamocha.ui.motocicleta.MotoHubScreen
+
 import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.ConnectionStatusTopBar
 import com.example.testusoandroidstudio_1_usochicamocha.ui.splash.SplashScreen
 import com.example.testusoandroidstudio_1_usochicamocha.ui.splash.SplashViewModel
@@ -34,6 +38,7 @@ import com.example.testusoandroidstudio_1_usochicamocha.ui.theme.AppUsoChicamoch
 import com.example.testusoandroidstudio_1_usochicamocha.ui.vehiculo.VehiculoScreen
 import com.example.testusoandroidstudio_1_usochicamocha.ui.vehiculo.VehiculoMainScreen
 import com.example.testusoandroidstudio_1_usochicamocha.util.NetworkMonitor
+import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.LocalSyncCoordinator
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
@@ -44,15 +49,30 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var networkMonitor: NetworkMonitor
 
+    @Inject
+    lateinit var localSyncCoordinator: LocalSyncCoordinator
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        // Temporary fix for Compose clickable issue
-        ComposeFoundationFlags.isNonComposedClickableEnabled = false
 
         setContent {
             AppUsoChicamochaTheme {
                 val networkStatus by networkMonitor.networkStatus.collectAsState()
+
+                // Cuando la conexión se recupera, disparar sync de datos pendientes
+                LaunchedEffect(Unit) {
+                    localSyncCoordinator.schedulePeriodicMasterDataSync()
+                    
+                    snapshotFlow { networkStatus }
+                        .distinctUntilChanged()
+                        .scan(Pair(false, false)) { prev, curr -> Pair(prev.second, curr) }
+                        .filter { (wasConnected, isConnected) -> !wasConnected && isConnected }
+                        .collect {
+                            localSyncCoordinator.coordinateSync(
+                                LocalSyncCoordinator.SyncTrigger.FormSaved("reconnect")
+                            )
+                        }
+                }
 
                 val navController = rememberNavController()
 
@@ -95,20 +115,21 @@ class MainActivity : ComponentActivity() {
                                 navController.navigate("vehiculo_main")
                             },
                             onNavigateToMotos = {
-                                navController.navigate("motos")
+                                navController.navigate("motocicleta") // User's preferred route
                             }
                         )
                     }
+
                     composable("main") {
                         MainScreen(
                             networkStatus = networkStatus,
+                            onNavigateBack = {
+                                navController.popBackStack()
+                            },
                             onLogout = {
                                 navController.navigate("login") {
                                     popUpTo("home") { inclusive = true }
                                 }
-                            },
-                            onNavigateBack = {
-                                navController.popBackStack()
                             },
                             onNavigateToLogs = {
                                 navController.navigate("logs")
@@ -122,6 +143,25 @@ class MainActivity : ComponentActivity() {
                             onNavigateToMantenimiento = { maintenanceId ->
                                 val route = if (maintenanceId != null) "mantenimiento?maintenanceId=$maintenanceId" else "mantenimiento"
                                 navController.navigate(route)
+                            }
+                        )
+                    }
+                    composable("motocicleta") {
+                        MotoHubScreen(
+                            networkStatus = networkStatus,
+                            onNavigateBack = {
+                                navController.popBackStack()
+                            },
+                            onNavigateToForm = {
+                                navController.navigate("motocicleta_form")
+                            }
+                        )
+                    }
+                    composable("motocicleta_form") {
+                        MotocicletaScreen(
+                            networkStatus = networkStatus,
+                            onNavigateBack = {
+                                navController.popBackStack()
                             }
                         )
                     }
@@ -149,14 +189,7 @@ class MainActivity : ComponentActivity() {
                             }
                         )
                     }
-                    composable("motos") {
-                        MotosScreen(
-                            networkStatus = networkStatus,
-                            onNavigateBack = {
-                                navController.popBackStack()
-                            }
-                        )
-                    }
+
                     composable("form") {
                         FormScreen(
                             onNavigateBack = {

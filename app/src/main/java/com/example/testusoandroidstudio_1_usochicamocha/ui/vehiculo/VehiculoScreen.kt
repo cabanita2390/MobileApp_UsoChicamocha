@@ -262,6 +262,16 @@ fun VehiculoScreen(
                         onVehicleSelected = { viewModel.onVehicleSelected(it) }
                     )
                     Spacer(Modifier.height(10.dp))
+
+                    if (uiState.kilometrajeDB.isNotBlank() && uiState.kilometrajeDB != "0") {
+                        Text(
+                            "📅 Último kilometraje registrado: ${uiState.kilometrajeDB} km",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(Modifier.height(4.dp))
+                    }
+
                     OutlinedTextField(
                         value = uiState.kilometraje,
                         onValueChange = { if (it.all(Char::isDigit)) viewModel.onKilometrajeChange(it) },

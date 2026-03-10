@@ -52,7 +52,6 @@ class LoginViewModel @Inject constructor(
                     val syncResult = syncMachinesUseCase()
                     syncResult.onFailure { syncException ->
                         // Log error but don't show to user since login was successful
-                        println("Machine sync failed after login: ${syncException.message}")
                     }
                 }
             }.onFailure { loginException ->

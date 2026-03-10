@@ -22,6 +22,11 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
+        javaCompileOptions {
+            annotationProcessorOptions {
+                arguments["room.schemaLocation"] = "$projectDir/schemas"
+            }
+        }
     }
 
     buildTypes {
@@ -43,9 +48,6 @@ android {
     buildFeatures {
         compose = true
     }
-    composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.1"
-    }
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
@@ -53,11 +55,7 @@ android {
     }
 }
 
-kapt {
-    arguments {
-        arg("room.schemaLocation", "$projectDir/schemas")
-    }
-}
+
 
 dependencies {
     // CORRECCIÓN: Se utilizan las rutas completas de las dependencias en lugar de los alias.
@@ -103,7 +101,6 @@ dependencies {
 
     // Hilt para Inyección de Dependencias
     implementation("com.google.dagger:hilt-android:2.51.1")
-    implementation(libs.foundation)
     kapt("com.google.dagger:hilt-android-compiler:2.51.1")
     kapt ("androidx.hilt:hilt-compiler:1.2.0")
     // Hilt WorkManager Integration

@@ -8,9 +8,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Error
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.*
@@ -38,8 +38,8 @@ import java.util.*
 fun MainScreen(
     networkStatus: Boolean,
     viewModel: MainViewModel = hiltViewModel(),
-    onLogout: () -> Unit,
     onNavigateBack: () -> Unit,
+    onLogout: () -> Unit,
     onNavigateToLogs: () -> Unit,
     onNavigateToForm: () -> Unit,
     onNavigateToImprevisto: () -> Unit,

@@ -21,8 +21,20 @@ import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.log.GetLo
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.machine.GetLocalMachinesUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.machine.SyncMachinesUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.maintenance.*
+import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.moto.GetLocalMotosUseCase
+import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.moto.GetLocalUbicacionesUseCase
+import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.moto.SyncMotosUseCase
+import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.moto.SyncUbicacionesUseCase
+import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.moto.SyncDocumentosUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.oil.GetLocalOilsUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.oil.SyncOilsUseCase
+import com.example.testusoandroidstudio_1_usochicamocha.domain.repository.MotoRepository
+import com.example.testusoandroidstudio_1_usochicamocha.domain.repository.InspeccionMotoRepository
+import com.example.testusoandroidstudio_1_usochicamocha.data.repository.MotoRepositoryImpl
+import com.example.testusoandroidstudio_1_usochicamocha.data.repository.InspeccionMotoRepositoryImpl
+import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.inspeccionmoto.SaveInspeccionMotoLocalUseCase
+import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.inspeccionmoto.SyncInspeccionMotoUseCase
+import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.inspeccionmoto.GetPendingInspeccionesMotoUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.vehiculo.GetPendingVehiculoInspectionsUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.vehiculo.SaveVehiculoInspectionUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.vehiculo.SyncVehiculoInspectionUseCase
@@ -44,11 +56,9 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object AppModule {
 
-    //private const val BASE_URL = "https://pdxs8r4k-8080.use2.devtunnels.ms/"+"api/"
+    private const val BASE_URL = "https://fbfpbsc0-8080.use2.devtunnels.ms/"+"api/" // DevTunnel (cualquier red)
     //private const val BASE_URL = "https://usochimochabackend.onrender.com/"+"api/"
-    //private const val BASE_URL = "https://server.usochicamocha.co/"+"api/"  // ← PRODUCCIÓN
-    //private const val BASE_URL = "http://10.2.236.89:8080/"+"api/"          // ← LOCAL (WiFi, dispositivo físico)
-    private const val BASE_URL = "http://localhost:8080/"+"api/"               // ← LOCAL (USB + adb reverse)
+    //private const val BASE_URL = "https://server.usochicamocha.co/"+"api/"
     @Provides
     @Singleton
     fun provideWorkManager(@ApplicationContext context: Context): WorkManager {
@@ -124,8 +134,9 @@ object AppModule {
     fun provideVehiculoInspectionRepository(
         vehiculoInspectionDao: VehiculoInspectionDao,
         vehiculoDao: VehiculoDao,
+        documentoVehiculoDao: DocumentoVehiculoDao,
         apiService: ApiService
-    ): VehiculoInspectionRepository = VehiculoInspectionRepositoryImpl(vehiculoInspectionDao, vehiculoDao, apiService)
+    ): VehiculoInspectionRepository = VehiculoInspectionRepositoryImpl(vehiculoInspectionDao, vehiculoDao, documentoVehiculoDao, apiService)
 
     // DAOs
     @Provides
@@ -154,11 +165,27 @@ object AppModule {
 
     @Provides
     @Singleton
+    fun provideMotoDao(db: AppDatabase): MotoDao = db.motoDao()
+
+    @Provides
+    @Singleton
+    fun provideUbicacionDao(db: AppDatabase): UbicacionDao = db.ubicacionDao()
+
+    @Provides
+    @Singleton
+    fun provideDocumentoMotoDao(db: AppDatabase): DocumentoMotoDao = db.documentoMotoDao()
+
+    @Provides
+    @Singleton
     fun provideVehiculoInspectionDao(db: AppDatabase): VehiculoInspectionDao = db.vehiculoInspectionDao()
 
     @Provides
     @Singleton
     fun provideVehiculoDao(db: AppDatabase): VehiculoDao = db.vehiculoDao()
+
+    @Provides
+    @Singleton
+    fun provideDocumentoVehiculoDao(db: AppDatabase): DocumentoVehiculoDao = db.documentoVehiculoDao()
 
     // Use Cases
     @Provides
@@ -207,6 +234,35 @@ object AppModule {
 
     @Provides
     @Singleton
+    fun provideMotoRepository(
+        apiService: ApiService,
+        motoDao: MotoDao,
+        ubicacionDao: UbicacionDao,
+        documentoMotoDao: DocumentoMotoDao
+    ): MotoRepository = MotoRepositoryImpl(apiService, motoDao, ubicacionDao, documentoMotoDao)
+
+    @Provides
+    @Singleton
+    fun provideGetLocalMotosUseCase(repo: MotoRepository): GetLocalMotosUseCase = GetLocalMotosUseCase(repo)
+
+    @Provides
+    @Singleton
+    fun provideGetLocalUbicacionesUseCase(repo: MotoRepository): GetLocalUbicacionesUseCase = GetLocalUbicacionesUseCase(repo)
+
+    @Provides
+    @Singleton
+    fun provideSyncMotosUseCase(repo: MotoRepository): SyncMotosUseCase = SyncMotosUseCase(repo)
+
+    @Provides
+    @Singleton
+    fun provideSyncUbicacionesUseCase(repo: MotoRepository): SyncUbicacionesUseCase = SyncUbicacionesUseCase(repo)
+
+    @Provides
+    @Singleton
+    fun provideSyncDocumentosUseCase(repo: MotoRepository): SyncDocumentosUseCase = SyncDocumentosUseCase(repo)
+
+    @Provides
+    @Singleton
     fun provideSyncOilsUseCase(repo: OilRepository, logger: AppLogger): SyncOilsUseCase = SyncOilsUseCase(repo, logger)
 
     @Provides
@@ -239,4 +295,30 @@ object AppModule {
         @ApplicationContext context: Context,
         workManager: WorkManager
     ): LocalSyncCoordinator = LocalSyncCoordinator(context, workManager)
+
+    @Provides
+    @Singleton
+    fun provideInspeccionMotoDao(db: AppDatabase): InspeccionMotoDao = db.inspeccionMotoDao()
+
+    @Provides
+    @Singleton
+    fun provideInspeccionMotoRepository(
+        dao: InspeccionMotoDao,
+        apiService: ApiService
+    ): InspeccionMotoRepository = InspeccionMotoRepositoryImpl(dao, apiService)
+
+    @Provides
+    @Singleton
+    fun provideSaveInspeccionMotoLocalUseCase(repo: InspeccionMotoRepository): SaveInspeccionMotoLocalUseCase =
+        SaveInspeccionMotoLocalUseCase(repo)
+
+    @Provides
+    @Singleton
+    fun provideSyncInspeccionMotoUseCase(repo: InspeccionMotoRepository): SyncInspeccionMotoUseCase =
+        SyncInspeccionMotoUseCase(repo)
+
+    @Provides
+    @Singleton
+    fun provideGetPendingInspeccionesMotoUseCase(repo: InspeccionMotoRepository): GetPendingInspeccionesMotoUseCase =
+        GetPendingInspeccionesMotoUseCase(repo)
 }

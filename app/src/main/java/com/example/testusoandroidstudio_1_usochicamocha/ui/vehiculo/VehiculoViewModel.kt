@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.TokenManager
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.ApiService
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.DocumentoVehiculoEntity
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.toVehiculoItem
 import kotlinx.coroutines.flow.first
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -18,6 +19,7 @@ import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.Vehicu
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.toVehiculoItem
 import com.example.testusoandroidstudio_1_usochicamocha.data.workers.SyncDataWorker
 import com.example.testusoandroidstudio_1_usochicamocha.domain.repository.VehiculoInspectionRepository
+import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.LocalSyncCoordinator
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.vehiculo.SaveVehiculoInspectionUseCase
 import java.util.UUID
 import java.util.Calendar
@@ -31,7 +33,8 @@ data class VehiculoItem(
     val idVehiculo: Int,
     val placa: String,
     val marca: String = "",
-    val tipoVehiculo: String = ""
+    val tipoVehiculo: String = "",
+    val kilometrajeActual: Int = 0
 )
 
 
@@ -99,9 +102,13 @@ data class VehiculoUiState(
     val aprobadoNoCount: Int = 0,
     val shouldExitForm: Boolean = false,
     // ─ Alerta de kilometraje ───────────────────────────────────────
+    // ─ Alerta de kilometraje ───────────────────────────────────────
+    // ─ Alerta de kilometraje ───────────────────────────────────────
     val showKmAlert: Boolean = false,
     val kmAlertMessage: String = "",
-    val kmEsInvalido: Boolean = false    // true = bloquea el botón Guardar
+    val kmEsInvalido: Boolean = false,    // true = bloquea el botón Guardar
+    val kilometrajeMinimo: Int = 0,
+    val kilometrajeDB: String = ""
 )
 
 // ─── VIEWMODEL ───────────────────────────────────────────────────────────────
@@ -112,7 +119,8 @@ class VehiculoViewModel @Inject constructor(
     private val tokenManager: TokenManager,
     private val repository: VehiculoInspectionRepository,
     private val saveVehiculoInspectionUseCase: SaveVehiculoInspectionUseCase,
-    private val workManager: WorkManager
+    private val workManager: WorkManager,
+    private val localSyncCoordinator: LocalSyncCoordinator
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(VehiculoUiState())
@@ -146,10 +154,19 @@ class VehiculoViewModel @Inject constructor(
 
     // ── Pre-llena estados de documentos al seleccionar vehículo ────────────────────────
     private fun loadDocumentosVehiculo(idVehiculo: Int) {
+        val placa = _uiState.value.selectedVehicle?.placa ?: return
         _uiState.update { it.copy(isLoadingDocs = true) }
         val cal = Calendar.getInstance()
         val hoy = "${cal.get(Calendar.YEAR)}-${String.format("%02d", cal.get(Calendar.MONTH) + 1)}"
+        
         viewModelScope.launch {
+            // 1. CARGA INMEDIATA DESDE CACHE
+            val cached = repository.getCachedDocuments(placa)
+            if (cached.isNotEmpty()) {
+                aplicarDocumentosDesdeCache(cached)
+            }
+
+            // 2. REFRESCO DESDE API (si hay internet)
             try {
                 val response = apiService.getDocumentosVehiculo(idVehiculo)
                 if (response.isSuccessful) {
@@ -162,6 +179,7 @@ class VehiculoViewModel @Inject constructor(
                     val tecnoDB    = doc.fechaVencTecno?.take(7)    ?: ""
                     val licDB      = doc.fechaVencLicencia?.take(7) ?: ""
                     val extDB      = doc.fechaVencExtintor?.take(7) ?: ""
+                    
                     _uiState.update { s ->
                         s.copy(
                             // Fechas DB (referencia, se muestran al inspector)
@@ -185,6 +203,20 @@ class VehiculoViewModel @Inject constructor(
                             isLoadingDocs  = false
                         )
                     }
+                    
+                    // 3. ACTUALIZAR CACHE CON LO DEL API
+                    try {
+                        val docsToCache = listOf(
+                            DocumentoVehiculoEntity(placa = placa, tipoDocumento = "SOAT",     vigencia = soatDB, imagenUrl = doc.urlImagenSoat,     kilometrajeActual = 0),
+                            DocumentoVehiculoEntity(placa = placa, tipoDocumento = "TECNO",    vigencia = tecnoDB, imagenUrl = doc.urlImagenTecno,   kilometrajeActual = 0),
+                            DocumentoVehiculoEntity(placa = placa, tipoDocumento = "LICENCIA", vigencia = licDB, imagenUrl = doc.urlImagenLicencia,    kilometrajeActual = 0),
+                            DocumentoVehiculoEntity(placa = placa, tipoDocumento = "EXTINTOR", vigencia = extDB, imagenUrl = doc.urlImagenExtintor,   kilometrajeActual = 0)
+                        )
+                        repository.refreshCachedDocuments(placa, docsToCache)
+                    } catch (e: Exception) {
+                        Log.e("VehiculoVM", "Error actualizando cache desde API", e)
+                    }
+
                     Log.d("VehiculoVM", "✅ Documentos cargados para id=$idVehiculo")
                 } else {
                     Log.w("VehiculoVM", "Sin documentos para id=$idVehiculo (${response.code()})")
@@ -194,6 +226,47 @@ class VehiculoViewModel @Inject constructor(
                 Log.e("VehiculoVM", "Error cargando documentos del vehículo", e)
                 _uiState.update { it.copy(isLoadingDocs = false) }
             }
+        }
+    }
+
+    private fun aplicarDocumentosDesdeCache(cached: List<DocumentoVehiculoEntity>) {
+        val soat = cached.find { it.tipoDocumento == "SOAT" }
+        val tecno = cached.find { it.tipoDocumento == "TECNO" }
+        val lic = cached.find { it.tipoDocumento == "LICENCIA" }
+        val ext = cached.find { it.tipoDocumento == "EXTINTOR" }
+
+        val cal = Calendar.getInstance()
+        val hoy = "${cal.get(Calendar.YEAR)}-${String.format("%02d", cal.get(Calendar.MONTH) + 1)}"
+
+        _uiState.update { s ->
+            s.copy(
+                fechaVencSoatDB = soat?.vigencia ?: "",
+                fechaVencTecnoDB = tecno?.vigencia ?: "",
+                fechaVencLicencioDB = lic?.vigencia ?: "",
+                vigenciaExtintorDB = ext?.vigencia ?: "",
+                
+                // Picker inicia en Hoy
+                fechaVencSoat = hoy,
+                fechaVencTecno = hoy,
+                fechaVencLicencia = hoy,
+                vigenciaExtintor = hoy,
+
+                estadoSoat = calcularEstadoVsDB(hoy, soat?.vigencia ?: ""),
+                estadoTecno = calcularEstadoVsDB(hoy, tecno?.vigencia ?: ""),
+                estadoLicencia = calcularEstadoVsDB(hoy, lic?.vigencia ?: ""),
+                estadoExtintor = calcularEstadoVsDB(hoy, ext?.vigencia ?: ""),
+                
+                urlImagenSoat = soat?.imagenUrl,
+                urlImagenTecno = tecno?.imagenUrl,
+                urlImagenLicencia = lic?.imagenUrl,
+                urlImagenExtintor = ext?.imagenUrl,
+
+                // Kilometraje desde cache
+                kilometrajeMinimo = cached.maxOfOrNull { it.kilometrajeActual } ?: 0,
+                kilometrajeDB     = (cached.maxOfOrNull { it.kilometrajeActual } ?: 0).toString(),
+                
+                isLoadingDocs = false
+            )
         }
     }
 
@@ -214,13 +287,31 @@ class VehiculoViewModel @Inject constructor(
                     ) }
                     validateForm()
                 } else {
-                    // Km correcto: desbloquea
-                    _uiState.update { it.copy(kmEsInvalido = false) }
+                    // Km correcto: guardamos como nuevo mínimo para validación offline
+                    _uiState.update { it.copy(kmEsInvalido = false, kilometrajeMinimo = km, kilometrajeDB = km.toString()) }
                     validateForm()
+                    
+                    // Guardar en caché para que offline use este valor
+                    try {
+                        // 1. Actualizar documentos (lo que ya hacíamos)
+                        val docsCache = repository.getCachedDocuments(placa)
+                        if (docsCache.isNotEmpty()) {
+                            val docsActualizados = docsCache.map { it.copy(kilometrajeActual = km) }
+                            repository.refreshCachedDocuments(placa, docsActualizados)
+                        }
+                        
+                        // 2. IMPORTANTE: Actualizar el catálogo de vehículos (VehiculoEntity)
+                        // Esto es lo que permite que al volver a elegir el vehículo offline, el kmMinimo sea el correcto.
+                        repository.updateVehicleMileage(placa, km)
+                        
+                        Log.d("VehiculoVM", "✅ km mínimo actualizado en catálogo y caché: $km")
+                    } catch (e: Exception) {
+                        Log.w("VehiculoVM", "No se pudo actualizar km en caché/catálogo: ${e.message}")
+                    }
                 }
             }
         } catch (e: Exception) {
-            Log.w("VehiculoVM", "Error validando kilometraje: ${e.message}")
+            Log.w("VehiculoVM", "Error validando kilometraje (sin conexión): ${e.message}")
         }
     }
 
@@ -229,25 +320,56 @@ class VehiculoViewModel @Inject constructor(
     // ── Datos generales ─────────────────────────────────────────────────────────────────
     fun setVehicles(list: List<VehiculoItem>) { _uiState.update { it.copy(vehicles = list) } }
     fun onKilometrajeChange(v: String) {
-        // Resetear invalid mientras el usuario escribe (antes de validar)
-        _uiState.update { it.copy(kilometraje = v, kmEsInvalido = false) }
+        val km = v.toIntOrNull() ?: 0
+        val kmMin = _uiState.value.kilometrajeMinimo
+        
+        // Validación local (igual que en motos)
+        val isLocalInvalid = km > 0 && km < kmMin
+        val alertMsg = if (isLocalInvalid) {
+            "El kilometraje ingresado ($km km) es menor al registrado ($kmMin km)."
+        } else {
+            ""
+        }
+
+        _uiState.update { it.copy(
+            kilometraje = v, 
+            kmEsInvalido = isLocalInvalid,
+            // showKmAlert = isLocalInvalid, // REMOVIDO: No mostrar inmediatamente al escribir
+            kmAlertMessage = alertMsg
+        ) }
+        
         validateForm()
+        
+        // Manejo de Alerta y Backend con Debounce
         val placa = _uiState.value.selectedVehicle?.placa ?: return
-        val km = v.toIntOrNull() ?: return
         kmValidationJob?.cancel()
         kmValidationJob = viewModelScope.launch {
             delay(800)
-            validarKilometrajeConBackend(placa, km)
+            
+            // 1. Mostrar alerta local si sigue siendo inválido después del delay
+            if (isLocalInvalid) {
+                _uiState.update { it.copy(showKmAlert = true) }
+            }
+            
+            // 2. Solo llamar al backend si no hay error local y hay conexión planeada
+            if (!isLocalInvalid && km > 0 && km > kmMin) {
+                validarKilometrajeConBackend(placa, km)
+            }
         }
     }
 
     fun onVehicleSelected(v: VehiculoItem) {
-        _uiState.update { it.copy(selectedVehicle = v) }
+        _uiState.update { it.copy(
+            selectedVehicle = v,
+            kilometrajeMinimo = v.kilometrajeActual,
+            kilometrajeDB = v.kilometrajeActual.toString()
+        ) }
         loadDocumentosVehiculo(v.idVehiculo)
         // Si ya hay un km ingresado, validarlo contra el nuevo vehículo
-        val km = _uiState.value.kilometraje.toIntOrNull()
+        val kmStr = _uiState.value.kilometraje
+        val km = kmStr.toIntOrNull()
         if (km != null) {
-            viewModelScope.launch { validarKilometrajeConBackend(v.placa, km) }
+            onKilometrajeChange(kmStr) // Re-validar inmediatamente (incluye backend si es válido)
         }
         validateForm()
     }
@@ -475,9 +597,29 @@ class VehiculoViewModel @Inject constructor(
                     condicionParaConducir  = s.condicionParaConducir == "Si"
                 )
 
-                // 1. Guardar localmente (Offline-First)
+                // 1. Efecto UX: Retraso artificial para que el usuario sienta el guardado
+                delay(1500)
+
+                // 2. Guardar localmente (Offline-First)
                 saveVehiculoInspectionUseCase(entity)
                 Log.d("VehiculoVM", "✅ Inspección guardada localmente: $inspectionUuid")
+
+                val placa = s.selectedVehicle!!.placa
+                val km = s.kilometraje.toIntOrNull() ?: 0
+                    // repository.saveInspectionLocally ya se hizo arriba
+                    
+                    // 2. ACTUALIZAR CACHE (Solo lo necesario)
+                    // IMPORTANTE: NO sobreescribir las vigencias de los documentos con lo del formulario.
+                    // Las vigencias en cache deben ser las de la BASE DE DATOS (backend).
+                    // Al guardar offline, solo nos interesa actualizar el KILOMETRAJE en el catálogo.
+                    
+                    try {
+                        // Actualizar el catálogo de vehículos con el km de la inspección guardada
+                        repository.updateVehicleMileage(placa, km)
+                        Log.d("VehiculoVM", "✅ Catálogo actualizado tras guardado offline: $placa -> $km")
+                    } catch (e: Exception) {
+                        Log.e("VehiculoVM", "Error actualizando catálogo tras guardado", e)
+                    }
 
                 // 2. Disparar sincronización inmediata si hay red
                 triggerSync()
@@ -497,20 +639,9 @@ class VehiculoViewModel @Inject constructor(
     }
 
     fun triggerSync() {
-        val constraints = Constraints.Builder()
-            .setRequiredNetworkType(NetworkType.CONNECTED)
-            .build()
-
-        val syncRequest = OneTimeWorkRequestBuilder<SyncDataWorker>()
-            .setConstraints(constraints)
-            .setInputData(workDataOf("SYNC_TYPE" to "VEHICLES_ONLY"))
-            .build()
-
-        workManager.enqueueUniqueWork(
-            "immediate_vehicle_sync_${System.currentTimeMillis()}",
-            ExistingWorkPolicy.KEEP,
-            syncRequest
-        )
+        viewModelScope.launch {
+            localSyncCoordinator.coordinateSync(LocalSyncCoordinator.SyncTrigger.FormSaved("Vehiculo"))
+        }
     }
 
     fun onSuccessDialogDismiss() {

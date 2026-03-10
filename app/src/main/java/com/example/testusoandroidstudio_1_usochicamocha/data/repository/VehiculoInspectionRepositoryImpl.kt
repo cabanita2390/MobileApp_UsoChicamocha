@@ -1,8 +1,10 @@
 package com.example.testusoandroidstudio_1_usochicamocha.data.repository
 
 import android.util.Log
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.DocumentoVehiculoDao
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.VehiculoDao
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.VehiculoInspectionDao
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.DocumentoVehiculoEntity
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.VehiculoEntity
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.VehiculoInspectionEntity
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.toEntity
@@ -16,6 +18,7 @@ import javax.inject.Inject
 class VehiculoInspectionRepositoryImpl @Inject constructor(
     private val vehiculoInspectionDao: VehiculoInspectionDao,
     private val vehiculoDao: VehiculoDao,
+    private val documentoVehiculoDao: DocumentoVehiculoDao,
     private val apiService: ApiService
 ) : VehiculoInspectionRepository {
 
@@ -97,6 +100,19 @@ class VehiculoInspectionRepositoryImpl @Inject constructor(
             Log.e(TAG, "❌ Exception syncing vehicles catalog", e)
             Result.failure(e)
         }
+    }
+
+    override suspend fun getCachedDocuments(placa: String): List<DocumentoVehiculoEntity> {
+        return documentoVehiculoDao.getByPlaca(placa)
+    }
+
+    override suspend fun refreshCachedDocuments(placa: String, documentos: List<DocumentoVehiculoEntity>) {
+        documentoVehiculoDao.refreshForPlaca(placa, documentos)
+    }
+
+    override suspend fun updateVehicleMileage(placa: String, km: Int) {
+        Log.d(TAG, "Updating mileage for vehicle $placa in catalog: $km")
+        vehiculoDao.updateKilometraje(placa, km)
     }
 
     private fun VehiculoInspectionEntity.toRequest(): VehiculoInspectionRequest {
