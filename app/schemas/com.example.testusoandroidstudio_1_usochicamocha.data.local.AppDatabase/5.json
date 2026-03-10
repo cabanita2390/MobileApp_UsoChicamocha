@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 5,
-    "identityHash": "d4e64bc3667603af4f0302118c5ce6b2",
+    "identityHash": "cffb810908247dc3d21c20c811d5362d",
     "entities": [
       {
         "tableName": "pending_forms",
@@ -388,7 +388,7 @@
       },
       {
         "tableName": "pending_images",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`localId` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `formUUID` TEXT NOT NULL, `localUri` TEXT NOT NULL, `isSynced` INTEGER NOT NULL, `isSyncing` INTEGER NOT NULL)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`localId` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `formUUID` TEXT NOT NULL, `vehicleInspectionUUID` TEXT, `localUri` TEXT NOT NULL, `isSynced` INTEGER NOT NULL, `isSyncing` INTEGER NOT NULL)",
         "fields": [
           {
             "fieldPath": "localId",
@@ -403,9 +403,239 @@
             "notNull": true
           },
           {
+            "fieldPath": "vehicleInspectionUUID",
+            "columnName": "vehicleInspectionUUID",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
             "fieldPath": "localUri",
             "columnName": "localUri",
             "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isSynced",
+            "columnName": "isSynced",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "isSyncing",
+            "columnName": "isSyncing",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "localId"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "vehiculo_inspections",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`localId` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `UUID` TEXT NOT NULL, `serverId` INTEGER, `timestamp` INTEGER NOT NULL, `placaVehiculo` TEXT NOT NULL, `marca` TEXT NOT NULL, `tipoVehiculo` TEXT NOT NULL, `kilometrajeReportado` INTEGER NOT NULL, `responsableInspeccion` TEXT NOT NULL, `aprobadoRuta` INTEGER NOT NULL, `observacionesFinales` TEXT NOT NULL, `nivelAceite` TEXT NOT NULL, `nivelRefrigerante` TEXT NOT NULL, `nivelFrenos` TEXT NOT NULL, `estadoLlantas` TEXT NOT NULL, `lucesGeneral` TEXT NOT NULL, `estadoVisual` TEXT NOT NULL, `limpiezaGeneral` TEXT NOT NULL, `checkSoat` TEXT NOT NULL, `checkTecno` TEXT NOT NULL, `checkLicencia` TEXT NOT NULL, `checkExtintor` TEXT NOT NULL, `vigenciaExtintor` TEXT NOT NULL, `fechaVencSoat` TEXT NOT NULL, `fechaVencTecno` TEXT NOT NULL, `fechaVencLicencia` TEXT NOT NULL, `tieneBotiquin` INTEGER NOT NULL, `tieneSeñalizacion` INTEGER NOT NULL, `tieneLineasEmergencia` INTEGER NOT NULL, `tieneLlantaRepuesto` INTEGER NOT NULL, `tieneGatoHidraulico` INTEGER NOT NULL, `saludFisica` INTEGER NOT NULL, `saludMental` INTEGER NOT NULL, `sobrio` INTEGER NOT NULL, `medicamentos` INTEGER NOT NULL, `conscienteResponsabilidad` INTEGER NOT NULL, `condicionParaConducir` INTEGER NOT NULL, `isSynced` INTEGER NOT NULL, `isSyncing` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "localId",
+            "columnName": "localId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "UUID",
+            "columnName": "UUID",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "serverId",
+            "columnName": "serverId",
+            "affinity": "INTEGER",
+            "notNull": false
+          },
+          {
+            "fieldPath": "timestamp",
+            "columnName": "timestamp",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "placaVehiculo",
+            "columnName": "placaVehiculo",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "marca",
+            "columnName": "marca",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tipoVehiculo",
+            "columnName": "tipoVehiculo",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "kilometrajeReportado",
+            "columnName": "kilometrajeReportado",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "responsableInspeccion",
+            "columnName": "responsableInspeccion",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "aprobadoRuta",
+            "columnName": "aprobadoRuta",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "observacionesFinales",
+            "columnName": "observacionesFinales",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "nivelAceite",
+            "columnName": "nivelAceite",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "estadoVisual",
+            "columnName": "estadoVisual",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "limpiezaGeneral",
+            "columnName": "limpiezaGeneral",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "checkSoat",
+            "columnName": "checkSoat",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "checkTecno",
+            "columnName": "checkTecno",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "checkLicencia",
+            "columnName": "checkLicencia",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "checkExtintor",
+            "columnName": "checkExtintor",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "vigenciaExtintor",
+            "columnName": "vigenciaExtintor",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fechaVencSoat",
+            "columnName": "fechaVencSoat",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fechaVencTecno",
+            "columnName": "fechaVencTecno",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fechaVencLicencia",
+            "columnName": "fechaVencLicencia",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tieneBotiquin",
+            "columnName": "tieneBotiquin",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tieneSeñalizacion",
+            "columnName": "tieneSeñalizacion",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tieneLineasEmergencia",
+            "columnName": "tieneLineasEmergencia",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tieneLlantaRepuesto",
+            "columnName": "tieneLlantaRepuesto",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tieneGatoHidraulico",
+            "columnName": "tieneGatoHidraulico",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "saludFisica",
+            "columnName": "saludFisica",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "saludMental",
+            "columnName": "saludMental",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sobrio",
+            "columnName": "sobrio",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "medicamentos",
+            "columnName": "medicamentos",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "conscienteResponsabilidad",
+            "columnName": "conscienteResponsabilidad",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "condicionParaConducir",
+            "columnName": "condicionParaConducir",
+            "affinity": "INTEGER",
             "notNull": true
           },
           {
@@ -484,7 +714,7 @@
       },
       {
         "tableName": "pending_inspecciones_moto",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`localId` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `serverId` INTEGER, `uuid` TEXT NOT NULL, `timestamp` INTEGER NOT NULL, `idVehiculo` INTEGER NOT NULL, `idUbicacion` INTEGER NOT NULL, `kilometrajeReportado` INTEGER NOT NULL, `estadoGeneral` TEXT NOT NULL, `observacionesFinales` TEXT NOT NULL, `vigenciaSoat` TEXT, `estadoSoat` TEXT, `vigenciaRevision` TEXT, `estadoRevision` TEXT, `vigenciaLicencia` TEXT, `estadoLicencia` TEXT, `imagenSoat` TEXT, `imagenRevision` TEXT, `imagenLicencia` TEXT, `isSynced` INTEGER NOT NULL, `isSyncing` INTEGER NOT NULL)",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`localId` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `serverId` INTEGER, `uuid` TEXT NOT NULL, `timestamp` INTEGER NOT NULL, `idVehiculo` INTEGER NOT NULL, `kilometrajeReportado` INTEGER NOT NULL, `estadoVehiculo` TEXT NOT NULL, `observacionesFinales` TEXT NOT NULL, `checkSoat` TEXT NOT NULL, `checkTecno` TEXT NOT NULL, `checkLicencia` TEXT NOT NULL, `checkExtintor` TEXT NOT NULL, `idUbicacion` INTEGER NOT NULL, `isSynced` INTEGER NOT NULL, `isSyncing` INTEGER NOT NULL, `fechaSoat` TEXT NOT NULL, `fechaTecno` TEXT NOT NULL, `fechaLicencia` TEXT NOT NULL)",
         "fields": [
           {
             "fieldPath": "localId",
@@ -517,20 +747,14 @@
             "notNull": true
           },
           {
-            "fieldPath": "idUbicacion",
-            "columnName": "idUbicacion",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
             "fieldPath": "kilometrajeReportado",
             "columnName": "kilometrajeReportado",
             "affinity": "INTEGER",
             "notNull": true
           },
           {
-            "fieldPath": "estadoGeneral",
-            "columnName": "estadoGeneral",
+            "fieldPath": "estadoVehiculo",
+            "columnName": "estadoVehiculo",
             "affinity": "TEXT",
             "notNull": true
           },
@@ -541,58 +765,34 @@
             "notNull": true
           },
           {
-            "fieldPath": "vigenciaSoat",
-            "columnName": "vigenciaSoat",
+            "fieldPath": "checkSoat",
+            "columnName": "checkSoat",
             "affinity": "TEXT",
-            "notNull": false
+            "notNull": true
           },
           {
-            "fieldPath": "estadoSoat",
-            "columnName": "estadoSoat",
+            "fieldPath": "checkTecno",
+            "columnName": "checkTecno",
             "affinity": "TEXT",
-            "notNull": false
+            "notNull": true
           },
           {
-            "fieldPath": "vigenciaRevision",
-            "columnName": "vigenciaRevision",
+            "fieldPath": "checkLicencia",
+            "columnName": "checkLicencia",
             "affinity": "TEXT",
-            "notNull": false
+            "notNull": true
           },
           {
-            "fieldPath": "estadoRevision",
-            "columnName": "estadoRevision",
+            "fieldPath": "checkExtintor",
+            "columnName": "checkExtintor",
             "affinity": "TEXT",
-            "notNull": false
+            "notNull": true
           },
           {
-            "fieldPath": "vigenciaLicencia",
-            "columnName": "vigenciaLicencia",
-            "affinity": "TEXT",
-            "notNull": false
-          },
-          {
-            "fieldPath": "estadoLicencia",
-            "columnName": "estadoLicencia",
-            "affinity": "TEXT",
-            "notNull": false
-          },
-          {
-            "fieldPath": "imagenSoat",
-            "columnName": "imagenSoat",
-            "affinity": "TEXT",
-            "notNull": false
-          },
-          {
-            "fieldPath": "imagenRevision",
-            "columnName": "imagenRevision",
-            "affinity": "TEXT",
-            "notNull": false
-          },
-          {
-            "fieldPath": "imagenLicencia",
-            "columnName": "imagenLicencia",
-            "affinity": "TEXT",
-            "notNull": false
+            "fieldPath": "idUbicacion",
+            "columnName": "idUbicacion",
+            "affinity": "INTEGER",
+            "notNull": true
           },
           {
             "fieldPath": "isSynced",
@@ -605,6 +805,24 @@
             "columnName": "isSyncing",
             "affinity": "INTEGER",
             "notNull": true
+          },
+          {
+            "fieldPath": "fechaSoat",
+            "columnName": "fechaSoat",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fechaTecno",
+            "columnName": "fechaTecno",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "fechaLicencia",
+            "columnName": "fechaLicencia",
+            "affinity": "TEXT",
+            "notNull": true
           }
         ],
         "primaryKey": {
@@ -615,12 +833,106 @@
         },
         "indices": [],
         "foreignKeys": []
+      },
+      {
+        "tableName": "cache_documentos_moto",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `placa` TEXT NOT NULL, `tipoDocumento` TEXT NOT NULL, `vigencia` TEXT NOT NULL, `imagenUrl` TEXT, `kilometrajeActual` INTEGER NOT NULL, `cachedAt` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "placa",
+            "columnName": "placa",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tipoDocumento",
+            "columnName": "tipoDocumento",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "vigencia",
+            "columnName": "vigencia",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "imagenUrl",
+            "columnName": "imagenUrl",
+            "affinity": "TEXT",
+            "notNull": false
+          },
+          {
+            "fieldPath": "kilometrajeActual",
+            "columnName": "kilometrajeActual",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "cachedAt",
+            "columnName": "cachedAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
+      },
+      {
+        "tableName": "vehiculos",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`idVehiculo` INTEGER NOT NULL, `placa` TEXT NOT NULL, `marca` TEXT NOT NULL, `tipoVehiculo` TEXT NOT NULL, PRIMARY KEY(`idVehiculo`))",
+        "fields": [
+          {
+            "fieldPath": "idVehiculo",
+            "columnName": "idVehiculo",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "placa",
+            "columnName": "placa",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "marca",
+            "columnName": "marca",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tipoVehiculo",
+            "columnName": "tipoVehiculo",
+            "affinity": "TEXT",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "idVehiculo"
+          ]
+        },
+        "indices": [],
+        "foreignKeys": []
       }
     ],
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'd4e64bc3667603af4f0302118c5ce6b2')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'cffb810908247dc3d21c20c811d5362d')"
     ]
   }
 }

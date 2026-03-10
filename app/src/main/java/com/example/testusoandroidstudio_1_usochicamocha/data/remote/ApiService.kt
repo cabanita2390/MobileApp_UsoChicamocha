@@ -1,5 +1,7 @@
 package com.example.testusoandroidstudio_1_usochicamocha.data.remote
 
+import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.DocumentoVehiculoResponse
+import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.KilometrajeValidacionResponse
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.FormDto
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.FormSyncResponse
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.InspeccionMotoRequest
@@ -12,7 +14,9 @@ import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.NewAcces
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.OilDto
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.RefreshTokenRequest
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.UbicacionDto
+import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.VehicleDto
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.request.OilChangeRequest
+import com.example.testusoandroidstudio_1_usochicamocha.data.remote.request.VehiculoInspectionRequest
 import okhttp3.MultipartBody
 import retrofit2.Response
 import retrofit2.http.Body
@@ -33,6 +37,14 @@ interface ApiService {
     suspend fun refreshToken(@Body request: RefreshTokenRequest): Response<NewAccessTokenResponse>
     @GET("v1/machine")
     suspend fun getMachines(): Response<List<MachineDto>>
+    @GET("v1/vehicle")
+    suspend fun getVehicles(): Response<List<VehicleDto>>
+
+    /** Busca un vehículo por placa para autocompletar datos */
+    @GET("v1/vehicle/{placa}")
+    suspend fun getVehicleByPlaca(
+        @Path("placa") placa: String
+    ): Response<VehicleDto>
     @POST("v1/inspection")
     suspend fun syncForm(@Body form: FormDto): Response<FormSyncResponse>
     @POST("oil-changes/motor")
@@ -61,5 +73,23 @@ interface ApiService {
 
     @POST("v1/moto/inspeccion")
     suspend fun saveInspeccionMoto(@Body request: InspeccionMotoRequest): Response<Long>
-}
 
+    /** Envía la inspección pre-operativa de vehículos al backend */
+    @POST("v1/vehicle-inspection")
+    suspend fun submitVehiculoInspection(
+        @Body request: VehiculoInspectionRequest
+    ): Response<com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.VehiculoInspectionResponse>
+
+    /** Consulta el estado actual de los documentos de un vehículo por ID */
+    @GET("v1/vehicle-inspection/documentos/{idVehiculo}")
+    suspend fun getDocumentosVehiculo(
+        @Path("idVehiculo") idVehiculo: Int
+    ): Response<DocumentoVehiculoResponse>
+
+    /** Valida si el kilometraje ingresado es menor al registrado en BD */
+    @GET("v1/vehicle-inspection/validar-kilometraje")
+    suspend fun validarKilometraje(
+        @retrofit2.http.Query("placa") placa: String,
+        @retrofit2.http.Query("kilometraje") kilometraje: Int
+    ): Response<KilometrajeValidacionResponse>
+}

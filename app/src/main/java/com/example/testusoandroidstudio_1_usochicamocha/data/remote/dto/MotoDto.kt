@@ -27,11 +27,6 @@ data class InspeccionMotoRequest(
     val checkLicencia: String,
     val checkExtintor: String,
 
-    // Fechas para persistencia
-    val fechaSoat: String,
-    val fechaTecno: String,
-    val fechaLicencia: String,
-
     // Ubicacion
     val idUbicacion: Int
 )

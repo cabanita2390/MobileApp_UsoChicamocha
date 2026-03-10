@@ -1,0 +1,13 @@
+package com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.vehiculo
+
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.VehiculoInspectionEntity
+import com.example.testusoandroidstudio_1_usochicamocha.domain.repository.VehiculoInspectionRepository
+import javax.inject.Inject
+
+class SyncVehiculoInspectionUseCase @Inject constructor(
+    private val repository: VehiculoInspectionRepository
+) {
+    suspend operator fun invoke(inspection: VehiculoInspectionEntity): Result<Unit> {
+        return repository.syncInspection(inspection)
+    }
+}

@@ -40,8 +40,8 @@ fun MainScreen(
     viewModel: MainViewModel = hiltViewModel(),
     onNavigateBack: () -> Unit,
     onLogout: () -> Unit,
-    onNavigateToForm: () -> Unit,
     onNavigateToLogs: () -> Unit,
+    onNavigateToForm: () -> Unit,
     onNavigateToImprevisto: () -> Unit,
     onNavigateToMantenimiento: (Int?) -> Unit
 ) {

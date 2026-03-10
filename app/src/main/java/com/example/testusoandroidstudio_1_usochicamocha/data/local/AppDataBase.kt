@@ -1,4 +1,3 @@
-
 package com.example.testusoandroidstudio_1_usochicamocha.data.local
 
 import androidx.room.Database
@@ -13,6 +12,9 @@ import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.Inspeccio
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.MotoDao
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.OilDao
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.UbicacionDao
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.VehiculoDao
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.VehiculoInspectionDao
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.DocumentoVehiculoDao
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.FormEntity
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.ImageEntity
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.DocumentoMotoEntity
@@ -23,6 +25,9 @@ import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.Mainte
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.MotoEntity
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.OilEntity
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.UbicacionEntity
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.VehiculoEntity
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.VehiculoInspectionEntity
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.DocumentoVehiculoEntity
 
 @Database(
     entities = [
@@ -35,9 +40,12 @@ import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.Ubicac
         MotoEntity::class,
         UbicacionEntity::class,
         InspeccionMotoEntity::class,
-        DocumentoMotoEntity::class
+        DocumentoMotoEntity::class,
+        VehiculoInspectionEntity::class,
+        VehiculoEntity::class,
+        DocumentoVehiculoEntity::class
     ],
-    version = 11,
+    version = 23,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -51,4 +59,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun ubicacionDao(): UbicacionDao
     abstract fun inspeccionMotoDao(): InspeccionMotoDao
     abstract fun documentoMotoDao(): DocumentoMotoDao
+    abstract fun vehiculoInspectionDao(): VehiculoInspectionDao
+    abstract fun vehiculoDao(): VehiculoDao
+    abstract fun documentoVehiculoDao(): DocumentoVehiculoDao
 }

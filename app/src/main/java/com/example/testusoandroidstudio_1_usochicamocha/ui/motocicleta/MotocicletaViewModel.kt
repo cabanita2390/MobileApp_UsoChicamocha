@@ -36,7 +36,8 @@ data class DocumentoState(
     val estadoDoc: String = "",         // Vigente / Próximo a vencer / Vencido
     val imagenUrl: String? = null,      // URL de la imagen guardada en servidor
     val imagenUri: Uri? = null,         // URI local de imagen nueva (cámara/galería)
-    val yaRegistrado: Boolean = false   // true si ya existe en el sistema (para bloqueo)
+    val yaRegistrado: Boolean = false,  // true si ya existe en el sistema (para bloqueo)
+    val vigenciaMaster: String = ""    // Fecha de referencia inalterable (BAse de Datos Maestra)
 )
 
 data class MotocicletaUiState(
@@ -234,24 +235,26 @@ class MotocicletaViewModel @Inject constructor(
         validate()
     }
 
-    // ─── SOAT ───────────────────────────────────────────────────────────────
     fun onSoatVigenciaChange(year: Int, month: Int, day: Int) {
-        val fecha = buildFecha(year, month, day)
-        _uiState.update { it.copy(soat = it.soat.copy(vigencia = fecha, estadoDoc = calcularEstado(fecha))) }
+        val fechaSelected = buildFecha(year, month, day)
+        val estado = calcularEstadoVsDB(fechaSelected, _uiState.value.soat.vigenciaMaster)
+        _uiState.update { it.copy(soat = it.soat.copy(vigencia = fechaSelected, estadoDoc = estado)) }
         validate()
     }
 
     // ─── REVISIÓN TECNO ─────────────────────────────────────────────────────
     fun onRevisionVigenciaChange(year: Int, month: Int, day: Int) {
-        val fecha = buildFecha(year, month, day)
-        _uiState.update { it.copy(revisionTecno = it.revisionTecno.copy(vigencia = fecha, estadoDoc = calcularEstado(fecha))) }
+        val fechaSelected = buildFecha(year, month, day)
+        val estado = calcularEstadoVsDB(fechaSelected, _uiState.value.revisionTecno.vigenciaMaster)
+        _uiState.update { it.copy(revisionTecno = it.revisionTecno.copy(vigencia = fechaSelected, estadoDoc = estado)) }
         validate()
     }
 
     // ─── LICENCIA ───────────────────────────────────────────────────────────
     fun onLicenciaVigenciaChange(year: Int, month: Int, day: Int) {
-        val fecha = buildFecha(year, month, day)
-        _uiState.update { it.copy(licencia = it.licencia.copy(vigencia = fecha, estadoDoc = calcularEstado(fecha))) }
+        val fechaSelected = buildFecha(year, month, day)
+        val estado = calcularEstadoVsDB(fechaSelected, _uiState.value.licencia.vigenciaMaster)
+        _uiState.update { it.copy(licencia = it.licencia.copy(vigencia = fechaSelected, estadoDoc = estado)) }
         validate()
     }
 
@@ -259,11 +262,12 @@ class MotocicletaViewModel @Inject constructor(
     private fun loadDocumentosForMoto(placa: String) {
         viewModelScope.launch {
             // Reset UI state for documents before loading
+            val hoy = getTodayDate()
             _uiState.update { it.copy(
                 isLoadingDocumentos = true,
-                soat = DocumentoState(),
-                revisionTecno = DocumentoState(),
-                licencia = DocumentoState()
+                soat          = DocumentoState(vigencia = hoy),
+                revisionTecno = DocumentoState(vigencia = hoy),
+                licencia      = DocumentoState(vigencia = hoy)
             ) }
             
             // 1. CARGA INMEDIATA DESDE CACHE LOCAL
@@ -311,22 +315,25 @@ class MotocicletaViewModel @Inject constructor(
                         val tecnoApi  = apiDocs.find { it.tipoDocumento == "REVISION_TECNO" }
                         val licApi    = apiDocs.find { it.tipoDocumento == "LICENCIA" }
 
-                        // Para la FECHA: Prioridad Cache ya cargado, fallback a API
-                        val soatFecha  = s.soat.vigencia.ifBlank { soatApi?.fechaVencimiento ?: soatApi?.mesyear ?: "" }
-                        val tecnoFecha = s.revisionTecno.vigencia.ifBlank { tecnoApi?.fechaVencimiento ?: tecnoApi?.mesyear ?: "" }
-                        val licFecha   = s.licencia.vigencia.ifBlank { licApi?.fechaVencimiento ?: licApi?.mesyear ?: "" }
+                        // Para la FECHA: prioridad al servidor. Si viene blank, usar fecha actual
+                        val hoy2 = getTodayDate()
+                        val soatFecha  = soatApi?.fechaVencimiento?.toString()?.take(7)?.takeIf { it.isNotBlank() } ?: (soatApi?.mesyear?.takeIf { it.isNotBlank() } ?: hoy2)
+                        val tecnoFecha = tecnoApi?.fechaVencimiento?.toString()?.take(7)?.takeIf { it.isNotBlank() } ?: (tecnoApi?.mesyear?.takeIf { it.isNotBlank() } ?: hoy2)
+                        val licFecha   = licApi?.fechaVencimiento?.toString()?.take(7)?.takeIf { it.isNotBlank() } ?: (licApi?.mesyear?.takeIf { it.isNotBlank() } ?: hoy2)
 
-                        // Para el ESTADO: Prioridad absoluta al SERVIDOR (estadoCheck)
-                        val soatEstado  = soatApi?.estadoCheck?.takeIf { it.isNotBlank() } ?: calcularEstado(soatFecha)
-                        val tecnoEstado = tecnoApi?.estadoCheck?.takeIf { it.isNotBlank() } ?: calcularEstado(tecnoFecha)
-                        val licEstado   = licApi?.estadoCheck?.takeIf { it.isNotBlank() } ?: calcularEstado(licFecha)
+                        // Para el ESTADO: LITERALMENTE LA MISMA LÓGICA COMPARATIVA QUE VEHÍCULOS
+                        // Comparamos Hoy vs Vencimiento para el estado inicial
+                        val hoy = getTodayDate()
+                        val soatEstado  = calcularEstadoVsDB(hoy, soatFecha)
+                        val tecnoEstado = calcularEstadoVsDB(hoy, tecnoFecha)
+                        val licEstado   = calcularEstadoVsDB(hoy, licFecha)
 
-                        android.util.Log.d("DocsMoto", "🔄 [FinalState] PLACA: $placa - SOAT: $soatEstado (API: ${soatApi?.estadoCheck}), TECNO: $tecnoEstado, LIC: $licEstado")
+                        android.util.Log.d("DocsMoto", "🔄 [FinalState] PLACA: $placa - SOAT: $soatEstado/$soatFecha TECNO: $tecnoEstado/$tecnoFecha LIC: $licEstado/$licFecha")
 
                         s.copy(
-                            soat          = s.soat.copy(vigencia = soatFecha, estadoDoc = soatEstado, yaRegistrado = true),
-                            revisionTecno = s.revisionTecno.copy(vigencia = tecnoFecha, estadoDoc = tecnoEstado, yaRegistrado = true),
-                            licencia      = s.licencia.copy(vigencia = licFecha, estadoDoc = licEstado, yaRegistrado = true),
+                            soat          = s.soat.copy(vigencia = hoy2, vigenciaMaster = soatFecha, estadoDoc = soatEstado, yaRegistrado = true, imagenUrl = soatApi?.imagenUrl),
+                            revisionTecno = s.revisionTecno.copy(vigencia = hoy2, vigenciaMaster = tecnoFecha, estadoDoc = tecnoEstado, yaRegistrado = true, imagenUrl = tecnoApi?.imagenUrl),
+                            licencia      = s.licencia.copy(vigencia = hoy2, vigenciaMaster = licFecha, estadoDoc = licEstado, yaRegistrado = true, imagenUrl = licApi?.imagenUrl),
                             kilometrajeMinimo = kmMinimo,
                             isLoadingDocumentos = false
                         )
@@ -367,11 +374,12 @@ class MotocicletaViewModel @Inject constructor(
         val tecno  = cached.find { it.tipoDocumento == "REVISION_TECNO" }
         val lic    = cached.find { it.tipoDocumento == "LICENCIA" }
 
+        val hoy = getTodayDate()
         _uiState.update { s ->
             s.copy(
-                soat          = s.soat.copy(vigencia = soat!!.vigencia, estadoDoc = calcularEstado(soat.vigencia), yaRegistrado = true),
-                revisionTecno = s.revisionTecno.copy(vigencia = tecno!!.vigencia, estadoDoc = calcularEstado(tecno.vigencia), yaRegistrado = true),
-                licencia      = s.licencia.copy(vigencia = lic!!.vigencia, estadoDoc = calcularEstado(lic.vigencia), yaRegistrado = true),
+                soat          = if (soat != null) s.soat.copy(vigencia = hoy, vigenciaMaster = soat.vigencia, estadoDoc = calcularEstadoVsDB(hoy, soat.vigencia), yaRegistrado = true) else s.soat,
+                revisionTecno = if (tecno != null) s.revisionTecno.copy(vigencia = hoy, vigenciaMaster = tecno.vigencia, estadoDoc = calcularEstadoVsDB(hoy, tecno.vigencia), yaRegistrado = true) else s.revisionTecno,
+                licencia      = if (lic != null) s.licencia.copy(vigencia = hoy, vigenciaMaster = lic.vigencia, estadoDoc = calcularEstadoVsDB(hoy, lic.vigencia), yaRegistrado = true) else s.licencia,
                 kilometrajeMinimo = cached.maxOfOrNull { it.kilometrajeActual } ?: 0
             )
         }.also { validate() }
@@ -421,22 +429,33 @@ class MotocicletaViewModel @Inject constructor(
             "$year-${month.toString().padStart(2, '0')}"
     }
 
+    private fun getTodayDate(): String {
+        val cal = Calendar.getInstance()
+        val y = cal.get(Calendar.YEAR)
+        val m = cal.get(Calendar.MONTH) + 1
+        return "$y-${m.toString().padStart(2, '0')}"
+    }
+
     private fun calcularEstado(vigencia: String): String {
-        if (vigencia.isBlank()) return ""
+        return calcularEstadoVsDB(getTodayDate(), vigencia)
+    }
+
+    /**
+     * LITERALMENTE EL MISMO CÁLCULO QUE VEHÍCULOS
+     */
+    private fun calcularEstadoVsDB(fechaIngresada: String, fechaDB: String): String {
+        if (fechaIngresada.isBlank() || fechaDB.isBlank()) return ""
         return try {
-            val parts = vigencia.split("-")
-            if (parts.size < 2) return "Vencido"
-            val year = parts[0].toInt(); val month = parts[1].toInt() - 1
-            val day = if (parts.size >= 3) parts[2].toInt() else 1
-            val targetCal = Calendar.getInstance().apply { set(year, month, day, 23, 59, 59) }
-            val hoy = Calendar.getInstance()
-            val unMesDespues = Calendar.getInstance().apply { add(Calendar.MONTH, 1) }
+            val pi = fechaIngresada.split("-")
+            val pd = fechaDB.split("-")
+            val valIng = pi[0].toInt() * 12 + pi[1].toInt()
+            val valDB  = pd[0].toInt() * 12 + pd[1].toInt()
             when {
-                targetCal.before(hoy)       -> "Vencido"
-                !targetCal.after(unMesDespues) -> "Próximo a vencer"
-                else                        -> "Vigente"
+                valIng > valDB          -> "Vencido"
+                valIng >= valDB - 1     -> "Próximo a Vencer"
+                else                    -> "Vigente"
             }
-        } catch (e: Exception) { "Vencido" }
+        } catch (e: Exception) { "" }
     }
 
     private fun validate() {
@@ -448,7 +467,12 @@ class MotocicletaViewModel @Inject constructor(
             s.kilometrajeMinimo > 0 && kmInt < s.kilometrajeMinimo -> false
             else -> true
         }
-        val docsOk = s.soat.vigencia.isNotBlank() && s.revisionTecno.vigencia.isNotBlank() && s.licencia.vigencia.isNotBlank()
+
+        // Validación de documentos: debe tener fecha Y el estado calculado/confirmado no debe estar vacío
+        val docsOk = s.soat.vigencia.isNotBlank() && s.soat.estadoDoc.isNotBlank() &&
+                    s.revisionTecno.vigencia.isNotBlank() && s.revisionTecno.estadoDoc.isNotBlank() &&
+                    s.licencia.vigencia.isNotBlank() && s.licencia.estadoDoc.isNotBlank()
+
         val obsOk = s.observaciones.isNotBlank()
         val kmErrorFree = s.kilometrajeError == null
 
@@ -475,7 +499,7 @@ class MotocicletaViewModel @Inject constructor(
                     estadoVehiculo = s.estadoVehiculo,
                     observacionesFinales = s.observaciones,
 
-                    // Enviamos el estado calculado
+                    // Guardar solo el estado real, igual que en vehículos.
                     checkSoat     = s.soat.estadoDoc.ifBlank { "Sin registro" },
                     checkTecno    = s.revisionTecno.estadoDoc.ifBlank { "Sin registro" },
                     checkLicencia = s.licencia.estadoDoc.ifBlank { "Sin registro" },

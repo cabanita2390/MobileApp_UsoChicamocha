@@ -347,7 +347,14 @@ class LocalSyncCoordinator @Inject constructor(
                     .addTag(COORDINATED_SYNC_WORK)
                     .build()
             }
-            is SyncTrigger.FormSaved,
+            is SyncTrigger.FormSaved -> {
+                val inputData = workDataOf("SYNC_TYPE" to SyncType.FORMS_ONLY.name)
+                OneTimeWorkRequestBuilder<SyncDataWorker>()
+                    .setConstraints(constraints)
+                    .setInputData(inputData)
+                    .addTag(COORDINATED_SYNC_WORK)
+                    .build()
+            }
             is SyncTrigger.MaintenanceSaved,
             is SyncTrigger.AppStartSync,
             is SyncTrigger.PeriodicSync -> {

@@ -28,13 +28,19 @@ interface ImageDao {
      * AÑADIDO: Filtrar imágenes que no estén siendo sincronizadas por otro worker
      */
     @Query("""
-        SELECT
-            pi.localId,
-            pi.localUri,
-            pf.serverId as serverId
+        SELECT 
+            pi.localId, 
+            pi.localUri, 
+            COALESCE(pf.serverId, vi.serverId) as serverId
         FROM pending_images pi
-        INNER JOIN pending_forms pf ON pi.formUUID = pf.UUID
-        WHERE pi.isSynced = 0 AND pi.isSyncing = 0 AND pf.isSynced = 1 AND pf.serverId IS NOT NULL
+        LEFT JOIN pending_forms pf ON pi.formUUID = pf.UUID
+        LEFT JOIN vehiculo_inspections vi ON pi.vehicleInspectionUUID = vi.UUID
+        WHERE pi.isSynced = 0 AND pi.isSyncing = 0 
+          AND (
+            (pf.isSynced = 1 AND pf.serverId IS NOT NULL) 
+            OR 
+            (vi.isSynced = 1 AND vi.serverId IS NOT NULL)
+          )
         LIMIT 10
     """)
     fun getPendingImagesForSync(): Flow<List<ImageForSync>>

@@ -61,9 +61,6 @@ class InspeccionMotoRepositoryImpl @Inject constructor(
                 checkTecno = inspeccion.checkTecno,
                 checkLicencia = inspeccion.checkLicencia,
                 checkExtintor = inspeccion.checkExtintor,
-                fechaSoat = inspeccion.fechaSoat,
-                fechaTecno = inspeccion.fechaTecno,
-                fechaLicencia = inspeccion.fechaLicencia,
                 idUbicacion = inspeccion.idUbicacion,
             )
 

@@ -1,5 +1,3 @@
-// Archivo: /src/main/java/com/example/testusoandroidstudio_1_usochicamocha/MainActivity.kt
-
 package com.example.testusoandroidstudio_1_usochicamocha
 
 import android.os.Bundle
@@ -21,6 +19,8 @@ import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.scan
+import com.example.testusoandroidstudio_1_usochicamocha.ui.home.HomeScreen
+import com.example.testusoandroidstudio_1_usochicamocha.ui.home.HomeViewModel
 import com.example.testusoandroidstudio_1_usochicamocha.ui.imprevisto.ImprevistoScreen
 import com.example.testusoandroidstudio_1_usochicamocha.ui.form.FormScreen
 import com.example.testusoandroidstudio_1_usochicamocha.ui.log.LogScreen
@@ -30,11 +30,13 @@ import com.example.testusoandroidstudio_1_usochicamocha.ui.main.MainScreen
 import com.example.testusoandroidstudio_1_usochicamocha.ui.mantenimiento.MantenimientoScreen
 import com.example.testusoandroidstudio_1_usochicamocha.ui.motocicleta.MotocicletaScreen
 import com.example.testusoandroidstudio_1_usochicamocha.ui.motocicleta.MotoHubScreen
-import com.example.testusoandroidstudio_1_usochicamocha.ui.selectionhub.SelectionHubScreen
+
 import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.ConnectionStatusTopBar
 import com.example.testusoandroidstudio_1_usochicamocha.ui.splash.SplashScreen
 import com.example.testusoandroidstudio_1_usochicamocha.ui.splash.SplashViewModel
 import com.example.testusoandroidstudio_1_usochicamocha.ui.theme.AppUsoChicamochaTheme
+import com.example.testusoandroidstudio_1_usochicamocha.ui.vehiculo.VehiculoScreen
+import com.example.testusoandroidstudio_1_usochicamocha.ui.vehiculo.VehiculoMainScreen
 import com.example.testusoandroidstudio_1_usochicamocha.util.NetworkMonitor
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.LocalSyncCoordinator
 import dagger.hilt.android.AndroidEntryPoint
@@ -88,7 +90,7 @@ class MainActivity : ComponentActivity() {
                                 LoginScreen(
                                     viewModel = loginViewModel,
                                     onLoginSuccess = {
-                                        navController.navigate("selection_hub") {
+                                        navController.navigate("home") {
                                             popUpTo("splash") { inclusive = true }
                                         }
                                     }
@@ -96,20 +98,24 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                     }
-
-                    composable("selection_hub") {
-                        SelectionHubScreen(
+                    composable("home") {
+                        val homeViewModel: HomeViewModel = hiltViewModel()
+                        HomeScreen(
                             networkStatus = networkStatus,
+                            viewModel = homeViewModel,
+                            onLogout = {
+                                navController.navigate("login") {
+                                    popUpTo("home") { inclusive = true }
+                                }
+                            },
                             onNavigateToMaquinaria = {
                                 navController.navigate("main")
                             },
-                            onNavigateToMotocicletas = {
-                                navController.navigate("motocicleta")
+                            onNavigateToVehicular = {
+                                navController.navigate("vehiculo_main")
                             },
-                            onLogout = {
-                                navController.navigate("login") {
-                                    popUpTo("selection_hub") { inclusive = true }
-                                }
+                            onNavigateToMotos = {
+                                navController.navigate("motocicleta") // User's preferred route
                             }
                         )
                     }
@@ -122,7 +128,7 @@ class MainActivity : ComponentActivity() {
                             },
                             onLogout = {
                                 navController.navigate("login") {
-                                    popUpTo("selection_hub") { inclusive = true }
+                                    popUpTo("home") { inclusive = true }
                                 }
                             },
                             onNavigateToLogs = {
@@ -140,7 +146,6 @@ class MainActivity : ComponentActivity() {
                             }
                         )
                     }
-
                     composable("motocicleta") {
                         MotoHubScreen(
                             networkStatus = networkStatus,
@@ -160,6 +165,31 @@ class MainActivity : ComponentActivity() {
                             }
                         )
                     }
+                    composable("vehiculo_main") {
+                        VehiculoMainScreen(
+                            networkStatus = networkStatus,
+                            onLogout = {
+                                navController.navigate("login") {
+                                    popUpTo("home") { inclusive = true }
+                                }
+                            },
+                            onNavigateBack = {
+                                navController.popBackStack()
+                            },
+                            onNavigateToForm = {
+                                navController.navigate("vehiculo")
+                            }
+                        )
+                    }
+                    composable("vehiculo") {
+                        VehiculoScreen(
+                            networkStatus = networkStatus,
+                            onNavigateBack = {
+                                navController.popBackStack()
+                            }
+                        )
+                    }
+
                     composable("form") {
                         FormScreen(
                             onNavigateBack = {
