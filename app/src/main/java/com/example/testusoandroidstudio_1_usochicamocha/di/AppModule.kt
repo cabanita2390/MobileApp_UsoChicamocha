@@ -56,7 +56,7 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object AppModule {
 
-    private const val BASE_URL = "https://fbfpbsc0-8080.use2.devtunnels.ms/"+"api/" // DevTunnel (cualquier red)
+    private const val BASE_URL = "https://4gf22hgb-8080.use2.devtunnels.ms/"+"api/" // DevTunnel (cualquier red)
     //private const val BASE_URL = "https://usochimochabackend.onrender.com/"+"api/"
     //private const val BASE_URL = "https://server.usochicamocha.co/"+"api/"
     @Provides

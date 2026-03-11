@@ -517,10 +517,12 @@ class MotocicletaViewModel @Inject constructor(
                 
                 // --- NUEVO: Actualizar caché local de documentos con las nuevas fechas ---
                 try {
+                    // Guardamos vigenciaMaster (fecha real de vencimiento del documento en BD)
+                    // NO vigencia (que es la fecha de hoy usada como campo editable en la UI)
                     val listaDocs = listOf(
-                        DocumentoMotoEntity(placa = s.selectedMoto!!.placa, tipoDocumento = "SOAT", vigencia = s.soat.vigencia, kilometrajeActual = s.kilometraje.toInt(), imagenUrl = s.soat.imagenUrl),
-                        DocumentoMotoEntity(placa = s.selectedMoto!!.placa, tipoDocumento = "REVISION_TECNO", vigencia = s.revisionTecno.vigencia, kilometrajeActual = s.kilometraje.toInt(), imagenUrl = s.revisionTecno.imagenUrl),
-                        DocumentoMotoEntity(placa = s.selectedMoto!!.placa, tipoDocumento = "LICENCIA", vigencia = s.licencia.vigencia, kilometrajeActual = s.kilometraje.toInt(), imagenUrl = s.licencia.imagenUrl)
+                        DocumentoMotoEntity(placa = s.selectedMoto!!.placa, tipoDocumento = "SOAT", vigencia = s.soat.vigenciaMaster.ifBlank { s.soat.vigencia }, kilometrajeActual = s.kilometraje.toInt(), imagenUrl = s.soat.imagenUrl),
+                        DocumentoMotoEntity(placa = s.selectedMoto!!.placa, tipoDocumento = "REVISION_TECNO", vigencia = s.revisionTecno.vigenciaMaster.ifBlank { s.revisionTecno.vigencia }, kilometrajeActual = s.kilometraje.toInt(), imagenUrl = s.revisionTecno.imagenUrl),
+                        DocumentoMotoEntity(placa = s.selectedMoto!!.placa, tipoDocumento = "LICENCIA", vigencia = s.licencia.vigenciaMaster.ifBlank { s.licencia.vigencia }, kilometrajeActual = s.kilometraje.toInt(), imagenUrl = s.licencia.imagenUrl)
                     )
                     documentoMotoDao.refreshForPlaca(s.selectedMoto!!.placa, listaDocs)
                     android.util.Log.d("DocsMoto", "💾 [Cache] Actualizado localmente tras guardado exitoso")

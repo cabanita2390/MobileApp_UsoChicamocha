@@ -186,11 +186,7 @@ fun MotocicletaScreen(
                             }
                         }
                     } else {
-                        Text(
-                            "Ingrese la fecha de vencimiento que aparece en el documento físico.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        // Sin documento registrado
                     }
                     Spacer(Modifier.height(12.dp))
 

@@ -89,6 +89,9 @@ class VehiculoInspectionRepositoryImpl @Inject constructor(
             val response = apiService.getVehicles()
             if (response.isSuccessful && response.body() != null) {
                 val vehicles = response.body()!!.map { it.toVehiculoItem().toEntity() }
+                // Primero borramos todos los vehículos locales para reflejar
+                // exactamente lo que tiene el servidor (elimina vehículos borrados).
+                vehiculoDao.clearAllVehicles()
                 vehiculoDao.insertVehicles(vehicles)
                 Log.d(TAG, "✅ Vehicles catalog synced: ${vehicles.size} vehicles")
                 Result.success(Unit)

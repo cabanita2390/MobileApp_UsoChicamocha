@@ -31,19 +31,19 @@ import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.Docume
 
 @Database(
     entities = [
-        FormEntity::class,
-        MachineEntity::class,
-        LogEntity::class,
-        MaintenanceEntity::class,
-        OilEntity::class,
-        ImageEntity::class,
-        MotoEntity::class,
-        UbicacionEntity::class,
-        InspeccionMotoEntity::class,
-        DocumentoMotoEntity::class,
-        VehiculoInspectionEntity::class,
-        VehiculoEntity::class,
-        DocumentoVehiculoEntity::class
+        com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.FormEntity::class,
+        com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.MachineEntity::class,
+        com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.LogEntity::class,
+        com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.MaintenanceEntity::class,
+        com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.OilEntity::class,
+        com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.ImageEntity::class,
+        com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.MotoEntity::class,
+        com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.UbicacionEntity::class,
+        com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.InspeccionMotoEntity::class,
+        com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.DocumentoMotoEntity::class,
+        com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.VehiculoInspectionEntity::class,
+        com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.VehiculoEntity::class,
+        com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.DocumentoVehiculoEntity::class
     ],
     version = 23,
     exportSchema = true
