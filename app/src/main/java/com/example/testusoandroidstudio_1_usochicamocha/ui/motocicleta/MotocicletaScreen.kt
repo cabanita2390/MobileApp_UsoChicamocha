@@ -18,6 +18,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
+import androidx.compose.ui.platform.testTag
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -26,6 +27,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -61,6 +63,7 @@ fun MotocicletaScreen(
         }
     }
 
+
     Scaffold(
         topBar = {
             Column {
@@ -82,7 +85,8 @@ fun MotocicletaScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(16.dp),
+                .padding(16.dp)
+                .testTag("moto_form_scroll"),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
 
@@ -99,7 +103,8 @@ fun MotocicletaScreen(
                         displayValue = uiState.selectedMoto?.placa ?: "Seleccione una placa",
                         items = uiState.motocicletas,
                         itemLabel = { it.placa },
-                        onItemSelected = { viewModel.onMotoSelected(it) }
+                        onItemSelected = { viewModel.onMotoSelected(it) },
+                        dropdownTag = "plate_option"
                     )
                 }
             }
@@ -118,7 +123,8 @@ fun MotocicletaScreen(
                         displayValue = uiState.selectedUbicacion?.nombreUbicacion ?: "Seleccione la UNIDAD",
                         items = uiState.ubicaciones,
                         itemLabel = { it.nombreUbicacion },
-                        onItemSelected = { viewModel.onUbicacionSelected(it) }
+                        onItemSelected = { viewModel.onUbicacionSelected(it) },
+                        dropdownTag = "unit_option"
                     )
                 }
             }
@@ -132,7 +138,10 @@ fun MotocicletaScreen(
                         onValueChange = { if (it.all { c -> c.isDigit() }) viewModel.onKilometrajeChange(it) },
                         label = { Text("Escriba el KILOMETRAJE Actual de la Moto (*)", fontWeight = FontWeight.Bold, fontSize = 17.sp) },
                         modifier = Modifier.fillMaxWidth(),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Number,
+                            imeAction = ImeAction.Done
+                        ),
                         isError = uiState.kilometrajeError != null,
                         supportingText = {
                             if (uiState.kilometrajeError != null) {
@@ -151,7 +160,7 @@ fun MotocicletaScreen(
 
             // ─── 4. DOCUMENTACIÓN ───────────────────────────────────────────
             item {
-                SectionCard("Vigencia DOCUMENTACION") {
+                SectionCard("Vigencia DOCUMENTACION", modifier = Modifier.testTag("section_vigencia")) {
                     if (uiState.isLoadingDocumentos) {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
                             CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.dp)
@@ -270,7 +279,7 @@ fun MotocicletaScreen(
 
             // 7. ESTADO GENERAL
             item {
-                SectionCard("Estado de la Motocicleta") {
+                SectionCard("Estado de la Motocicleta", modifier = Modifier.testTag("section_estado")) {
                     MotoStatusSelector(
                         label = "Estado ACTUAL - GENERAL de La Motocicleta (*)",
                         selectedOption = uiState.estadoVehiculo,
@@ -282,20 +291,21 @@ fun MotocicletaScreen(
 
             // 8. OBSERVACIONES
             item {
-                SectionCard("Observaciones") {
+                SectionCard("Observaciones", modifier = Modifier.testTag("section_observaciones")) {
                     OutlinedTextField(
                         value = uiState.observaciones,
                         onValueChange = { viewModel.onObservacionesChange(it) },
                         label = { Text("Observaciones y/o Aspectos a Revisar (*)", fontWeight = FontWeight.Bold, fontSize = 17.sp) },
                         modifier = Modifier.fillMaxWidth(),
-                        minLines = 4
+                        minLines = 4,
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done)
                     )
                 }
             }
 
             // 9. RESPONSABLE DE LA INSPECCIÓN
             item {
-                SectionCard("Responsable") {
+                SectionCard("Responsable", modifier = Modifier.testTag("section_responsable")) {
                     OutlinedTextField(
                         value = uiState.responsable,
                         onValueChange = {},
@@ -323,7 +333,7 @@ fun MotocicletaScreen(
             item {
                 Button(
                     onClick = { viewModel.onSaveClick() },
-                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp).testTag("btn_guardar"),
                     enabled = uiState.isSaveButtonEnabled && !uiState.isSaving
                 ) {
                     if (uiState.isSaving) {
@@ -343,7 +353,10 @@ fun MotocicletaScreen(
                 title = { Text("Guardado Exitoso", fontWeight = FontWeight.Bold) },
                 text = { Text("La inspección se ha guardado correctamente.") },
                 confirmButton = {
-                    Button(onClick = { onNavigateBack(); viewModel.onNavigationDone() }) {
+                    Button(
+                        onClick = { onNavigateBack(); viewModel.onNavigationDone() },
+                        modifier = Modifier.testTag("btn_done_audit")
+                    ) {
                         Text("Aceptar")
                     }
                 }
@@ -362,9 +375,13 @@ fun MotocicletaScreen(
 // ─── COMPOSABLES REUTILIZABLES (ALINEADOS CON VEHICULOS) ─────────────────────
 
 @Composable
-private fun SectionCard(title: String, content: @Composable ColumnScope.() -> Unit) {
+private fun SectionCard(
+    title: String,
+    modifier: Modifier = Modifier,
+    content: @Composable ColumnScope.() -> Unit
+) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(2.dp)
     ) {
@@ -593,7 +610,8 @@ fun <T> DropdownField(
     displayValue: String,
     items: List<T>,
     itemLabel: (T) -> String,
-    onItemSelected: (T) -> Unit
+    onItemSelected: (T) -> Unit,
+    dropdownTag: String = "dropdown_option"
 ) {
     var expanded by remember { mutableStateOf(false) }
     ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = !expanded }) {
@@ -612,7 +630,8 @@ fun <T> DropdownField(
             items.forEach { item ->
                 DropdownMenuItem(
                     text = { Text(itemLabel(item)) },
-                    onClick = { onItemSelected(item); expanded = false }
+                    onClick = { onItemSelected(item); expanded = false },
+                    modifier = Modifier.testTag(dropdownTag)
                 )
             }
         }

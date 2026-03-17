@@ -26,6 +26,15 @@ class LocalSyncCoordinator @Inject constructor(
     // Scope interno para monitorear trabajos sin bloquear
     private val coordinatorScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO + kotlinx.coroutines.SupervisorJob())
 
+    // Flag para controlar que el auto-sync ocurra solo una vez por sesión
+    private var hasAutoSyncedThisSession = false
+
+    fun isAutoSyncDone(): Boolean = hasAutoSyncedThisSession
+    fun setAutoSyncDone(done: Boolean) {
+        hasAutoSyncedThisSession = done
+        Log.d(TAG, "🔄 Auto-sync session flag set to: $done")
+    }
+
     companion object {
         private const val TAG = "LocalSyncCoordinator"
         private const val COORDINATED_SYNC_WORK = "coordinated_sync_work"
@@ -35,7 +44,7 @@ class LocalSyncCoordinator @Inject constructor(
     }
     
     /**
-     * Programa sincronización periódica de datos maestros (Placas, Ubicaciones) cada 15 min.
+     * Programa sincronización periódica de datos maestros (Placas, Ubicaciones y Documentos) cada 15 min.
      */
     fun schedulePeriodicMasterDataSync() {
         val constraints = Constraints.Builder()
@@ -90,7 +99,12 @@ class LocalSyncCoordinator @Inject constructor(
         OILS_ONLY,
         MOTOS_ONLY,
         UBICACIONES_ONLY,
-        DOCUMENTS_ONLY
+        DOCUMENTS_ONLY,
+        VEHICLES_ONLY,
+        VEHICLES_CATALOG,
+        MOTOS_PENDING,
+        VEHICLES_PENDING,
+        VEHICLES_DOCUMENTS
     }
 
     enum class SyncStatus {

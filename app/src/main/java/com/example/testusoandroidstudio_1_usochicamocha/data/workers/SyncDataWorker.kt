@@ -26,6 +26,7 @@ import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.oil.SyncO
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.vehiculo.GetPendingVehiculoInspectionsUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.vehiculo.SyncVehiculoInspectionUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.vehiculo.SyncVehiclesCatalogUseCase
+import com.example.testusoandroidstudio_1_usochicamocha.domain.repository.VehiculoInspectionRepository
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.flow.first
@@ -53,7 +54,8 @@ class SyncDataWorker @AssistedInject constructor(
     private val syncInspeccionMotoUseCase: SyncInspeccionMotoUseCase,
     private val getPendingVehiculoInspectionsUseCase: GetPendingVehiculoInspectionsUseCase,
     private val syncVehiculoInspectionUseCase: SyncVehiculoInspectionUseCase,
-    private val syncVehiclesCatalogUseCase: SyncVehiclesCatalogUseCase
+    private val syncVehiclesCatalogUseCase: SyncVehiclesCatalogUseCase,
+    private val vehiculoRepository: VehiculoInspectionRepository
 ) : CoroutineWorker(appContext, workerParams) {
 
     override suspend fun doWork(): Result {
@@ -88,10 +90,15 @@ class SyncDataWorker @AssistedInject constructor(
             val syncDocumentsOnly = syncType == "DOCUMENTS_ONLY"
             val syncMasterDataOnly = syncType == "MASTER_DATA"
             val syncVehiclesOnly = syncType == "VEHICLES_ONLY"
+            val syncVehiclesCatalogOnly = syncType == "VEHICLES_CATALOG"
+            val syncMotosPendingOnly = syncType == "MOTOS_PENDING"
+            val syncVehiclesPendingOnly = syncType == "VEHICLES_PENDING"
+            val syncVehiclesDocumentsOnly = syncType == "VEHICLES_DOCUMENTS"
 
             val shouldSyncForms = syncAll || syncFormsOnly
             val shouldSyncMaintenance = syncAll || syncMaintenanceOnly
-            val shouldSyncVehicles = syncAll || syncVehiclesOnly || syncFormsOnly
+            val shouldSyncVehicles = syncAll || syncVehiclesOnly || syncFormsOnly || syncVehiclesCatalogOnly || syncVehiclesPendingOnly || syncVehiclesDocumentsOnly
+            val shouldSyncMotosPending = syncAll || syncFormsOnly || syncMotosPendingOnly
             
             var formsSyncedCount = 0
             var maintenanceSyncedCount = 0
@@ -178,7 +185,7 @@ class SyncDataWorker @AssistedInject constructor(
             }
 
             // 3.5 INSPECCIONES MOTO pendientes
-            if (shouldSyncForms || syncAll) {
+            if (shouldSyncMotosPending) {
                 Log.d("SyncDataWorker", "🏍️ [$workId] Procesando inspecciones de moto pendientes...")
                 try {
                     pendingInspMoto = getPendingInspeccionesMotoUseCase.asList()
@@ -269,7 +276,7 @@ class SyncDataWorker @AssistedInject constructor(
             }
 
             // 5. DATOS MAESTROS con timeout
-            val isExplicitMasterSync = syncMasterDataOnly || syncMachinesOnly || syncOilsOnly || syncMotosOnly || syncUbicacionesOnly || syncDocumentsOnly
+            val isExplicitMasterSync = syncMasterDataOnly || syncMachinesOnly || syncOilsOnly || syncMotosOnly || syncUbicacionesOnly || syncDocumentsOnly || syncVehiclesCatalogOnly || syncVehiclesDocumentsOnly
             val hasPendingData = pendingForms.isNotEmpty() || pendingMaintenance.isNotEmpty()
             
             if (isExplicitMasterSync || (syncAll && !hasPendingData)) {
@@ -297,16 +304,28 @@ class SyncDataWorker @AssistedInject constructor(
                             syncDocumentosUseCase()
                         }
                         Log.d("SyncDataWorker", "✅ [$workId] Moto Documents synced successfully")
+                    } else if (syncVehiclesCatalogOnly) {
+                        withTimeout(60000) {
+                            syncVehiclesCatalogUseCase()
+                        }
+                        Log.d("SyncDataWorker", "✅ [$workId] Vehicles Catalog synced successfully")
+                    } else if (syncVehiclesDocumentsOnly) {
+                        withTimeout(180000) {
+                            vehiculoRepository.syncAllVehiclesDocuments()
+                        }
+                        Log.d("SyncDataWorker", "✅ [$workId] Vehicles Documents synced successfully")
                     } else {
                         // Por defecto: sincroniza todo (MASTER_DATA o ALL_DATA)
-                        withTimeout(180000) {
+                        withTimeout(240000) {
                             syncMachinesUseCase()
                             syncOilsUseCase()
                             syncMotosUseCase()
                             syncUbicacionesUseCase()
                             syncVehiclesCatalogUseCase()
+                            vehiculoRepository.syncAllVehiclesDocuments()
+                            syncDocumentosUseCase() // Moto documents
                         }
-                        Log.d("SyncDataWorker", "✅ [$workId] Master data (Machines, Oils, Motos, Ubicaciones & Vehicles) synced successfully")
+                        Log.d("SyncDataWorker", "✅ [$workId] Master data (Machines, Oils, Motos, Ubicaciones, Vehicles & Documents) synced successfully")
                     }
                 } catch (e: Exception) {
                     totalErrors++

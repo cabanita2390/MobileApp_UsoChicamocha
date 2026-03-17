@@ -30,6 +30,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import kotlinx.coroutines.delay
 
 // ─── COLORES COMPARTIDOS ─────────────────────────────────────────────────────
 private val ColorBueno   = Color(0xFF4CAF50)
@@ -59,7 +60,20 @@ fun VehiculoScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     LaunchedEffect(uiState.errorMessage) {
         uiState.errorMessage?.let {
-            snackbarHostState.showSnackbar(message = it, duration = SnackbarDuration.Long)
+            // Se solicita que los mensajes de feedback duren 30 segundos
+            snackbarHostState.showSnackbar(
+                message = it, 
+                duration = SnackbarDuration.Indefinite, // Usamos Indefinite + delay manual para controlar los 30s
+                actionLabel = "Cerrar"
+            )
+        }
+    }
+    
+    // Timer manual para el snackbar de 30s
+    LaunchedEffect(uiState.errorMessage) {
+        if (uiState.errorMessage != null) {
+            delay(30000)
+            snackbarHostState.currentSnackbarData?.dismiss()
             viewModel.onErrorDismissed()
         }
     }
@@ -277,7 +291,13 @@ fun VehiculoScreen(
                         onValueChange = { if (it.all(Char::isDigit)) viewModel.onKilometrajeChange(it) },
                         label = { Text("Kilometraje Actual (*)", fontWeight = FontWeight.Bold, fontSize = 17.sp) },
                         modifier = Modifier.fillMaxWidth(),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        isError = uiState.kilometrajeError != null,
+                        supportingText = {
+                            if (uiState.kilometrajeError != null) {
+                                Text(uiState.kilometrajeError!!, color = MaterialTheme.colorScheme.error)
+                            }
+                        }
                     )
                 }
             }

@@ -2,6 +2,7 @@ package com.example.testusoandroidstudio_1_usochicamocha.ui.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.LocalSyncCoordinator
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.auth.LogoutUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -18,11 +19,45 @@ data class HomeUiState(
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
-    private val logoutUseCase: LogoutUseCase
+    private val logoutUseCase: LogoutUseCase,
+    private val localSyncCoordinator: LocalSyncCoordinator
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
+
+    init {
+        triggerAutoSync()
+    }
+
+    private fun triggerAutoSync() {
+        if (localSyncCoordinator.isAutoSyncDone()) return
+
+        viewModelScope.launch {
+            localSyncCoordinator.setAutoSyncDone(true)
+            
+            // Sincronizar Placas de Motos
+            localSyncCoordinator.coordinateSync(
+                LocalSyncCoordinator.SyncTrigger.ManualSync(LocalSyncCoordinator.SyncType.MOTOS_ONLY)
+            )
+            // Sincronizar Unidades (Ubicaciones)
+            localSyncCoordinator.coordinateSync(
+                LocalSyncCoordinator.SyncTrigger.ManualSync(LocalSyncCoordinator.SyncType.UBICACIONES_ONLY)
+            )
+            // Sincronizar Catálogo de Vehículos
+            localSyncCoordinator.coordinateSync(
+                LocalSyncCoordinator.SyncTrigger.ManualSync(LocalSyncCoordinator.SyncType.VEHICLES_CATALOG)
+            )
+            // Sincronizar Documentos de Motos
+            localSyncCoordinator.coordinateSync(
+                LocalSyncCoordinator.SyncTrigger.ManualSync(LocalSyncCoordinator.SyncType.DOCUMENTS_ONLY)
+            )
+            // Sincronizar Documentos de Vehículos
+            localSyncCoordinator.coordinateSync(
+                LocalSyncCoordinator.SyncTrigger.ManualSync(LocalSyncCoordinator.SyncType.VEHICLES_DOCUMENTS)
+            )
+        }
+    }
 
     fun onLogoutClick() {
         _uiState.update { it.copy(showLogoutDialog = true) }
@@ -35,6 +70,7 @@ class HomeViewModel @Inject constructor(
     fun onConfirmLogout() {
         viewModelScope.launch {
             logoutUseCase()
+            localSyncCoordinator.setAutoSyncDone(false) // Reset para la próxima sesión
             _uiState.update { it.copy(showLogoutDialog = false, logoutCompleted = true) }
         }
     }

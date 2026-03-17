@@ -62,9 +62,6 @@ interface ApiService {
     @GET("v1/moto/placas")
     suspend fun getMotocicletas(): Response<List<MotoPlacaDto>>
 
-    @POST("v1/moto/placas")
-    suspend fun registrarPlaca(@Body placa: String): Response<MotoPlacaDto>
-
     @GET("v1/moto/ubicaciones")
     suspend fun getUbicaciones(): Response<List<UbicacionDto>>
 
