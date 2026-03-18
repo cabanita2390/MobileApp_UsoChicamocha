@@ -33,7 +33,7 @@ class HappyPathE2ETest {
         private const val RETRY_DELAY = 2000L
 
         private const val TEST_USERNAME = "admin"
-        private const val TEST_PASSWORD = "1234"
+        private const val TEST_PASSWORD = "admin123"
         private const val TEST_HOROMETRO = "12345"
         private const val TEST_OBSERVATIONS = "Test observation - all systems functioning normally"
         private const val GREASING_OBSERVATIONS = "Complete greasing performed"

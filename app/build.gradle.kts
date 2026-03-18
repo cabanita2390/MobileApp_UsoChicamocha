@@ -1,5 +1,4 @@
 plugins {
-    // CORRECCIÓN: Se utiliza la sintaxis directa con id("...") en lugar de los alias.
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("com.google.dagger.hilt.android")
@@ -51,6 +50,16 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        }
+    }
+
+    testOptions {
+        unitTests.all {
+            it.jvmArgs("-XX:+AddOpens=java.base/java.lang=ALL-UNNAMED")
+            it.jvmArgs("-XX:+AddOpens=java.base/java.util=ALL-UNNAMED")
+            it.jvmArgs("-XX:+AddOpens=java.base/java.lang.reflect=ALL-UNNAMED")
+            it.jvmArgs("-XX:+AddOpens=java.base/java.text=ALL-UNNAMED")
+            it.jvmArgs("-XX:+AddOpens=java.desktop/java.awt.font=ALL-UNNAMED")
         }
     }
 }
@@ -123,7 +132,7 @@ dependencies {
     testImplementation("io.mockk:mockk:1.13.5")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.8.0")
     testImplementation("androidx.work:work-testing:2.9.0")
-    testImplementation("org.robolectric:robolectric:4.10.3")
+    testImplementation("org.robolectric:robolectric:4.13")
     testImplementation("androidx.test.ext:junit:1.2.1")
     testImplementation("androidx.test:core:1.6.1")
     testImplementation("androidx.room:room-testing:2.6.1")

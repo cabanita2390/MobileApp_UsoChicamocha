@@ -35,7 +35,6 @@ fun MotoHubScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
-
     LaunchedEffect(uiState.syncMessage) {
         uiState.syncMessage?.let {
             Toast.makeText(context, it, Toast.LENGTH_SHORT).show()

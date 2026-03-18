@@ -12,6 +12,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.LocalSyncCoordinator
 
 data class VehiculoMainUiState(
     val pendingInspections: List<VehiculoInspectionEntity> = emptyList(),
@@ -27,7 +28,7 @@ data class VehiculoMainUiState(
 @HiltViewModel
 class VehiculoMainViewModel @Inject constructor(
     private val repository: VehiculoInspectionRepository,
-    private val workManager: WorkManager
+    private val localSyncCoordinator: LocalSyncCoordinator
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(VehiculoMainUiState())
@@ -36,6 +37,7 @@ class VehiculoMainViewModel @Inject constructor(
     init {
         observePendingInspections()
         observeVehiclesCatalog()
+        observeSyncStatuses()
     }
 
     private fun observePendingInspections() {
@@ -55,55 +57,54 @@ class VehiculoMainViewModel @Inject constructor(
             .launchIn(viewModelScope)
     }
 
+    private fun observeSyncStatuses() {
+        localSyncCoordinator.observeSyncTrigger(
+            LocalSyncCoordinator.SyncTrigger.ManualSync(LocalSyncCoordinator.SyncType.VEHICLES_CATALOG)
+        ).onEach { isRunning ->
+            _uiState.update { it.copy(isSyncingCatalog = isRunning) }
+        }.launchIn(viewModelScope)
+
+        localSyncCoordinator.observeSyncTrigger(
+            LocalSyncCoordinator.SyncTrigger.ManualSync(LocalSyncCoordinator.SyncType.VEHICLES_ONLY)
+        ).onEach { isRunning ->
+            _uiState.update { it.copy(isSyncingInspections = isRunning) }
+        }.launchIn(viewModelScope)
+
+        localSyncCoordinator.observeSyncTrigger(
+            LocalSyncCoordinator.SyncTrigger.ManualSync(LocalSyncCoordinator.SyncType.VEHICLES_DOCUMENTS)
+        ).onEach { isRunning ->
+            _uiState.update { it.copy(isSyncingDocuments = isRunning) }
+        }.launchIn(viewModelScope)
+    }
+
     fun onSyncInspectionsClicked() {
-        _uiState.update { it.copy(isSyncingInspections = true) }
-        triggerSync("VEHICLES_ONLY")
         viewModelScope.launch {
-            kotlinx.coroutines.delay(2000)
-            _uiState.update { it.copy(isSyncingInspections = false, syncMessage = "Sincronización de inspecciones iniciada") }
+            localSyncCoordinator.coordinateSync(
+                LocalSyncCoordinator.SyncTrigger.ManualSync(LocalSyncCoordinator.SyncType.VEHICLES_ONLY)
+            )
+            _uiState.update { it.copy(syncMessage = "Sincronizando inspecciones...") }
         }
     }
 
     fun onSyncCatalogClicked() {
-        _uiState.update { it.copy(isSyncingCatalog = true) }
         viewModelScope.launch {
-            val result = repository.syncVehiclesCatalog()
-            _uiState.update { 
-                it.copy(
-                    isSyncingCatalog = false, 
-                    syncMessage = if (result.isSuccess) "Catálogo sincronizado" else "Error sincronizando catálogo"
-                ) 
-            }
+            localSyncCoordinator.coordinateSync(
+                LocalSyncCoordinator.SyncTrigger.ManualSync(LocalSyncCoordinator.SyncType.VEHICLES_CATALOG)
+            )
+            _uiState.update { it.copy(syncMessage = "Sincronizando catálogo...") }
         }
     }
 
     fun onSyncDocumentsClicked() {
-        _uiState.update { it.copy(isSyncingDocuments = true) }
         viewModelScope.launch {
-            // Sincronizar catálogo primero para asegurar que tenemos los vehículos
-            repository.syncVehiclesCatalog()
-            // Aquí iría la lógica de documentos si existiera un endpoint masivo
-            kotlinx.coroutines.delay(1000)
-            _uiState.update { it.copy(isSyncingDocuments = false, syncMessage = "Documentos actualizados") }
+            localSyncCoordinator.coordinateSync(
+                LocalSyncCoordinator.SyncTrigger.ManualSync(LocalSyncCoordinator.SyncType.VEHICLES_DOCUMENTS)
+            )
+            _uiState.update { it.copy(syncMessage = "Sincronizando documentos...") }
         }
     }
 
-    private fun triggerSync(syncType: String) {
-        val constraints = Constraints.Builder()
-            .setRequiredNetworkType(NetworkType.CONNECTED)
-            .build()
-
-        val syncRequest = OneTimeWorkRequestBuilder<SyncDataWorker>()
-            .setConstraints(constraints)
-            .setInputData(workDataOf("SYNC_TYPE" to syncType))
-            .build()
-
-        workManager.enqueueUniqueWork(
-            "vehicle_main_sync_${syncType}_${System.currentTimeMillis()}",
-            ExistingWorkPolicy.KEEP,
-            syncRequest
-        )
-    }
+    /* triggerSync movido a LocalSyncCoordinator */
 
     fun clearSyncMessage() {
         _uiState.update { it.copy(syncMessage = null) }

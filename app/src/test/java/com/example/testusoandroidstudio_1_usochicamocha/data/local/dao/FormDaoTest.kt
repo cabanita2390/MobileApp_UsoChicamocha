@@ -142,7 +142,7 @@ class FormDaoTest {
         )
 
         formDao.insertForm(form)
-        formDao.markAsSyncing("test-uuid")
+        formDao.acquireFormLock("test-uuid")
 
         val pendingForms = formDao.getPendingFormsFlow().first()
         assertTrue(pendingForms.isEmpty()) // Should be empty since isSyncing = 1 now

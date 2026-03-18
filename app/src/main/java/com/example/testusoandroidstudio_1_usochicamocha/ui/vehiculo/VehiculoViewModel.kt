@@ -44,7 +44,7 @@ data class VehiculoUiState(
     val vehicles: List<VehiculoItem> = emptyList(),   // catálogo de vehículos
     val selectedVehicle: VehiculoItem? = null,
     val kilometraje: String = "",
-    // ... rest of fields
+    
     val nivelAceite: String = "",
     val nivelRefrigerante: String = "",
     val nivelFrenos: String = "",
@@ -102,13 +102,12 @@ data class VehiculoUiState(
     val aprobadoNoCount: Int = 0,
     val shouldExitForm: Boolean = false,
     // ─ Alerta de kilometraje ───────────────────────────────────────
-    // ─ Alerta de kilometraje ───────────────────────────────────────
-    // ─ Alerta de kilometraje ───────────────────────────────────────
     val showKmAlert: Boolean = false,
     val kmAlertMessage: String = "",
     val kmEsInvalido: Boolean = false,    // true = bloquea el botón Guardar
     val kilometrajeMinimo: Int = 0,
-    val kilometrajeDB: String = ""
+    val kilometrajeDB: String = "",
+    val kilometrajeError: String? = null // Nuevo: Error inmediato debajo del campo
 )
 
 // ─── VIEWMODEL ───────────────────────────────────────────────────────────────
@@ -175,10 +174,10 @@ class VehiculoViewModel @Inject constructor(
                         return@launch
                     }
                     // Fechas del backend (referencia para la comparación)
-                    val soatDB     = doc.fechaVencSoat?.take(7)     ?: ""
-                    val tecnoDB    = doc.fechaVencTecno?.take(7)    ?: ""
-                    val licDB      = doc.fechaVencLicencia?.take(7) ?: ""
-                    val extDB      = doc.fechaVencExtintor?.take(7) ?: ""
+                    val soatDB     = doc.fechaVencSoat     ?: ""
+                    val tecnoDB    = doc.fechaVencTecno    ?: ""
+                    val licDB      = doc.fechaVencLicencia ?: ""
+                    val extDB      = doc.fechaVencExtintor ?: ""
                     
                     _uiState.update { s ->
                         s.copy(
@@ -320,38 +319,52 @@ class VehiculoViewModel @Inject constructor(
     // ── Datos generales ─────────────────────────────────────────────────────────────────
     fun setVehicles(list: List<VehiculoItem>) { _uiState.update { it.copy(vehicles = list) } }
     fun onKilometrajeChange(v: String) {
-        val km = v.toIntOrNull() ?: 0
-        val kmMin = _uiState.value.kilometrajeMinimo
+        // 1. Actualizar el valor del texto inmediatamente
+        _uiState.update { it.copy(kilometraje = v) }
         
-        // Validación local (igual que en motos)
-        val isLocalInvalid = km > 0 && km < kmMin
-        val alertMsg = if (isLocalInvalid) {
-            "El kilometraje ingresado ($km km) es menor al registrado ($kmMin km)."
-        } else {
-            ""
+        // 2. Si el campo está vacío, limpiar errores inmediatamente
+        if (v.isBlank()) {
+            kmValidationJob?.cancel()
+            _uiState.update { it.copy(
+                kmEsInvalido = false,
+                kilometrajeError = null,
+                kmAlertMessage = ""
+            ) }
+            validateForm()
+            return
         }
 
-        _uiState.update { it.copy(
-            kilometraje = v, 
-            kmEsInvalido = isLocalInvalid,
-            // showKmAlert = isLocalInvalid, // REMOVIDO: No mostrar inmediatamente al escribir
-            kmAlertMessage = alertMsg
-        ) }
-        
-        validateForm()
-        
-        // Manejo de Alerta y Backend con Debounce
+        // 3. Manejo de validación con Debounce (30 segundos)
         val placa = _uiState.value.selectedVehicle?.placa ?: return
+        
         kmValidationJob?.cancel()
         kmValidationJob = viewModelScope.launch {
-            delay(800)
+            delay(30000) // 30 segundos solicitados por el usuario
             
-            // 1. Mostrar alerta local si sigue siendo inválido después del delay
-            if (isLocalInvalid) {
-                _uiState.update { it.copy(showKmAlert = true) }
+            val km = v.toIntOrNull() ?: 0
+            val kmMin = _uiState.value.kilometrajeMinimo
+            
+            // Validación local
+            val isLocalInvalid = km > 0 && km < kmMin
+            val alertMsg = if (isLocalInvalid) {
+                "El kilometraje ingresado ($km km) es menor al registrado ($kmMin km)."
+            } else {
+                ""
+            }
+
+            // Actualizar estado de error y alerta
+            _uiState.update { s ->
+                s.copy(
+                    kmEsInvalido = isLocalInvalid,
+                    kilometrajeError = if (isLocalInvalid) alertMsg else null,
+                    kmAlertMessage = alertMsg,
+                    showKmAlert = isLocalInvalid // Mostrar el diálogo solo si es inválido tras el delay
+                )
             }
             
-            // 2. Solo llamar al backend si no hay error local y hay conexión planeada
+            validateForm()
+            
+            // 4. Solo llamar al backend si no hay error local
             if (!isLocalInvalid && km > 0 && km > kmMin) {
                 validarKilometrajeConBackend(placa, km)
             }
@@ -393,12 +406,6 @@ class VehiculoViewModel @Inject constructor(
     }
 
     // ── Documentación ──────────────────────────────────────────────────────────────
-    /** El inspector ingresa el mes y año que ve en el documento físico.
-     *  El código compara contra la fecha registrada en el backend (fechaDB):
-     *  - Ingresada DESPUÉS de la DB  → Vencido   (como las galletas expiradas)
-     *  - Ingresada en el mismo mes o el anterior → Próximo a Vencer
-     *  - Ingresada 2+ meses ANTES de la DB → Vigente
-     */
     fun onDocFechaVencChange(doc: String, date: String) {
         val s = _uiState.value
         val dbDate = when (doc) {
@@ -421,44 +428,66 @@ class VehiculoViewModel @Inject constructor(
 
     fun onExtintorDateChange(year: Int, month: Int) {
         val vigencia = "$year-${String.format("%02d", month + 1)}"
-        val estado = calcularEstadoVsDB(vigencia, _uiState.value.vigenciaExtintorDB)
+        val estado = calcularEstadoExtintor(vigencia) // Corregido: Usar su propia lógica
         _uiState.update { it.copy(vigenciaExtintor = vigencia, estadoExtintor = estado) }
         validateForm()
     }
 
     /**
-     * Compara la fecha ingresada por el inspector vs la fecha de vencimiento de la BD.
-     * Ejemplo: DB dice agosto 2026, inspector ingresa septiembre 2026
-     *          → septiembre > agosto → Vencido (como las galletas del mes 5 en mes 6)
+     * TRIPLE VALIDACIÓN (Día 1):
+     * 1. Autoridad: Ingresado vs DB (No puede ser mayor)
+     * 2. Realidad: Hoy vs Ingresado (No puede ser menor)
+     * 3. Expiración: El mes en que vence (DB) ya cuenta como vencido desde el día 1, 
+     *    A MENOS que sea el mes actual.
      */
-    private fun calcularEstadoVsDB(fechaIngresada: String, fechaDB: String): String {
-        if (fechaIngresada.isBlank() || fechaDB.isBlank()) return ""
+    private fun calcularEstadoVsDB(fechaIngresada: String, fechaDBFull: String): String {
+        if (fechaIngresada.isBlank() || fechaDBFull.isBlank()) return ""
         return try {
-            val pi = fechaIngresada.split("-")
-            val pd = fechaDB.split("-")
-            val valIng = pi[0].toInt() * 12 + pi[1].toInt()
-            val valDB  = pd[0].toInt() * 12 + pd[1].toInt()
+            // Parser Robusto: Acepta YYYY-MM-DD, DD-MM-YYYY, YYYY-MM, etc.
+            fun getVal(date: String): Int {
+                val parts = date.split("-").mapNotNull { it.toIntOrNull() }
+                if (parts.size < 2) return 0
+                val year = parts.find { it > 100 } ?: 0
+                val month = when {
+                    parts.size >= 2 && parts[0] == year -> parts[1]
+                    parts.size >= 3 && parts[2] == year -> parts[1]
+                    parts.size == 2 && parts[1] == year -> parts[0]
+                    else -> parts[1]
+                }
+
+
+                return year * 12 + month
+
+
+            }
+
+            val cal = Calendar.getInstance()
+            val valH = cal.get(Calendar.YEAR) * 12 + (cal.get(Calendar.MONTH) + 1)
+            val valD = getVal(fechaDBFull)
+            val valI = getVal(fechaIngresada)
+
+            Log.d("VencLogic", "Vehiculo - Hoy: $valH, DB: $valD, Sel: $valI")
+
             when {
-                valIng > valDB          -> "Vencido"
-                valIng >= valDB - 1     -> "Próximo a Vencer"
-                else                    -> "Vigente"
+                // 1. EL SUPERVISOR MANDA O YA VENCIÓ (Día 1 del mes de vencimiento)
+                valH >= valD -> "Vencido"
+
+                // 2. PRÓXIMO A VENCER (Anticipación de exatamente 1 mes)
+                valH == valD - 1 -> "Próximo a Vencer"
+                valI == valD - 1 -> "Próximo a Vencer"
+
+                // 3. SELECCIÓN INVÁLIDA
+                valI < valH  -> "Vencido"
+                valI >= valD -> "Vencido"
+
+                // 4. VIGENTE
+                else -> "Vigente"
             }
         } catch (e: Exception) { "" }
     }
 
     private fun calcularEstadoExtintor(vigencia: String): String {
-        if (vigencia.isBlank()) return ""
-        return try {
-            val partes  = vigencia.split("-")
-            val cal = Calendar.getInstance()
-            val valVenc = partes[0].toInt() * 12 + partes[1].toInt()
-            val valHoy  = cal.get(Calendar.YEAR) * 12 + (cal.get(Calendar.MONTH) + 1)
-            when {
-                valVenc < valHoy          -> "Vencido"
-                valVenc <= valHoy + 1     -> "Próximo a Vencer"
-                else                      -> "Vigente"
-            }
-        } catch (e: Exception) { "" }
+        return calcularEstadoVsDB(vigencia, _uiState.value.vigenciaExtintorDB)
     }
 
 
@@ -494,8 +523,6 @@ class VehiculoViewModel @Inject constructor(
     }
 
     // ── Cierre ───────────────────────────────────────────────────────────────
-    // 1er "No" → AlertDialog con Cancelar (puede quedarse).
-    // 2do "No" → AlertDialog sin Cancelar (salida obligatoria).
     fun onConscienteChange(v: String) {
         if (v == "No") {
             val newCount = _uiState.value.conscienteNoCount + 1
@@ -523,7 +550,6 @@ class VehiculoViewModel @Inject constructor(
 
     fun onObservacionesChange(v: String) { _uiState.update { it.copy(observaciones = v) } }
 
-    // ── Validación ─────────────────────────────────────────────────────────────────
     private fun validateForm() {
         val s = _uiState.value
         val valid = s.selectedVehicle != null && s.kilometraje.isNotBlank() &&
@@ -531,7 +557,6 @@ class VehiculoViewModel @Inject constructor(
                 s.nivelFrenos.isNotBlank() && s.estadoLlantas.isNotBlank() &&
                 s.lucesGeneral.isNotBlank() && s.estadoVisual.isNotBlank() &&
                 s.limpiezaGeneral.isNotBlank() &&
-                // Documentos: el inspector debe confirmar el estado de cada uno
                 s.estadoSoat.isNotBlank() && s.estadoTecno.isNotBlank() &&
                 s.estadoLicencia.isNotBlank() && s.estadoExtintor.isNotBlank() &&
                 s.tieneBotiquin.isNotBlank() && s.tieneSeñalizacion.isNotBlank() &&
@@ -542,12 +567,11 @@ class VehiculoViewModel @Inject constructor(
                 s.condicionParaConducir.isNotBlank() &&
                 s.conscienteResponsabilidad.isNotBlank() &&
                 s.aprobadoRuta.isNotBlank() &&
-                s.responsableInspeccion.isNotBlank() &&  // se rellena automáticamente desde el login
-                !s.kmEsInvalido                          // km no puede ser menor al registrado
+                s.responsableInspeccion.isNotBlank() && 
+                !s.kmEsInvalido
         _uiState.update { it.copy(isSaveButtonEnabled = valid) }
     }
 
-    // ── Guardar ───────────────────────────────────────────────────────────────
     fun onSaveClick() {
         if (!_uiState.value.isSaveButtonEnabled) return
         val s = _uiState.value
@@ -555,10 +579,8 @@ class VehiculoViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             try {
-                // Generamos un UUID único para esta inspección (deduplicación)
                 val inspectionUuid = UUID.randomUUID().toString()
                 
-                // Creamos la entidad para persistencia local
                 val entity = VehiculoInspectionEntity(
                     UUID                   = inspectionUuid,
                     timestamp              = System.currentTimeMillis(),
@@ -597,34 +619,19 @@ class VehiculoViewModel @Inject constructor(
                     condicionParaConducir  = s.condicionParaConducir == "Si"
                 )
 
-                // 1. Efecto UX: Retraso artificial para que el usuario sienta el guardado
                 delay(1500)
-
-                // 2. Guardar localmente (Offline-First)
                 saveVehiculoInspectionUseCase(entity)
-                Log.d("VehiculoVM", "✅ Inspección guardada localmente: $inspectionUuid")
-
+                
                 val placa = s.selectedVehicle!!.placa
                 val km = s.kilometraje.toIntOrNull() ?: 0
-                    // repository.saveInspectionLocally ya se hizo arriba
                     
-                    // 2. ACTUALIZAR CACHE (Solo lo necesario)
-                    // IMPORTANTE: NO sobreescribir las vigencias de los documentos con lo del formulario.
-                    // Las vigencias en cache deben ser las de la BASE DE DATOS (backend).
-                    // Al guardar offline, solo nos interesa actualizar el KILOMETRAJE en el catálogo.
-                    
-                    try {
-                        // Actualizar el catálogo de vehículos con el km de la inspección guardada
-                        repository.updateVehicleMileage(placa, km)
-                        Log.d("VehiculoVM", "✅ Catálogo actualizado tras guardado offline: $placa -> $km")
-                    } catch (e: Exception) {
-                        Log.e("VehiculoVM", "Error actualizando catálogo tras guardado", e)
-                    }
+                try {
+                    repository.updateVehicleMileage(placa, km)
+                } catch (e: Exception) {
+                    Log.e("VehiculoVM", "Error actualizando catálogo tras guardado", e)
+                }
 
-                // 2. Disparar sincronización inmediata si hay red
                 triggerSync()
-
-                // 3. Informar éxito al usuario
                 _uiState.update { it.copy(isLoading = false, showSuccessDialog = true) }
                 
             } catch (e: Exception) {
@@ -635,10 +642,18 @@ class VehiculoViewModel @Inject constructor(
     }
 
     fun onSyncClicked() {
-        triggerSync()
+        viewModelScope.launch {
+            // Sincroniza catálogo y documentos para asegurar que el formulario tenga lo último
+            localSyncCoordinator.coordinateSync(
+                LocalSyncCoordinator.SyncTrigger.ManualSync(LocalSyncCoordinator.SyncType.VEHICLES_CATALOG)
+            )
+            localSyncCoordinator.coordinateSync(
+                LocalSyncCoordinator.SyncTrigger.ManualSync(LocalSyncCoordinator.SyncType.VEHICLES_DOCUMENTS)
+            )
+        }
     }
 
-    fun triggerSync() {
+    private fun triggerSync() {
         viewModelScope.launch {
             localSyncCoordinator.coordinateSync(LocalSyncCoordinator.SyncTrigger.FormSaved("Vehiculo"))
         }
@@ -649,6 +664,5 @@ class VehiculoViewModel @Inject constructor(
     }
 
     fun onErrorDismissed() { _uiState.update { it.copy(errorMessage = null) } }
-
     fun onNavigationDone() { _uiState.update { it.copy(saveCompleted = false) } }
 }

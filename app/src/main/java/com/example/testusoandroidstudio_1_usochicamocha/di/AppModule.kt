@@ -50,13 +50,15 @@ import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import javax.inject.Inject
 import javax.inject.Singleton
+
 
 @Module
 @InstallIn(SingletonComponent::class)
 object AppModule {
 
-    private const val BASE_URL = "https://fbfpbsc0-8080.use2.devtunnels.ms/"+"api/" // DevTunnel (cualquier red)
+    private const val BASE_URL = "https://mnczj85d-8080.use2.devtunnels.ms/"+"api/" // DevTunnel (cualquier red)
     //private const val BASE_URL = "https://usochimochabackend.onrender.com/"+"api/"
     //private const val BASE_URL = "https://server.usochicamocha.co/"+"api/"
     @Provides

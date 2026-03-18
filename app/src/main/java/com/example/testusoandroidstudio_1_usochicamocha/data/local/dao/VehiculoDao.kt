@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.VehiculoEntity
 import kotlinx.coroutines.flow.Flow
 
@@ -17,6 +18,12 @@ interface VehiculoDao {
 
     @Query("DELETE FROM vehiculos")
     suspend fun clearAllVehicles()
+
+    @Transaction
+    suspend fun clearAndInsert(vehicles: List<VehiculoEntity>) {
+        clearAllVehicles()
+        insertVehicles(vehicles)
+    }
 
     @Query("UPDATE vehiculos SET kilometrajeActual = :km WHERE placa = :placa")
     suspend fun updateKilometraje(placa: String, km: Int)

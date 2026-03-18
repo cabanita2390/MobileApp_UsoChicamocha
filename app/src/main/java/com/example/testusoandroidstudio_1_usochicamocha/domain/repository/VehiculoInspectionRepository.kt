@@ -20,4 +20,7 @@ interface VehiculoInspectionRepository {
     suspend fun refreshCachedDocuments(placa: String, documentos: List<DocumentoVehiculoEntity>)
 
     suspend fun updateVehicleMileage(placa: String, km: Int)
+
+    // Sincronización masiva de documentos
+    suspend fun syncAllVehiclesDocuments(): Result<Unit>
 }

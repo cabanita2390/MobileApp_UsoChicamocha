@@ -13,6 +13,7 @@ import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.toVehicu
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.request.VehiculoInspectionRequest
 import com.example.testusoandroidstudio_1_usochicamocha.domain.repository.VehiculoInspectionRepository
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 
 class VehiculoInspectionRepositoryImpl @Inject constructor(
@@ -88,16 +89,24 @@ class VehiculoInspectionRepositoryImpl @Inject constructor(
         return try {
             val response = apiService.getVehicles()
             if (response.isSuccessful && response.body() != null) {
-                val vehicles = response.body()!!.map { it.toVehiculoItem().toEntity() }
-                vehiculoDao.insertVehicles(vehicles)
-                Log.d(TAG, "✅ Vehicles catalog synced: ${vehicles.size} vehicles")
+                val apiVehicles = response.body()!!
+                Log.d(TAG, "📡 Received ${apiVehicles.size} vehicles from API")
+                
+                val entities = apiVehicles.map { it.toVehiculoItem().toEntity() }
+                
+                // Usamos clearAndInsert (transaccional) para asegurar que el catálogo
+                // se actualiza atómicamente y no quedan duplicados ni estados intermedios vacíos.
+                vehiculoDao.clearAndInsert(entities)
+                
+                Log.d(TAG, "✅ Vehicles catalog updated successfully in local DB (${entities.size} entities)")
                 Result.success(Unit)
             } else {
-                Log.e(TAG, "❌ Error syncing vehicles catalog: ${response.code()}")
-                Result.failure(Exception("Error ${response.code()} syncing vehicles catalog"))
+                val errorMsg = "Error syncing vehicles catalog: ${response.code()} ${response.message()}"
+                Log.e(TAG, "❌ $errorMsg")
+                Result.failure(Exception(errorMsg))
             }
         } catch (e: Exception) {
-            Log.e(TAG, "❌ Exception syncing vehicles catalog", e)
+            Log.e(TAG, "❌ Exception syncing vehicles catalog: ${e.message}", e)
             Result.failure(e)
         }
     }
@@ -113,6 +122,43 @@ class VehiculoInspectionRepositoryImpl @Inject constructor(
     override suspend fun updateVehicleMileage(placa: String, km: Int) {
         Log.d(TAG, "Updating mileage for vehicle $placa in catalog: $km")
         vehiculoDao.updateKilometraje(placa, km)
+    }
+
+    override suspend fun syncAllVehiclesDocuments(): Result<Unit> {
+        Log.d(TAG, "🔄 Starting massive vehicle documents sync...")
+        return try {
+            val vehiclesLocal = vehiculoDao.getAllVehicles().first()
+            if (vehiclesLocal.isEmpty()) return Result.success(Unit)
+
+            for (vehiculo in vehiclesLocal) {
+                try {
+                    val resp = apiService.getDocumentosVehiculo(vehiculo.idVehiculo)
+                    if (resp.isSuccessful && resp.body() != null) {
+                        val doc = resp.body()!!
+                        
+                        val soatDB     = doc.fechaVencSoat?.take(7)     ?: ""
+                        val tecnoDB    = doc.fechaVencTecno?.take(7)    ?: ""
+                        val licDB      = doc.fechaVencLicencia?.take(7) ?: ""
+                        val extDB      = doc.fechaVencExtintor?.take(7) ?: ""
+                        
+                        val docsToCache = listOf(
+                            DocumentoVehiculoEntity(placa = vehiculo.placa, tipoDocumento = "SOAT",     vigencia = soatDB, imagenUrl = doc.urlImagenSoat,     kilometrajeActual = vehiculo.kilometrajeActual),
+                            DocumentoVehiculoEntity(placa = vehiculo.placa, tipoDocumento = "TECNO",    vigencia = tecnoDB, imagenUrl = doc.urlImagenTecno,   kilometrajeActual = vehiculo.kilometrajeActual),
+                            DocumentoVehiculoEntity(placa = vehiculo.placa, tipoDocumento = "LICENCIA", vigencia = licDB, imagenUrl = doc.urlImagenLicencia,    kilometrajeActual = vehiculo.kilometrajeActual),
+                            DocumentoVehiculoEntity(placa = vehiculo.placa, tipoDocumento = "EXTINTOR", vigencia = extDB, imagenUrl = doc.urlImagenExtintor,   kilometrajeActual = vehiculo.kilometrajeActual)
+                        )
+                        documentoVehiculoDao.refreshForPlaca(vehiculo.placa, docsToCache)
+                        Log.d(TAG, "✅ Documents cached for vehicle: ${vehiculo.placa}")
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "⚠️ Failed to sync documents for ${vehiculo.placa}: ${e.message}")
+                }
+            }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Critical error during massive vehicle document sync", e)
+            Result.failure(e)
+        }
     }
 
     private fun VehiculoInspectionEntity.toRequest(): VehiculoInspectionRequest {
