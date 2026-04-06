@@ -1,4 +1,5 @@
 package com.example.testusoandroidstudio_1_usochicamocha.util
 
-class Constants {
+object Constants {
+    const val KM_THRESHOLD = 300
 }

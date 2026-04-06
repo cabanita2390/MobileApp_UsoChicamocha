@@ -52,6 +52,19 @@ fun MotoHubScreen(
                         IconButton(onClick = onNavigateBack) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
                         }
+                    },
+                    actions = {
+                        val isSyncingAny = uiState.isSyncingMotos || uiState.isSyncingUbicaciones || uiState.isSyncingDocumentos
+                        IconButton(
+                            onClick = { viewModel.onSyncAllClicked() },
+                            enabled = !isSyncingAny
+                        ) {
+                            if (isSyncingAny) {
+                                CircularProgressIndicator(modifier = Modifier.size(22.dp), strokeWidth = 2.dp)
+                            } else {
+                                Icon(Icons.Default.Sync, contentDescription = "Actualizar datos")
+                            }
+                        }
                     }
                 )
             }
@@ -89,7 +102,7 @@ fun MotoHubScreen(
                 onSyncClicked = { viewModel.onSyncPendingClicked() }
             )
 
-            // Sección 3: Sincronización de Datos
+            // Sección 3: Sincronización de Datos (2 botones)
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp)
@@ -97,44 +110,39 @@ fun MotoHubScreen(
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text("Sincronización de Datos", style = MaterialTheme.typography.titleLarge)
                     Spacer(modifier = Modifier.height(4.dp))
-                    
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        Button(
-                            onClick = { viewModel.onSyncMotosClicked() },
-                            modifier = Modifier.weight(1f),
-                            enabled = !uiState.isSyncingMotos
-                        ) {
-                            if (uiState.isSyncingMotos) {
-                                CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
-                            } else {
-                                Text("Sincronizar Placas", fontSize = 14.sp)
-                            }
-                        }
 
-                        Button(
-                            onClick = { viewModel.onSyncUbicacionesClicked() },
-                            modifier = Modifier.weight(1f),
-                            enabled = !uiState.isSyncingUbicaciones
-                        ) {
-                            if (uiState.isSyncingUbicaciones) {
-                                CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
-                            } else {
-                                Text("Sincronizar Unidades", fontSize = 14.sp)
-                            }
+                    // Botón 1: Placas + Unidades juntos
+                    val isSyncingPlacasUnidades = uiState.isSyncingMotos || uiState.isSyncingUbicaciones
+                    Button(
+                        onClick = { viewModel.onSyncPlacasYUnidadesClicked() },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !isSyncingPlacasUnidades
+                    ) {
+                        if (isSyncingPlacasUnidades) {
+                            CircularProgressIndicator(modifier = Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Sincronizando...", fontSize = 16.sp)
+                        } else {
+                            Icon(Icons.Default.Sync, contentDescription = null, modifier = Modifier.size(20.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Actualizar Placas y Unidades", fontSize = 16.sp)
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(8.dp))
-
+                    // Botón 2: Documentos (separado)
                     Button(
                         onClick = { viewModel.onSyncDocumentosClicked() },
                         modifier = Modifier.fillMaxWidth(),
                         enabled = !uiState.isSyncingDocumentos
                     ) {
                         if (uiState.isSyncingDocumentos) {
-                            CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
+                            CircularProgressIndicator(modifier = Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Sincronizando...", fontSize = 16.sp)
                         } else {
-                            Text("Sincronizar Documentos")
+                            Icon(Icons.Default.Sync, contentDescription = null, modifier = Modifier.size(20.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Sincronizar Documentos", fontSize = 16.sp)
                         }
                     }
                 }
@@ -199,17 +207,17 @@ fun PendingInspeccionItem(inspeccion: InspeccionMotoPendiente) {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Inspección Moto", fontWeight = FontWeight.Bold, fontSize = 17.sp)
-            Text(formattedDate, style = MaterialTheme.typography.bodySmall)
+            Text("Placa: ${inspeccion.placaVehiculo}", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            Text(formattedDate, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
         }
-        Spacer(Modifier.height(4.dp))
+        Text("Tipo: ${inspeccion.tipoVehiculo}", style = MaterialTheme.typography.bodyMedium)
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Estado: ", style = MaterialTheme.typography.bodyMedium)
+            Text("Estado: ", style = MaterialTheme.typography.bodySmall)
             Text(
                 "Pendiente 🔄",
-                color = Color.Gray,
+                color = Color(0xFFFFA000),
                 fontWeight = FontWeight.Bold,
-                style = MaterialTheme.typography.bodyMedium
+                style = MaterialTheme.typography.bodySmall
             )
         }
     }

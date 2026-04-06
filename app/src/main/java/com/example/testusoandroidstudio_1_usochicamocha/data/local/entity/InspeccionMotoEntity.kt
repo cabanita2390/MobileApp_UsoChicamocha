@@ -15,6 +15,8 @@ data class InspeccionMotoEntity(
     val idVehiculo: Int,
     val kilometrajeReportado: Int,
     val estadoVehiculo: String,
+    val conscienteResponsabilidad: String = "",
+    val aprobadoRuta: String = "",
     val observacionesFinales: String,
 
     // Documentos
@@ -32,7 +34,16 @@ data class InspeccionMotoEntity(
     // Fechas (Al final para evitar problemas de constructor en Room)
     val fechaSoat: String = "",
     val fechaTecno: String = "",
-    val fechaLicencia: String = ""
+    val fechaLicencia: String = "",
+
+    // Inspección Mecánica Moto (Bueno / Regular / Malo) — default "" por retrocompatibilidad
+    val checkNivelAceite: String = "",
+    val checkEstadoLlantas: String = "",
+    val checkEstadoLuces: String = "",
+
+    // Para visualización en lista (Motos vs Vehículos)
+    val placaVehiculo: String = "",
+    val tipoVehiculo: String = ""
 )
 
 fun InspeccionMotoEntity.toDomain() = InspeccionMotoPendiente(
@@ -43,15 +54,22 @@ fun InspeccionMotoEntity.toDomain() = InspeccionMotoPendiente(
     idVehiculo = idVehiculo,
     kilometrajeReportado = kilometrajeReportado,
     estadoVehiculo = estadoVehiculo,
+    conscienteResponsabilidad = conscienteResponsabilidad,
+    aprobadoRuta = aprobadoRuta,
     observacionesFinales = observacionesFinales,
     checkSoat = checkSoat,
     checkTecno = checkTecno,
     checkLicencia = checkLicencia,
     checkExtintor = checkExtintor,
+    checkNivelAceite = checkNivelAceite,
+    checkEstadoLlantas = checkEstadoLlantas,
+    checkEstadoLuces = checkEstadoLuces,
     fechaSoat = fechaSoat,
     fechaTecno = fechaTecno,
     fechaLicencia = fechaLicencia,
     idUbicacion = idUbicacion,
+    placaVehiculo = placaVehiculo,
+    tipoVehiculo = tipoVehiculo,
     isSynced = isSynced,
     isSyncing = isSyncing
 )
@@ -64,15 +82,22 @@ fun InspeccionMotoPendiente.toEntity() = InspeccionMotoEntity(
     idVehiculo = idVehiculo,
     kilometrajeReportado = kilometrajeReportado,
     estadoVehiculo = estadoVehiculo,
+    conscienteResponsabilidad = conscienteResponsabilidad,
+    aprobadoRuta = aprobadoRuta,
     observacionesFinales = observacionesFinales,
     checkSoat = checkSoat,
     checkTecno = checkTecno,
     checkLicencia = checkLicencia,
     checkExtintor = checkExtintor,
+    checkNivelAceite = checkNivelAceite,
+    checkEstadoLlantas = checkEstadoLlantas,
+    checkEstadoLuces = checkEstadoLuces,
     fechaSoat = fechaSoat,
     fechaTecno = fechaTecno,
     fechaLicencia = fechaLicencia,
     idUbicacion = idUbicacion,
+    placaVehiculo = placaVehiculo,
+    tipoVehiculo = tipoVehiculo,
     isSynced = isSynced,
     isSyncing = isSyncing
 )

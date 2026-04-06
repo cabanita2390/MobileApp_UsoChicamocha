@@ -1,12 +1,12 @@
 package com.example.testusoandroidstudio_1_usochicamocha.ui.vehiculo
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
@@ -14,22 +14,21 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
-import java.util.Calendar
 import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.ConnectionStatusTopBar
 import coil.compose.SubcomposeAsyncImage
 import coil.request.ImageRequest
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.vector.ImageVector
 import kotlinx.coroutines.delay
 
 // ─── COLORES COMPARTIDOS ─────────────────────────────────────────────────────
@@ -46,6 +45,15 @@ fun VehiculoScreen(
     onNavigateBack: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+
+    // Toast de feedback del sync
+    LaunchedEffect(uiState.syncMessage) {
+        uiState.syncMessage?.let {
+            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+            viewModel.onSyncMessageShown()
+        }
+    }
 
     LaunchedEffect(uiState.saveCompleted) {
         if (uiState.saveCompleted) { onNavigateBack(); viewModel.onNavigationDone() }
@@ -201,10 +209,10 @@ fun VehiculoScreen(
         )
     }
 
-    // ─ Alerta: Kilometraje menor al registrado (bloqueante) ───────────────
+    // ─ Alerta: Kilometraje menor al registrado (No bloqueante tras confirmar) ─
     if (uiState.showKmAlert) {
         AlertDialog(
-            onDismissRequest = { viewModel.onKmAlertDismiss() },
+            onDismissRequest = { viewModel.onCancelRedKmHighlight() },
             icon = {
                 Icon(
                     Icons.Default.Warning,
@@ -223,15 +231,62 @@ fun VehiculoScreen(
             text = {
                 Text(
                     uiState.kmAlertMessage +
-                        "\n\nCorrige el kilometraje para poder guardar la inspección.",
+                        "\n\nPor favor, verifica si el número es correcto o corrígelo.",
                     style = MaterialTheme.typography.bodyMedium
                 )
             },
             confirmButton = {
                 Button(
-                    onClick = { viewModel.onKmAlertDismiss() },
+                    onClick = { viewModel.onConfirmRedKmException() },
                     colors = ButtonDefaults.buttonColors(containerColor = ColorMalo)
                 ) {
+                    Text("Confirmar Excepción")
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { viewModel.onCancelRedKmHighlight() }) {
+                    Text("Corregir")
+                }
+            }
+        )
+    }
+
+    // ─ Alerta: Kilometraje con incremento alto o igual (No bloqueante) ────
+    if (uiState.showKmYellowAlert) {
+        AlertDialog(
+            onDismissRequest = { viewModel.onKmYellowAlertDismiss() },
+            icon = {
+                Icon(
+                    Icons.Default.Info,
+                    contentDescription = null,
+                    tint = ColorRegular,
+                    modifier = Modifier.size(40.dp)
+                )
+            },
+            title = {
+                Text(
+                    "Verificación de Kilometraje",
+                    fontWeight = FontWeight.Bold,
+                    color = ColorRegular
+                )
+            },
+            text = {
+                Text(
+                    uiState.kmAlertMessage +
+                        "\n\nPor favor, verifica si el número es correcto o corrígelo.",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = { viewModel.onConfirmKmException() },
+                    colors = ButtonDefaults.buttonColors(containerColor = ColorRegular)
+                ) {
+                    Text("Confirmar Excepción")
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { viewModel.onCancelKmHighlight() }) {
                     Text("Corregir")
                 }
             }
@@ -251,8 +306,16 @@ fun VehiculoScreen(
                         }
                     },
                     actions = {
-                        IconButton(onClick = { viewModel.onSyncClicked() }) {
-                            Icon(Icons.Default.Sync, contentDescription = "Sincronizar")
+                        IconButton(
+                            onClick = { viewModel.onSyncClicked() },
+                            enabled = !uiState.isSyncing,
+                            colors = IconButtonDefaults.iconButtonColors(contentColor = com.example.testusoandroidstudio_1_usochicamocha.ui.theme.Purple40)
+                        ) {
+                            if (uiState.isSyncing) {
+                                CircularProgressIndicator(modifier = Modifier.size(22.dp), strokeWidth = 2.dp, color = com.example.testusoandroidstudio_1_usochicamocha.ui.theme.Purple40)
+                            } else {
+                                Icon(Icons.Default.Sync, contentDescription = "Sincronizar")
+                            }
                         }
                     }
                 )
@@ -265,7 +328,6 @@ fun VehiculoScreen(
             contentPadding = PaddingValues(vertical = 16.dp)
         ) {
 
-
             // ── 1. DATOS GENERALES ────────────────────────────────────────────
             item {
                 SectionCard("Datos Generales") {
@@ -277,27 +339,22 @@ fun VehiculoScreen(
                     )
                     Spacer(Modifier.height(10.dp))
 
-                    if (uiState.kilometrajeDB.isNotBlank() && uiState.kilometrajeDB != "0") {
-                        Text(
-                            "📅 Último kilometraje registrado: ${uiState.kilometrajeDB} km",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Spacer(Modifier.height(4.dp))
-                    }
 
                     OutlinedTextField(
                         value = uiState.kilometraje,
                         onValueChange = { if (it.all(Char::isDigit)) viewModel.onKilometrajeChange(it) },
                         label = { Text("Kilometraje Actual (*)", fontWeight = FontWeight.Bold, fontSize = 17.sp) },
-                        modifier = Modifier.fillMaxWidth(),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        isError = uiState.kilometrajeError != null,
-                        supportingText = {
-                            if (uiState.kilometrajeError != null) {
-                                Text(uiState.kilometrajeError!!, color = MaterialTheme.colorScheme.error)
-                            }
-                        }
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .onFocusChanged { focusState ->
+                                if (!focusState.isFocused) {
+                                    viewModel.onKilometrajeBlur()
+                                }
+                            },
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Number,
+                            imeAction = androidx.compose.ui.text.input.ImeAction.Done
+                        )
                     )
                 }
             }
@@ -381,22 +438,8 @@ fun VehiculoScreen(
                         label = "SOAT (Seguro Obligatorio)",
                         icon = Icons.Default.Shield
                     )
-                    if (uiState.fechaVencSoatDB.isNotBlank()) {
-                        Text("📅 Registrado en sistema: ${uiState.fechaVencSoatDB}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
                     Spacer(Modifier.height(4.dp))
-                    DocDatePickerField(
-                        doc = "SOAT",
-                        selectedDate = uiState.fechaVencSoat,
-                        onDateSelected = { viewModel.onDocFechaVencChange("SOAT", it) },
-                        enabled = hayVehiculo
-                    )
-                    if (uiState.estadoSoat.isNotBlank()) {
-                        Spacer(Modifier.height(4.dp))
-                        EstadoDocumentoChip(uiState.estadoSoat)
-                    }
+                    EstadoDocumentoChip(uiState.estadoSoat, uiState.diasRestantesSoat)
                     Spacer(Modifier.height(8.dp))
                     DocumentImage(url = uiState.urlImagenSoat, label = "Imagen SOAT")
 
@@ -407,22 +450,8 @@ fun VehiculoScreen(
                         label = "Revisión TECNICOMECÁNICA",
                         icon = Icons.Default.Build
                     )
-                    if (uiState.fechaVencTecnoDB.isNotBlank()) {
-                        Text("📅 Registrado en sistema: ${uiState.fechaVencTecnoDB}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
                     Spacer(Modifier.height(4.dp))
-                    DocDatePickerField(
-                        doc = "Tecno",
-                        selectedDate = uiState.fechaVencTecno,
-                        onDateSelected = { viewModel.onDocFechaVencChange("Tecno", it) },
-                        enabled = hayVehiculo
-                    )
-                    if (uiState.estadoTecno.isNotBlank()) {
-                        Spacer(Modifier.height(4.dp))
-                        EstadoDocumentoChip(uiState.estadoTecno)
-                    }
+                    EstadoDocumentoChip(uiState.estadoTecno, uiState.diasRestantesTecno)
                     Spacer(Modifier.height(8.dp))
                     DocumentImage(url = uiState.urlImagenTecno, label = "Imagen Tecnomecánica")
 
@@ -433,22 +462,8 @@ fun VehiculoScreen(
                         label = "Licencia de Conducción",
                         icon = Icons.Default.AccountBox
                     )
-                    if (uiState.fechaVencLicencioDB.isNotBlank()) {
-                        Text("📅 Registrado en sistema: ${uiState.fechaVencLicencioDB}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
                     Spacer(Modifier.height(4.dp))
-                    DocDatePickerField(
-                        doc = "Licencia",
-                        selectedDate = uiState.fechaVencLicencia,
-                        onDateSelected = { viewModel.onDocFechaVencChange("Licencia", it) },
-                        enabled = hayVehiculo
-                    )
-                    if (uiState.estadoLicencia.isNotBlank()) {
-                        Spacer(Modifier.height(4.dp))
-                        EstadoDocumentoChip(uiState.estadoLicencia)
-                    }
+                    EstadoDocumentoChip(uiState.estadoLicencia, uiState.diasRestantesLicencia)
                     Spacer(Modifier.height(8.dp))
                     DocumentImage(url = uiState.urlImagenLicencia, label = "Imagen Licencia")
 
@@ -459,21 +474,8 @@ fun VehiculoScreen(
                         label = "Extintor",
                         icon = Icons.Default.LocalFireDepartment
                     )
-                    if (uiState.vigenciaExtintorDB.isNotBlank()) {
-                        Text("📅 Registrado en sistema: ${uiState.vigenciaExtintorDB}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
                     Spacer(Modifier.height(4.dp))
-                    ExtintorDatePickerField(
-                        selectedDate = uiState.vigenciaExtintor,
-                        onDateSelected = { y, m -> viewModel.onExtintorDateChange(y, m) },
-                        enabled = hayVehiculo
-                    )
-                    if (uiState.estadoExtintor.isNotBlank()) {
-                        Spacer(Modifier.height(4.dp))
-                        EstadoDocumentoChip(uiState.estadoExtintor)
-                    }
+                    EstadoDocumentoChip(uiState.estadoExtintor, uiState.diasRestantesExtintor)
                     Spacer(Modifier.height(8.dp))
                     DocumentImage(url = uiState.urlImagenExtintor, label = "Imagen Extintor")
                 }
@@ -667,54 +669,7 @@ fun DocLabelRow(
     }
 }
 
-@Composable
-fun DocDatePickerField(
 
-    doc: String,
-    selectedDate: String,
-    onDateSelected: (String) -> Unit,
-    enabled: Boolean = true
-) {
-    val calendar = Calendar.getInstance()
-    val (initialYear, initialMonth) = remember(selectedDate) {
-        if (selectedDate.contains("-")) {
-            val p = selectedDate.split("-")
-            Pair(
-                p[0].toIntOrNull() ?: calendar.get(Calendar.YEAR),
-                (p[1].toIntOrNull()?.minus(1)) ?: calendar.get(Calendar.MONTH)
-            )
-        } else Pair(calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH))
-    }
-    var showDialog by remember { mutableStateOf(false) }
-    if (showDialog && enabled) {
-        VehiculoMonthYearDialog(
-            onDismiss = { showDialog = false },
-            onDateSelected = { y, m ->
-                onDateSelected("$y-${String.format("%02d", m + 1)}")
-                showDialog = false
-            },
-            initialYear = initialYear,
-            initialMonth = initialMonth
-        )
-    }
-    OutlinedTextField(
-        value = selectedDate,
-        onValueChange = {},
-        readOnly = true,
-        enabled = enabled,
-        label = { Text("Fecha Vencimiento", fontSize = 13.sp) },
-        placeholder = { Text("AAAA-MM", fontSize = 13.sp) },
-        trailingIcon = {
-            IconButton(onClick = { if (enabled) showDialog = true }, enabled = enabled) {
-                Icon(Icons.Default.DateRange, "Seleccionar fecha", modifier = Modifier.size(18.dp))
-            }
-        },
-        modifier = Modifier
-            .fillMaxWidth()
-            .then(if (enabled) Modifier.clickable { showDialog = true } else Modifier),
-        textStyle = LocalTextStyle.current.copy(fontSize = 13.sp)
-    )
-}
 
 @Composable
 private fun SectionCard(title: String, content: @Composable ColumnScope.() -> Unit) {
@@ -792,25 +747,6 @@ fun DocEstadoSelector(
         "Vencido"          to ColorMalo
     )
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        // Fecha de referencia (solo lectura, viene del backend)
-        if (fechaVenc.isNotBlank()) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Icon(
-                    Icons.Default.DateRange,
-                    contentDescription = null,
-                    modifier = Modifier.size(14.dp),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    "Vence: $fechaVenc",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
         // Botones de estado — el inspector confirma visualmente
         Row(
             Modifier.fillMaxWidth(),
@@ -906,13 +842,20 @@ fun DocumentImage(url: String?, label: String) {
 
 
 @Composable
-fun EstadoDocumentoChip(estado: String) {
+fun EstadoDocumentoChip(estado: String, diasRestantes: Long = 0L) {
     if (estado.isBlank()) return
     val (bgColor, textColor, icon) = when (estado) {
         "Vigente"          -> Triple(ColorBueno.copy(alpha = 0.12f),   ColorBueno,   Icons.Default.CheckCircle)
         "Próximo a Vencer" -> Triple(ColorRegular.copy(alpha = 0.12f), ColorRegular, Icons.Default.Warning)
         "Vencido"          -> Triple(ColorMalo.copy(alpha = 0.12f),    ColorMalo,    Icons.Default.Cancel)
         else               -> Triple(Color.Gray.copy(alpha = 0.12f),   Color.Gray,   Icons.Default.Info)
+    }
+    // Leyenda de días según el estado
+    val leyenda = when (estado) {
+        "Vigente"          -> "— quedan $diasRestantes días"
+        "Próximo a Vencer" -> "— quedan $diasRestantes días"
+        "Vencido"          -> "— venció hace ${-diasRestantes} días"
+        else               -> ""
     }
     Surface(
         shape = RoundedCornerShape(8.dp),
@@ -931,7 +874,7 @@ fun EstadoDocumentoChip(estado: String) {
             Icon(icon, null, Modifier.size(18.dp), tint = textColor)
             Spacer(Modifier.width(8.dp))
             Text(
-                estado,
+                "$estado $leyenda",
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
                 color = textColor
@@ -940,94 +883,3 @@ fun EstadoDocumentoChip(estado: String) {
     }
 }
 
-@Composable
-fun ExtintorDatePickerField(
-    selectedDate: String,
-    onDateSelected: (Int, Int) -> Unit,
-    enabled: Boolean = true
-) {
-    val calendar = Calendar.getInstance()
-    val (initialYear, initialMonth) = remember(selectedDate) {
-        if (selectedDate.contains("-")) {
-            val p = selectedDate.split("-")
-            Pair(p[0].toIntOrNull() ?: calendar.get(Calendar.YEAR), (p[1].toIntOrNull()?.minus(1)) ?: calendar.get(Calendar.MONTH))
-        } else Pair(calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH))
-    }
-    var showDialog by remember { mutableStateOf(false) }
-    if (showDialog && enabled) {
-        VehiculoMonthYearDialog(
-            onDismiss = { showDialog = false },
-            onDateSelected = { y, m -> onDateSelected(y, m); showDialog = false },
-            initialYear = initialYear, initialMonth = initialMonth
-        )
-    }
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text("Vigencia EXTINTOR (*)", fontWeight = FontWeight.Bold, fontSize = 17.sp)
-        OutlinedTextField(
-            value = selectedDate, onValueChange = {}, readOnly = true, enabled = enabled,
-            label = { Text("Fecha Vencimiento (YYYY-MM)") },
-            trailingIcon = {
-                IconButton(onClick = { if (enabled) showDialog = true }, enabled = enabled) {
-                    Icon(Icons.Default.DateRange, "Fecha")
-                }
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .then(if (enabled) Modifier.clickable { showDialog = true } else Modifier)
-        )
-    }
-}
-
-@Composable
-fun VehiculoMonthYearDialog(
-    onDismiss: () -> Unit,
-    onDateSelected: (Int, Int) -> Unit,
-    initialYear: Int,
-    initialMonth: Int
-) {
-    // Usamos estado interno para el año y mes SELECCIONADO en el diálogo
-    var selectedYear by remember { mutableStateOf(initialYear) }
-    var selectedMonthIdx by remember { mutableStateOf(initialMonth) }
-    val months = listOf("Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic")
-    // Filas de meses: 4 filas x 3 columnas
-    val monthRows = listOf(listOf(0,1,2), listOf(3,4,5), listOf(6,7,8), listOf(9,10,11))
-
-    Dialog(onDismissRequest = onDismiss) {
-        Card(Modifier.width(360.dp), shape = RoundedCornerShape(24.dp)) {
-            Column(Modifier.padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                // Selector de año
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = { selectedYear-- }) { Icon(Icons.Default.KeyboardArrowLeft, "Anterior") }
-                    Text(selectedYear.toString(), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                    IconButton(onClick = { selectedYear++ }) { Icon(Icons.Default.KeyboardArrowRight, "Siguiente") }
-                }
-                Spacer(Modifier.height(16.dp))
-                // Grid de meses usando Column+Row (confiable dentro de Dialog)
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    monthRows.forEach { row ->
-                        Row(Modifier.fillMaxWidth(), Arrangement.spacedBy(8.dp)) {
-                            row.forEach { idx ->
-                                val isSelected = selectedYear == initialYear && idx == selectedMonthIdx
-                                OutlinedButton(
-                                    onClick = {
-                                        selectedMonthIdx = idx
-                                        onDateSelected(selectedYear, idx)
-                                        onDismiss()
-                                    },
-                                    modifier = Modifier.weight(1f).height(44.dp),
-                                    shape = RoundedCornerShape(10.dp),
-                                    colors = if (isSelected)
-                                        ButtonDefaults.outlinedButtonColors(
-                                            containerColor = MaterialTheme.colorScheme.primary,
-                                            contentColor = MaterialTheme.colorScheme.onPrimary
-                                        )
-                                    else ButtonDefaults.outlinedButtonColors()
-                                ) { Text(months[idx], fontSize = 13.sp) }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}

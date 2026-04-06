@@ -58,9 +58,10 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object AppModule {
 
-    private const val BASE_URL = "https://mnczj85d-8080.use2.devtunnels.ms/"+"api/" // DevTunnel (cualquier red)
+    //private const val BASE_URL = "https://mnczj85d-8080.use2.devtunnels.ms/"+"api/" // DevTunnel (cualquier red)
     //private const val BASE_URL = "https://usochimochabackend.onrender.com/"+"api/"
     //private const val BASE_URL = "https://server.usochicamocha.co/"+"api/"
+    private const val BASE_URL = "http://localhost:8080/"+"api/"
     @Provides
     @Singleton
     fun provideWorkManager(@ApplicationContext context: Context): WorkManager {
@@ -91,7 +92,7 @@ object AppModule {
     @Singleton
     fun provideAppDatabase(@ApplicationContext context: Context): AppDatabase {
         return Room.databaseBuilder(context, AppDatabase::class.java, "app_database")
-            .fallbackToDestructiveMigration()
+            .addMigrations(AppDatabase.MIGRATION_23_24, AppDatabase.MIGRATION_24_25, AppDatabase.MIGRATION_25_26)
             .build()
     }
 

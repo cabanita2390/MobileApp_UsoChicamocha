@@ -2,6 +2,8 @@ package com.example.testusoandroidstudio_1_usochicamocha.data.local
 
 import androidx.room.Database
 import androidx.room.RoomDatabase
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.FormDao
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.ImageDao
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.LogDao
@@ -45,10 +47,37 @@ import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.Docume
         com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.VehiculoEntity::class,
         com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.DocumentoVehiculoEntity::class
     ],
-    version = 23,
+    version = 26,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
+
+    companion object {
+        /** Migración 23 → 24: agrega campos mecánicos de inspección de moto */
+        val MIGRATION_23_24 = object : Migration(23, 24) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE pending_inspecciones_moto ADD COLUMN checkNivelAceite TEXT NOT NULL DEFAULT ''")
+                database.execSQL("ALTER TABLE pending_inspecciones_moto ADD COLUMN checkEstadoLlantas TEXT NOT NULL DEFAULT ''")
+                database.execSQL("ALTER TABLE pending_inspecciones_moto ADD COLUMN checkEstadoLuces TEXT NOT NULL DEFAULT ''")
+            }
+        }
+
+        /** Migración 24 → 25: agrega placa y tipo para visualización en hub */
+        val MIGRATION_24_25 = object : Migration(24, 25) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE pending_inspecciones_moto ADD COLUMN placaVehiculo TEXT NOT NULL DEFAULT ''")
+                database.execSQL("ALTER TABLE pending_inspecciones_moto ADD COLUMN tipoVehiculo TEXT NOT NULL DEFAULT ''")
+            }
+        }
+
+        /** Migración 25 → 26: agrega conscienteResponsabilidad y aprobadoRuta */
+        val MIGRATION_25_26 = object : Migration(25, 26) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE pending_inspecciones_moto ADD COLUMN conscienteResponsabilidad TEXT NOT NULL DEFAULT ''")
+                database.execSQL("ALTER TABLE pending_inspecciones_moto ADD COLUMN aprobadoRuta TEXT NOT NULL DEFAULT ''")
+            }
+        }
+    }
     abstract fun formDao(): FormDao
     abstract fun machineDao(): MachineDao
     abstract fun logDao(): LogDao

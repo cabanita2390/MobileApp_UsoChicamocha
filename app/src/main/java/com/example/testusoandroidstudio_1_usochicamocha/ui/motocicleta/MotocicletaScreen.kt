@@ -1,18 +1,10 @@
 package com.example.testusoandroidstudio_1_usochicamocha.ui.motocicleta
 
-import android.Manifest
-import android.net.Uri
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -23,6 +15,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -32,13 +25,15 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
-import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.Moto
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.Ubicacion
-import java.io.File
-import java.util.Calendar
+
+// ─── COLORES COMPARTIDOS ─────────────────────────────────────────────────────
+private val ColorBueno   = Color(0xFF4CAF50)
+private val ColorRegular = Color(0xFFFFA000)
+private val ColorMalo    = Color(0xFFD32F2F)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -92,52 +87,62 @@ fun MotocicletaScreen(
 
             // 1. PLACA
             item {
-                if (uiState.isLoadingData) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-                        Text("Cargando placas...", style = MaterialTheme.typography.bodyMedium)
+                SectionCard("PLACA", modifier = Modifier.testTag("section_placa")) {
+                    if (uiState.isLoadingData) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                            Text("Cargando placas...", style = MaterialTheme.typography.bodyMedium)
+                        }
+                    } else {
+                        DropdownField(
+                            label = "Seleccione La PLACA de Su Motocicleta (*)",
+                            displayValue = uiState.selectedMoto?.placa ?: "Seleccione una placa",
+                            items = uiState.motocicletas,
+                            itemLabel = { it.placa },
+                            onItemSelected = { viewModel.onMotoSelected(it) },
+                            dropdownTag = "plate_option",
+                            modifier = Modifier.testTag("plate_option_dropdown")
+                        )
                     }
-                } else {
-                    DropdownField(
-                        label = "Seleccione La PLACA de Su Motocicleta (*)",
-                        displayValue = uiState.selectedMoto?.placa ?: "Seleccione una placa",
-                        items = uiState.motocicletas,
-                        itemLabel = { it.placa },
-                        onItemSelected = { viewModel.onMotoSelected(it) },
-                        dropdownTag = "plate_option"
-                    )
                 }
             }
-            item { HorizontalDivider() }
 
             // 2. UBICACIÓN
             item {
-                if (uiState.isLoadingData) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-                        Text("Cargando unidades...", style = MaterialTheme.typography.bodyMedium)
+                SectionCard("Ubicación", modifier = Modifier.testTag("section_ubicacion")) {
+                    if (uiState.isLoadingData) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                            Text("Cargando unidades...", style = MaterialTheme.typography.bodyMedium)
+                        }
+                    } else {
+                        DropdownField(
+                            label = "Seleccione la UNIDAD a la que Pertenece (*)",
+                            displayValue = uiState.selectedUbicacion?.nombreUbicacion ?: "Seleccione la UNIDAD",
+                            items = uiState.ubicaciones,
+                            itemLabel = { it.nombreUbicacion },
+                            onItemSelected = { viewModel.onUbicacionSelected(it) },
+                            dropdownTag = "unit_option"
+                        )
                     }
-                } else {
-                    DropdownField(
-                        label = "Seleccione la UNIDAD a la que Pertenece (*)",
-                        displayValue = uiState.selectedUbicacion?.nombreUbicacion ?: "Seleccione la UNIDAD",
-                        items = uiState.ubicaciones,
-                        itemLabel = { it.nombreUbicacion },
-                        onItemSelected = { viewModel.onUbicacionSelected(it) },
-                        dropdownTag = "unit_option"
-                    )
                 }
             }
-            item { HorizontalDivider() }
 
             // 3. KILOMETRAJE
             item {
-                Column {
+                SectionCard("Kilometraje", modifier = Modifier.testTag("section_km")) {
                     OutlinedTextField(
                         value = uiState.kilometraje,
                         onValueChange = { if (it.all { c -> c.isDigit() }) viewModel.onKilometrajeChange(it) },
                         label = { Text("Escriba el KILOMETRAJE Actual de la Moto (*)", fontWeight = FontWeight.Bold, fontSize = 17.sp) },
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .onFocusChanged { focusState ->
+                                if (!focusState.isFocused) {
+                                    viewModel.onKilometrajeBlur()
+                                }
+                            }
+                            .testTag("moto_km_field"),
                         keyboardOptions = KeyboardOptions(
                             keyboardType = KeyboardType.Number,
                             imeAction = ImeAction.Done
@@ -146,17 +151,11 @@ fun MotocicletaScreen(
                         supportingText = {
                             if (uiState.kilometrajeError != null) {
                                 Text(uiState.kilometrajeError ?: "", color = MaterialTheme.colorScheme.error)
-                            } else if (uiState.kilometrajeMinimo > 0) {
-                                Text(
-                                    "Último kilometraje registrado: ${uiState.kilometrajeMinimo} km",
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
                             }
                         }
                     )
                 }
             }
-            item { HorizontalDivider() }
 
             // ─── 4. DOCUMENTACIÓN ───────────────────────────────────────────
             item {
@@ -201,20 +200,9 @@ fun MotocicletaScreen(
 
                     // SOAT
                     DocLabelRow(label = "SOAT (Seguro Obligatorio)", icon = Icons.Default.Shield)
-                    if (uiState.soat.vigenciaMaster.isNotBlank()) {
-                        Text("📅 Registrado en sistema: ${uiState.soat.vigenciaMaster}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
                     Spacer(Modifier.height(4.dp))
-                    DocDatePickerField(
-                        selectedDate = uiState.soat.vigencia,
-                        onDateSelected = { y, m -> viewModel.onSoatVigenciaChange(y, m, 0) },
-                        enabled = uiState.selectedMoto != null
-                    )
                     if (uiState.soat.estadoDoc.isNotBlank()) {
-                        Spacer(Modifier.height(4.dp))
-                        EstadoDocumentoChip(uiState.soat.estadoDoc)
+                        EstadoDocumentoChip(uiState.soat.estadoDoc, uiState.soat.diasRestantes)
                     }
                     Spacer(Modifier.height(8.dp))
                     DocumentImage(
@@ -227,20 +215,9 @@ fun MotocicletaScreen(
 
                     // TECNO
                     DocLabelRow(label = "Revisión TECNICOMECÁNICA", icon = Icons.Default.Build)
-                    if (uiState.revisionTecno.vigenciaMaster.isNotBlank()) {
-                        Text("📅 Registrado en sistema: ${uiState.revisionTecno.vigenciaMaster}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
                     Spacer(Modifier.height(4.dp))
-                    DocDatePickerField(
-                        selectedDate = uiState.revisionTecno.vigencia,
-                        onDateSelected = { y, m -> viewModel.onRevisionVigenciaChange(y, m, 0) },
-                        enabled = uiState.selectedMoto != null
-                    )
                     if (uiState.revisionTecno.estadoDoc.isNotBlank()) {
-                        Spacer(Modifier.height(4.dp))
-                        EstadoDocumentoChip(uiState.revisionTecno.estadoDoc)
+                        EstadoDocumentoChip(uiState.revisionTecno.estadoDoc, uiState.revisionTecno.diasRestantes)
                     }
                     Spacer(Modifier.height(8.dp))
                     DocumentImage(
@@ -253,20 +230,9 @@ fun MotocicletaScreen(
 
                     // LICENCIA
                     DocLabelRow(label = "Licencia de Conducción", icon = Icons.Default.AccountBox)
-                    if (uiState.licencia.vigenciaMaster.isNotBlank()) {
-                        Text("📅 Registrado en sistema: ${uiState.licencia.vigenciaMaster}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
                     Spacer(Modifier.height(4.dp))
-                    DocDatePickerField(
-                        selectedDate = uiState.licencia.vigencia,
-                        onDateSelected = { y, m -> viewModel.onLicenciaVigenciaChange(y, m, 0) },
-                        enabled = uiState.selectedMoto != null
-                    )
                     if (uiState.licencia.estadoDoc.isNotBlank()) {
-                        Spacer(Modifier.height(4.dp))
-                        EstadoDocumentoChip(uiState.licencia.estadoDoc)
+                        EstadoDocumentoChip(uiState.licencia.estadoDoc, uiState.licencia.diasRestantes)
                     }
                     Spacer(Modifier.height(8.dp))
                     DocumentImage(
@@ -277,13 +243,43 @@ fun MotocicletaScreen(
                 }
             }
 
+            // 6. INSPECCIÓN MECÁNICA (NUEVO)
+            item {
+                SectionCard("Inspección Mecánica", modifier = Modifier.testTag("section_mecanica")) {
+                    MotoStatusSelector(
+                        label = "Nivel de Aceite (*)",
+                        selectedOption = uiState.checkNivelAceite,
+                        onOptionSelected = { viewModel.onCheckNivelAceiteChange(it) },
+                        tagPrefix = "status_aceite",
+                        options = listOf("Bueno", "Regular", "Malo")
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    MotoStatusSelector(
+                        label = "Estado de Llantas (*)",
+                        selectedOption = uiState.checkEstadoLlantas,
+                        onOptionSelected = { viewModel.onCheckEstadoLlantasChange(it) },
+                        tagPrefix = "status_llantas",
+                        options = listOf("Bueno", "Regular", "Malo")
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    MotoStatusSelector(
+                        label = "Estado de Luces (*)",
+                        selectedOption = uiState.checkEstadoLuces,
+                        onOptionSelected = { viewModel.onCheckEstadoLucesChange(it) },
+                        tagPrefix = "status_luces",
+                        options = listOf("Bueno", "Regular", "Malo")
+                    )
+                }
+            }
+
             // 7. ESTADO GENERAL
             item {
                 SectionCard("Estado de la Motocicleta", modifier = Modifier.testTag("section_estado")) {
                     MotoStatusSelector(
                         label = "Estado ACTUAL - GENERAL de La Motocicleta (*)",
                         selectedOption = uiState.estadoVehiculo,
-                        onOptionSelected = { viewModel.onEstadoVehiculoChange(it) }
+                        onOptionSelected = { viewModel.onEstadoVehiculoChange(it) },
+                        tagPrefix = "status_general"
                     )
                 }
             }
@@ -350,7 +346,7 @@ fun MotocicletaScreen(
         if (uiState.saveCompleted) {
             AlertDialog(
                 onDismissRequest = { /* No hacer nada para forzar click en Aceptar */ },
-                title = { Text("Guardado Exitoso", fontWeight = FontWeight.Bold) },
+                title = { Text("¡Inspección Guardada!", fontWeight = FontWeight.Bold) },
                 text = { Text("La inspección se ha guardado correctamente.") },
                 confirmButton = {
                     Button(
@@ -358,6 +354,90 @@ fun MotocicletaScreen(
                         modifier = Modifier.testTag("btn_done_audit")
                     ) {
                         Text("Aceptar")
+                    }
+                }
+            )
+        }
+
+        // ─ Alerta: Kilometraje menor al registrado (No bloqueante tras confirmar) ─
+        if (uiState.showKmAlert) {
+            AlertDialog(
+                onDismissRequest = { viewModel.onCancelRedKmHighlight() },
+                icon = {
+                    Icon(
+                        Icons.Default.Warning,
+                        contentDescription = null,
+                        tint = ColorMalo,
+                        modifier = Modifier.size(40.dp)
+                    )
+                },
+                title = {
+                    Text(
+                        "Kilometraje Incorrecto",
+                        fontWeight = FontWeight.Bold,
+                        color = ColorMalo
+                    )
+                },
+                text = {
+                    Text(
+                        uiState.kmAlertMessage +
+                                "\n\nPor favor, verifica si el número es correcto o corrígelo.",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                },
+                confirmButton = {
+                    Button(
+                        onClick = { viewModel.onConfirmRedKmException() },
+                        colors = ButtonDefaults.buttonColors(containerColor = ColorMalo)
+                    ) {
+                        Text("Confirmar Excepción")
+                    }
+                },
+                dismissButton = {
+                    OutlinedButton(onClick = { viewModel.onCancelRedKmHighlight() }) {
+                        Text("Corregir")
+                    }
+                }
+            )
+        }
+
+        // ─ Alerta: Kilometraje con incremento alto o igual (No bloqueante) ────
+        if (uiState.showKmYellowAlert) {
+            AlertDialog(
+                onDismissRequest = { viewModel.onCancelKmHighlight() },
+                icon = {
+                    Icon(
+                        Icons.Default.Info,
+                        contentDescription = null,
+                        tint = ColorRegular,
+                        modifier = Modifier.size(40.dp)
+                    )
+                },
+                title = {
+                    Text(
+                        "Verificación de Kilometraje",
+                        fontWeight = FontWeight.Bold,
+                        color = ColorRegular
+                    )
+                },
+                text = {
+                    Text(
+                        uiState.kmAlertMessage +
+                                "\n\nPor favor, verifica si el número es correcto o corrígelo.",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                },
+                confirmButton = {
+                    Button(
+                        onClick = { viewModel.onConfirmKmException() },
+                        colors = ButtonDefaults.buttonColors(containerColor = ColorRegular)
+                    ) {
+                        Text("Confirmar Excepción")
+                    }
+                },
+                dismissButton = {
+                    OutlinedButton(onClick = { viewModel.onCancelKmHighlight() }) {
+                        Text("Corregir")
                     }
                 }
             )
@@ -431,65 +511,22 @@ fun DocLabelRow(
     }
 }
 
-@Composable
-fun DocDatePickerField(
-    selectedDate: String,
-    onDateSelected: (Int, Int) -> Unit,
-    enabled: Boolean = true
-) {
-    val calendar = Calendar.getInstance()
-    val (initialYear, initialMonth) = remember(selectedDate) {
-        if (selectedDate.contains("-")) {
-            val p = selectedDate.split("-")
-            Pair(
-                p[0].toIntOrNull() ?: calendar.get(Calendar.YEAR),
-                (p[1].toIntOrNull()?.minus(1)) ?: calendar.get(Calendar.MONTH)
-            )
-        } else Pair(calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH))
-    }
-    var showDialog by remember { mutableStateOf(false) }
-    if (showDialog && enabled) {
-        DocumentoMonthYearPickerDialog(
-            onDismissRequest = { showDialog = false },
-            onDateSelected = { y, m ->
-                onDateSelected(y, m)
-                showDialog = false
-            },
-            initialYear = initialYear,
-            initialMonth = initialMonth
-        )
-    }
-    OutlinedTextField(
-        value = selectedDate,
-        onValueChange = {},
-        readOnly = true,
-        enabled = enabled,
-        label = { Text("Fecha Vencimiento", fontSize = 13.sp) },
-        placeholder = { Text("AAAA-MM", fontSize = 13.sp) },
-        trailingIcon = {
-            IconButton(onClick = { if (enabled) showDialog = true }, enabled = enabled) {
-                Icon(imageVector = Icons.Default.DateRange, contentDescription = "Seleccionar fecha", modifier = Modifier.size(18.dp))
-            }
-        },
-        modifier = Modifier
-            .fillMaxWidth()
-            .then(if (enabled) Modifier.clickable { showDialog = true } else Modifier),
-        textStyle = LocalTextStyle.current.copy(fontSize = 13.sp)
-    )
-}
 
 @Composable
-fun EstadoDocumentoChip(estado: String) {
+fun EstadoDocumentoChip(estado: String, diasRestantes: Long = 0L) {
     if (estado.isBlank()) return
-    val colorBueno   = Color(0xFF4CAF50)
-    val colorRegular = Color(0xFFFFA000)
-    val colorMalo    = Color(0xFFD32F2F)
-
     val (bgColor, textColor, icon) = when (estado) {
-        "Vigente"          -> Triple(colorBueno.copy(alpha = 0.12f),   colorBueno,   Icons.Default.CheckCircle)
-        "Próximo a Vencer" -> Triple(colorRegular.copy(alpha = 0.12f), colorRegular, Icons.Default.Warning)
-        "Vencido"          -> Triple(colorMalo.copy(alpha = 0.12f),    colorMalo,    Icons.Default.Warning)
+        "Vigente"          -> Triple(ColorBueno.copy(alpha = 0.12f),   ColorBueno,   Icons.Default.CheckCircle)
+        "Próximo a Vencer" -> Triple(ColorRegular.copy(alpha = 0.12f), ColorRegular, Icons.Default.Warning)
+        "Vencido"          -> Triple(ColorMalo.copy(alpha = 0.12f),    ColorMalo,    Icons.Default.Cancel)
         else               -> Triple(Color.Gray.copy(alpha = 0.12f),   Color.Gray,   Icons.Default.Info)
+    }
+    // Leyenda de días según el estado
+    val leyenda = when (estado) {
+        "Vigente"          -> "— quedan $diasRestantes días"
+        "Próximo a Vencer" -> "— quedan $diasRestantes días"
+        "Vencido"          -> "— venció hace ${-diasRestantes} días"
+        else               -> ""
     }
     Surface(
         shape = RoundedCornerShape(8.dp),
@@ -513,7 +550,7 @@ fun EstadoDocumentoChip(estado: String) {
             )
             Spacer(Modifier.width(8.dp))
             Text(
-                estado,
+                "$estado $leyenda",
                 fontSize = 14.sp,
                 fontWeight = FontWeight.Bold,
                 color = textColor
@@ -592,14 +629,16 @@ fun CheckDropdown(
     label: String,
     value: String,
     onSelect: (String) -> Unit,
-    items: List<String> = listOf("Bueno", "Malo", "No Aplica")
+    items: List<String> = listOf("Bueno", "Regular", "Malo"),
+    dropdownTag: String = "dropdown_option"
 ) {
     DropdownField(
         label = label,
         displayValue = value.ifBlank { "Seleccione Una Opción" },
         items = items,
         itemLabel = { it },
-        onItemSelected = onSelect
+        onItemSelected = onSelect,
+        dropdownTag = dropdownTag
     )
 }
 
@@ -611,7 +650,8 @@ fun <T> DropdownField(
     items: List<T>,
     itemLabel: (T) -> String,
     onItemSelected: (T) -> Unit,
-    dropdownTag: String = "dropdown_option"
+    dropdownTag: String = "dropdown_option",
+    modifier: Modifier = Modifier
 ) {
     var expanded by remember { mutableStateOf(false) }
     ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = !expanded }) {
@@ -621,7 +661,7 @@ fun <T> DropdownField(
             readOnly = true,
             label = { Text(label, fontWeight = FontWeight.Bold, fontSize = 14.sp) },
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-            modifier = Modifier.menuAnchor().fillMaxWidth()
+            modifier = modifier.menuAnchor().fillMaxWidth()
         )
         ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             if (items.isEmpty()) {
@@ -642,9 +682,10 @@ fun <T> DropdownField(
 fun MotoStatusSelector(
     label: String,
     selectedOption: String,
-    onOptionSelected: (String) -> Unit
+    onOptionSelected: (String) -> Unit,
+    tagPrefix: String = "status",
+    options: List<String> = listOf("Óptimo", "Regular", "Malo")
 ) {
-    val options = listOf("Óptimo", "Regular", "Malo")
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(label, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, fontSize = 17.sp))
         Row(
@@ -654,7 +695,7 @@ fun MotoStatusSelector(
             options.forEach { option ->
                 val isSelected = option == selectedOption
                 val backgroundColor = when (option) {
-                    "Óptimo" -> Color(0xFF4CAF50)
+                    "Óptimo", "Bueno" -> Color(0xFF4CAF50)
                     "Regular" -> Color(0xFFFFA000)
                     else -> Color(0xFFD32F2F)
                 }
@@ -665,6 +706,7 @@ fun MotoStatusSelector(
                     modifier = Modifier
                         .weight(1f)
                         .height(48.dp)
+                        .testTag("${tagPrefix}_$option")
                         .border(2.dp, if (isSelected) backgroundColor else Color.LightGray, RoundedCornerShape(8.dp))
                         .clickable { onOptionSelected(option) },
                     shape = RoundedCornerShape(8.dp),
@@ -710,78 +752,6 @@ fun ImageDialog(imageUrl: String, onDismissRequest: () -> Unit) {
     }
 }
 
-@Composable
-fun DocumentoMonthYearPickerDialog(
-    onDismissRequest: () -> Unit,
-    onDateSelected: (year: Int, month: Int) -> Unit,
-    initialYear: Int,
-    initialMonth: Int
-) {
-    var selectedYear by remember { mutableStateOf(initialYear) }
-    val months = listOf(
-        "Ene", "Feb", "Mar", "Abr", "May", "Jun",
-        "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"
-    )
 
-    Dialog(onDismissRequest = onDismissRequest) {
-        Card(
-            modifier = Modifier.width(400.dp),
-            shape = RoundedCornerShape(24.dp)
-        ) {
-            Column(
-                modifier = Modifier.padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(onClick = { selectedYear-- }) {
-                        Icon(imageVector = Icons.Default.KeyboardArrowLeft, contentDescription = "Año anterior")
-                    }
-                    Text(
-                        text = selectedYear.toString(),
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
-                    )
-                    IconButton(onClick = { selectedYear++ }) {
-                        Icon(imageVector = Icons.Default.KeyboardArrowRight, contentDescription = "Año siguiente")
-                    }
-                }
-
-                Spacer(Modifier.height(20.dp))
-
-                LazyVerticalGrid(
-                    columns = GridCells.Fixed(3),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    itemsIndexed(months) { index, month ->
-                        val isSelected = (selectedYear == initialYear && index == initialMonth)
-                        OutlinedButton(
-                            onClick = {
-                                onDateSelected(selectedYear, index + 1)
-                                onDismissRequest()
-                            },
-                            modifier = Modifier.height(56.dp),
-                            shape = RoundedCornerShape(12.dp),
-                            colors = if (isSelected) {
-                                ButtonDefaults.outlinedButtonColors(
-                                    containerColor = MaterialTheme.colorScheme.primary,
-                                    contentColor = MaterialTheme.colorScheme.onPrimary
-                                )
-                            } else {
-                                ButtonDefaults.outlinedButtonColors()
-                            }
-                        ) {
-                            Text(text = month, style = MaterialTheme.typography.bodyLarge)
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
 
 

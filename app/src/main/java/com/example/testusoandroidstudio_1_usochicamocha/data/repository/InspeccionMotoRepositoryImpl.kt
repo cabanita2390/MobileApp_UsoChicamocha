@@ -61,6 +61,9 @@ class InspeccionMotoRepositoryImpl @Inject constructor(
                 checkTecno = inspeccion.checkTecno,
                 checkLicencia = inspeccion.checkLicencia,
                 checkExtintor = inspeccion.checkExtintor,
+                checkNivelAceite = inspeccion.checkNivelAceite,
+                checkEstadoLlantas = inspeccion.checkEstadoLlantas,
+                checkEstadoLuces = inspeccion.checkEstadoLuces,
                 idUbicacion = inspeccion.idUbicacion,
             )
 

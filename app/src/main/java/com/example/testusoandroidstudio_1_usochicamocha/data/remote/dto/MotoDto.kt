@@ -27,6 +27,11 @@ data class InspeccionMotoRequest(
     val checkLicencia: String,
     val checkExtintor: String,
 
+    // Inspección Mecánica Moto (Bueno / Regular / Malo)
+    val checkNivelAceite: String,
+    val checkEstadoLlantas: String,
+    val checkEstadoLuces: String,
+
     // Ubicacion
     val idUbicacion: Int
 )

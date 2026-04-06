@@ -10,6 +10,8 @@ data class InspeccionMotoPendiente(
     val idVehiculo: Int,
     val kilometrajeReportado: Int,
     val estadoVehiculo: String,
+    val conscienteResponsabilidad: String = "",
+    val aprobadoRuta: String = "",
     val observacionesFinales: String,
 
     // Documentos
@@ -18,6 +20,11 @@ data class InspeccionMotoPendiente(
     val checkLicencia: String,
     val checkExtintor: String,
 
+    // Inspección Mecánica Moto (Bueno / Regular / Malo)
+    val checkNivelAceite: String = "",
+    val checkEstadoLlantas: String = "",
+    val checkEstadoLuces: String = "",
+
     // Fechas para persistencia/sincronización
     val fechaSoat: String,
     val fechaTecno: String,
@@ -25,6 +32,10 @@ data class InspeccionMotoPendiente(
 
     // Ubicacion
     val idUbicacion: Int,
+
+    // Datos para visualización en lista (igual que vehículos)
+    val placaVehiculo: String = "",
+    val tipoVehiculo: String = "",
 
     val isSynced: Boolean = false,
     val isSyncing: Boolean = false

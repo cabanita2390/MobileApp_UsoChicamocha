@@ -212,30 +212,40 @@ fun VehiculoSyncActionsCard(
             Text("Sincronización de Datos", style = MaterialTheme.typography.titleLarge)
             Spacer(modifier = Modifier.height(8.dp))
             
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                OutlinedButton(
+            Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                // Botón 1: Sincronizar Vehículos
+                Button(
                     onClick = onSyncCatalogClicked,
                     enabled = !isSyncingCatalog,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     if (isSyncingCatalog) {
-                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                        CircularProgressIndicator(modifier = Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Sincronizando...", fontSize = 16.sp)
                     } else {
-                        Text("Sincronizar Vehículos", textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                        Icon(Icons.Default.Sync, contentDescription = null, modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("Sincronizar Vehículos", fontSize = 16.sp)
                     }
                 }
                 
-                OutlinedButton(
+                // Botón 2: Sincronizar Documentos
+                Button(
                     onClick = onSyncDocsClicked,
                     enabled = !isSyncingDocs,
-                    modifier = Modifier.weight(1f),
+                    modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp)
                 ) {
                     if (isSyncingDocs) {
-                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                        CircularProgressIndicator(modifier = Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Sincronizando...", fontSize = 16.sp)
                     } else {
-                        Text("Sincronizar Documentos", textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                        Icon(Icons.Default.Sync, contentDescription = null, modifier = Modifier.size(20.dp))
+                        Spacer(Modifier.width(8.dp))
+                        Text("Sincronizar Documentos", fontSize = 16.sp)
                     }
                 }
             }

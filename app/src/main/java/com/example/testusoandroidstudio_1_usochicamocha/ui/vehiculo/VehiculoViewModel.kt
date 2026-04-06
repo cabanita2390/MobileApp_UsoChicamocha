@@ -1,28 +1,28 @@
 package com.example.testusoandroidstudio_1_usochicamocha.ui.vehiculo
 
-import android.content.Context
+import android.annotation.SuppressLint
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.TokenManager
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.ApiService
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.DocumentoVehiculoEntity
-import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.toVehiculoItem
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.toVehiculoItem
+import com.example.testusoandroidstudio_1_usochicamocha.util.Constants
 import kotlinx.coroutines.flow.first
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import androidx.work.*
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.VehiculoInspectionEntity
-import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.VehiculoEntity
-import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.toVehiculoItem
 import com.example.testusoandroidstudio_1_usochicamocha.data.workers.SyncDataWorker
 import com.example.testusoandroidstudio_1_usochicamocha.domain.repository.VehiculoInspectionRepository
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.LocalSyncCoordinator
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.vehiculo.SaveVehiculoInspectionUseCase
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 import java.util.UUID
-import java.util.Calendar
 import javax.inject.Inject
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -52,21 +52,21 @@ data class VehiculoUiState(
     val lucesGeneral: String = "",
     val estadoVisual: String = "",
     val limpiezaGeneral: String = "",
-    // Documentación — fechas del backend (referencia, no editables)
+    // Documentación — fechas del backend (referencia, solo lectura)
     val fechaVencSoatDB: String = "",
     val fechaVencTecnoDB: String = "",
     val fechaVencLicencioDB: String = "",
     val vigenciaExtintorDB: String = "",
-    // Documentación — estado calculado comparando fecha ingresada vs fecha DB
+    // Documentación — estado calculado automáticamente (hoy vs fecha BD)
     val estadoSoat: String = "",
     val estadoTecno: String = "",
     val estadoLicencia: String = "",
     val estadoExtintor: String = "",
-    // Fechas que ingresa el inspector (picker, inicia en hoy)
-    val vigenciaExtintor: String = "",
-    val fechaVencSoat: String = "",
-    val fechaVencTecno: String = "",
-    val fechaVencLicencia: String = "",
+    // Días restantes de cada documento (negativo = ya venció)
+    val diasRestantesSoat: Long = 0,
+    val diasRestantesTecno: Long = 0,
+    val diasRestantesLicencia: Long = 0,
+    val diasRestantesExtintor: Long = 0,
     val urlImagenSoat: String? = null,
     val urlImagenTecno: String? = null,
     val urlImagenLicencia: String? = null,
@@ -95,6 +95,8 @@ data class VehiculoUiState(
     val saveCompleted: Boolean = false,
     val showSuccessDialog: Boolean = false,
     val errorMessage: String? = null,
+    val isSyncing: Boolean = false,
+    val syncMessage: String? = null,
     // AlertDialogs y lógica de doble "No" en campos de cierre
     val showConscienteAlert: Boolean = false,
     val conscienteNoCount: Int = 0,
@@ -102,9 +104,12 @@ data class VehiculoUiState(
     val aprobadoNoCount: Int = 0,
     val shouldExitForm: Boolean = false,
     // ─ Alerta de kilometraje ───────────────────────────────────────
-    val showKmAlert: Boolean = false,
+    val showKmAlert: Boolean = false,        // Rojo: Menor al anterior
+    val showKmYellowAlert: Boolean = false,  // Amarillo: Exceso (>300) o igual
     val kmAlertMessage: String = "",
     val kmEsInvalido: Boolean = false,    // true = bloquea el botón Guardar
+    val kmYellowConfirmed: Boolean = false, // true = el usuario aceptó el aviso amarillo
+    val kmRedConfirmed: Boolean = false,    // Nuevo: el usuario aceptó el aviso rojo (menor al anterior)
     val kilometrajeMinimo: Int = 0,
     val kilometrajeDB: String = "",
     val kilometrajeError: String? = null // Nuevo: Error inmediato debajo del campo
@@ -113,12 +118,10 @@ data class VehiculoUiState(
 // ─── VIEWMODEL ───────────────────────────────────────────────────────────────
 @HiltViewModel
 class VehiculoViewModel @Inject constructor(
-    @ApplicationContext private val context: Context,
     private val apiService: ApiService,
     private val tokenManager: TokenManager,
     private val repository: VehiculoInspectionRepository,
     private val saveVehiculoInspectionUseCase: SaveVehiculoInspectionUseCase,
-    private val workManager: WorkManager,
     private val localSyncCoordinator: LocalSyncCoordinator
 ) : ViewModel() {
 
@@ -151,13 +154,11 @@ class VehiculoViewModel @Inject constructor(
             .launchIn(viewModelScope)
     }
 
-    // ── Pre-llena estados de documentos al seleccionar vehículo ────────────────────────
+    // ── Carga y calcula estado de documentos al seleccionar vehículo ─────────
     private fun loadDocumentosVehiculo(idVehiculo: Int) {
         val placa = _uiState.value.selectedVehicle?.placa ?: return
         _uiState.update { it.copy(isLoadingDocs = true) }
-        val cal = Calendar.getInstance()
-        val hoy = "${cal.get(Calendar.YEAR)}-${String.format("%02d", cal.get(Calendar.MONTH) + 1)}"
-        
+
         viewModelScope.launch {
             // 1. CARGA INMEDIATA DESDE CACHE
             val cached = repository.getCachedDocuments(placa)
@@ -173,43 +174,45 @@ class VehiculoViewModel @Inject constructor(
                         _uiState.update { it.copy(isLoadingDocs = false) }
                         return@launch
                     }
-                    // Fechas del backend (referencia para la comparación)
-                    val soatDB     = doc.fechaVencSoat     ?: ""
-                    val tecnoDB    = doc.fechaVencTecno    ?: ""
-                    val licDB      = doc.fechaVencLicencia ?: ""
-                    val extDB      = doc.fechaVencExtintor ?: ""
-                    
+                    val soatDB  = doc.fechaVencSoat     ?: ""
+                    val tecnoDB = doc.fechaVencTecno    ?: ""
+                    val licDB   = doc.fechaVencLicencia ?: ""
+                    val extDB   = doc.fechaVencExtintor ?: ""
+
+                    val (estSoat, diasSoat)   = calcularEstadoPorDias(soatDB)
+                    val (estTecno, diasTecno) = calcularEstadoPorDias(tecnoDB)
+                    val (estLic, diasLic)     = calcularEstadoPorDias(licDB)
+                    val (estExt, diasExt)     = calcularEstadoPorDias(extDB)
+
                     _uiState.update { s ->
                         s.copy(
-                            // Fechas DB (referencia, se muestran al inspector)
-                            fechaVencSoatDB     = soatDB,
-                            fechaVencTecnoDB    = tecnoDB,
-                            fechaVencLicencioDB = licDB,
-                            vigenciaExtintorDB  = extDB,
-                            // El picker inicia en HOY; el estado se calcula vs la fecha DB
-                            fechaVencSoat     = hoy,
-                            fechaVencTecno    = hoy,
-                            fechaVencLicencia = hoy,
-                            vigenciaExtintor  = hoy,
-                            estadoSoat     = calcularEstadoVsDB(hoy, soatDB),
-                            estadoTecno    = calcularEstadoVsDB(hoy, tecnoDB),
-                            estadoLicencia = calcularEstadoVsDB(hoy, licDB),
-                            estadoExtintor = calcularEstadoVsDB(hoy, extDB),
-                            urlImagenSoat = doc.urlImagenSoat,
-                            urlImagenTecno = doc.urlImagenTecno,
-                            urlImagenLicencia = doc.urlImagenLicencia,
-                            urlImagenExtintor = doc.urlImagenExtintor,
-                            isLoadingDocs  = false
+                            fechaVencSoatDB      = soatDB,
+                            fechaVencTecnoDB     = tecnoDB,
+                            fechaVencLicencioDB  = licDB,
+                            vigenciaExtintorDB   = extDB,
+                            estadoSoat           = estSoat,
+                            estadoTecno          = estTecno,
+                            estadoLicencia       = estLic,
+                            estadoExtintor       = estExt,
+                            diasRestantesSoat    = diasSoat,
+                            diasRestantesTecno   = diasTecno,
+                            diasRestantesLicencia = diasLic,
+                            diasRestantesExtintor = diasExt,
+                            urlImagenSoat        = doc.urlImagenSoat,
+                            urlImagenTecno       = doc.urlImagenTecno,
+                            urlImagenLicencia    = doc.urlImagenLicencia,
+                            urlImagenExtintor    = doc.urlImagenExtintor,
+                            isLoadingDocs        = false
                         )
                     }
-                    
+
                     // 3. ACTUALIZAR CACHE CON LO DEL API
                     try {
                         val docsToCache = listOf(
-                            DocumentoVehiculoEntity(placa = placa, tipoDocumento = "SOAT",     vigencia = soatDB, imagenUrl = doc.urlImagenSoat,     kilometrajeActual = 0),
-                            DocumentoVehiculoEntity(placa = placa, tipoDocumento = "TECNO",    vigencia = tecnoDB, imagenUrl = doc.urlImagenTecno,   kilometrajeActual = 0),
-                            DocumentoVehiculoEntity(placa = placa, tipoDocumento = "LICENCIA", vigencia = licDB, imagenUrl = doc.urlImagenLicencia,    kilometrajeActual = 0),
-                            DocumentoVehiculoEntity(placa = placa, tipoDocumento = "EXTINTOR", vigencia = extDB, imagenUrl = doc.urlImagenExtintor,   kilometrajeActual = 0)
+                            DocumentoVehiculoEntity(placa = placa, tipoDocumento = "SOAT",     vigencia = soatDB,  imagenUrl = doc.urlImagenSoat,     kilometrajeActual = 0),
+                            DocumentoVehiculoEntity(placa = placa, tipoDocumento = "TECNO",    vigencia = tecnoDB, imagenUrl = doc.urlImagenTecno,    kilometrajeActual = 0),
+                            DocumentoVehiculoEntity(placa = placa, tipoDocumento = "LICENCIA", vigencia = licDB,   imagenUrl = doc.urlImagenLicencia, kilometrajeActual = 0),
+                            DocumentoVehiculoEntity(placa = placa, tipoDocumento = "EXTINTOR", vigencia = extDB,   imagenUrl = doc.urlImagenExtintor, kilometrajeActual = 0)
                         )
                         repository.refreshCachedDocuments(placa, docsToCache)
                     } catch (e: Exception) {
@@ -229,42 +232,38 @@ class VehiculoViewModel @Inject constructor(
     }
 
     private fun aplicarDocumentosDesdeCache(cached: List<DocumentoVehiculoEntity>) {
-        val soat = cached.find { it.tipoDocumento == "SOAT" }
+        val soat  = cached.find { it.tipoDocumento == "SOAT" }
         val tecno = cached.find { it.tipoDocumento == "TECNO" }
-        val lic = cached.find { it.tipoDocumento == "LICENCIA" }
-        val ext = cached.find { it.tipoDocumento == "EXTINTOR" }
+        val lic   = cached.find { it.tipoDocumento == "LICENCIA" }
+        val ext   = cached.find { it.tipoDocumento == "EXTINTOR" }
 
-        val cal = Calendar.getInstance()
-        val hoy = "${cal.get(Calendar.YEAR)}-${String.format("%02d", cal.get(Calendar.MONTH) + 1)}"
+        val (estSoat, diasSoat)   = calcularEstadoPorDias(soat?.vigencia ?: "")
+        val (estTecno, diasTecno) = calcularEstadoPorDias(tecno?.vigencia ?: "")
+        val (estLic, diasLic)     = calcularEstadoPorDias(lic?.vigencia ?: "")
+        val (estExt, diasExt)     = calcularEstadoPorDias(ext?.vigencia ?: "")
 
         _uiState.update { s ->
             s.copy(
-                fechaVencSoatDB = soat?.vigencia ?: "",
-                fechaVencTecnoDB = tecno?.vigencia ?: "",
-                fechaVencLicencioDB = lic?.vigencia ?: "",
-                vigenciaExtintorDB = ext?.vigencia ?: "",
-                
-                // Picker inicia en Hoy
-                fechaVencSoat = hoy,
-                fechaVencTecno = hoy,
-                fechaVencLicencia = hoy,
-                vigenciaExtintor = hoy,
-
-                estadoSoat = calcularEstadoVsDB(hoy, soat?.vigencia ?: ""),
-                estadoTecno = calcularEstadoVsDB(hoy, tecno?.vigencia ?: ""),
-                estadoLicencia = calcularEstadoVsDB(hoy, lic?.vigencia ?: ""),
-                estadoExtintor = calcularEstadoVsDB(hoy, ext?.vigencia ?: ""),
-                
-                urlImagenSoat = soat?.imagenUrl,
-                urlImagenTecno = tecno?.imagenUrl,
-                urlImagenLicencia = lic?.imagenUrl,
-                urlImagenExtintor = ext?.imagenUrl,
-
+                fechaVencSoatDB      = soat?.vigencia  ?: "",
+                fechaVencTecnoDB     = tecno?.vigencia ?: "",
+                fechaVencLicencioDB  = lic?.vigencia   ?: "",
+                vigenciaExtintorDB   = ext?.vigencia   ?: "",
+                estadoSoat           = estSoat,
+                estadoTecno          = estTecno,
+                estadoLicencia       = estLic,
+                estadoExtintor       = estExt,
+                diasRestantesSoat    = diasSoat,
+                diasRestantesTecno   = diasTecno,
+                diasRestantesLicencia = diasLic,
+                diasRestantesExtintor = diasExt,
+                urlImagenSoat        = soat?.imagenUrl,
+                urlImagenTecno       = tecno?.imagenUrl,
+                urlImagenLicencia    = lic?.imagenUrl,
+                urlImagenExtintor    = ext?.imagenUrl,
                 // Kilometraje desde cache
-                kilometrajeMinimo = cached.maxOfOrNull { it.kilometrajeActual } ?: 0,
-                kilometrajeDB     = (cached.maxOfOrNull { it.kilometrajeActual } ?: 0).toString(),
-                
-                isLoadingDocs = false
+                kilometrajeMinimo    = cached.maxOfOrNull { it.kilometrajeActual } ?: 0,
+                kilometrajeDB        = (cached.maxOfOrNull { it.kilometrajeActual } ?: 0).toString(),
+                isLoadingDocs        = false
             )
         }
     }
@@ -278,35 +277,16 @@ class VehiculoViewModel @Inject constructor(
             if (response.isSuccessful) {
                 val resultado = response.body() ?: return
                 if (resultado.alerta) {
-                    // Km incorrecto: muestra alerta Y bloquea el botón Guardar
+                    // Solo actualizamos el estado interno, no mostramos alerta automática mientras escribe
                     _uiState.update { it.copy(
-                        showKmAlert = true,
-                        kmAlertMessage = resultado.mensaje,
-                        kmEsInvalido = true
+                        kmEsInvalido = true,
+                        kmAlertMessage = resultado.mensaje
                     ) }
                     validateForm()
                 } else {
-                    // Km correcto: guardamos como nuevo mínimo para validación offline
-                    _uiState.update { it.copy(kmEsInvalido = false, kilometrajeMinimo = km, kilometrajeDB = km.toString()) }
+                    // Km correcto según backend
+                    _uiState.update { it.copy(kmEsInvalido = false) }
                     validateForm()
-                    
-                    // Guardar en caché para que offline use este valor
-                    try {
-                        // 1. Actualizar documentos (lo que ya hacíamos)
-                        val docsCache = repository.getCachedDocuments(placa)
-                        if (docsCache.isNotEmpty()) {
-                            val docsActualizados = docsCache.map { it.copy(kilometrajeActual = km) }
-                            repository.refreshCachedDocuments(placa, docsActualizados)
-                        }
-                        
-                        // 2. IMPORTANTE: Actualizar el catálogo de vehículos (VehiculoEntity)
-                        // Esto es lo que permite que al volver a elegir el vehículo offline, el kmMinimo sea el correcto.
-                        repository.updateVehicleMileage(placa, km)
-                        
-                        Log.d("VehiculoVM", "✅ km mínimo actualizado en catálogo y caché: $km")
-                    } catch (e: Exception) {
-                        Log.w("VehiculoVM", "No se pudo actualizar km en caché/catálogo: ${e.message}")
-                    }
                 }
             }
         } catch (e: Exception) {
@@ -314,13 +294,34 @@ class VehiculoViewModel @Inject constructor(
         }
     }
 
-    fun onKmAlertDismiss() { _uiState.update { it.copy(showKmAlert = false) } }
+    fun onKmAlertDismiss() {
+        _uiState.update { it.copy(
+            showKmAlert = false,
+            kmEsInvalido = false,
+            kmRedConfirmed = false
+        ) }
+    }
+
+    fun onConfirmRedKmException() {
+        _uiState.update { it.copy(showKmAlert = false, kmRedConfirmed = true) }
+        validateForm()
+    }
+
+    fun onCancelRedKmHighlight() {
+        _uiState.update { it.copy(showKmAlert = false, kmRedConfirmed = false) }
+    }
 
     // ── Datos generales ─────────────────────────────────────────────────────────────────
     fun setVehicles(list: List<VehiculoItem>) { _uiState.update { it.copy(vehicles = list) } }
     fun onKilometrajeChange(v: String) {
-        // 1. Actualizar el valor del texto inmediatamente
-        _uiState.update { it.copy(kilometraje = v) }
+        // 1. Actualizar el valor y limpiar TODOS los estados de alerta anteriores
+        _uiState.update { it.copy(
+            kilometraje = v,
+            kmYellowConfirmed = false,
+            kmRedConfirmed = false,     // Reset confirmación roja
+            showKmAlert = false,        // Limpiar alerta roja previa
+            showKmYellowAlert = false   // Limpiar alerta amarilla previa
+        ) }
         
         // 2. Si el campo está vacío, limpiar errores inmediatamente
         if (v.isBlank()) {
@@ -334,41 +335,69 @@ class VehiculoViewModel @Inject constructor(
             return
         }
 
-        // 3. Manejo de validación con Debounce (30 segundos)
-        val placa = _uiState.value.selectedVehicle?.placa ?: return
+        // 3. Manejo de validación reactiva (ROJO: Menor al mínimo)
+        val km = v.toIntOrNull() ?: 0
+        val kmMin = _uiState.value.kilometrajeMinimo
         
+        // Solo actualizamos kmEsInvalido silenciosamente para deshabilitar el botón "Guardar"
+        val isLowerThanMin = km > 0 && km < kmMin
+        _uiState.update { it.copy(
+            kmEsInvalido = isLowerThanMin,
+            kilometrajeError = null // Eliminamos mensajes de campo
+        ) }
+        validateForm()
+
+        // 4. Validación con Backend (opcional/debounce)
+        val placa = _uiState.value.selectedVehicle?.placa ?: return
         kmValidationJob?.cancel()
         kmValidationJob = viewModelScope.launch {
-            delay(30000) // 30 segundos solicitados por el usuario
-            
-            val km = v.toIntOrNull() ?: 0
-            val kmMin = _uiState.value.kilometrajeMinimo
-            
-            // Validación local
-            val isLocalInvalid = km > 0 && km < kmMin
-            val alertMsg = if (isLocalInvalid) {
-                "El kilometraje ingresado ($km km) es menor al registrado ($kmMin km)."
-            } else {
-                ""
-            }
-
-            // Actualizar estado de error y alerta
-            _uiState.update { s ->
-                s.copy(
-                    kmEsInvalido = isLocalInvalid,
-                    kilometrajeError = if (isLocalInvalid) alertMsg else null,
-                    kmAlertMessage = alertMsg,
-                    showKmAlert = isLocalInvalid // Mostrar el diálogo solo si es inválido tras el delay
-                )
-            }
-            
-            validateForm()
-            
-            // 4. Solo llamar al backend si no hay error local
-            if (!isLocalInvalid && km > 0 && km > kmMin) {
+            delay(2000) // Delay corto para el backend
+            if (!isLowerThanMin && km > kmMin) {
                 validarKilometrajeConBackend(placa, km)
             }
         }
+    }
+
+    /**
+     * Se activa cuando el campo de kilometraje pierde el foco (onBlur).
+     * Muestra la alerta AMARILLA si el incremento es > 300 o es igual.
+     */
+    fun onKilometrajeBlur() {
+        val km = _uiState.value.kilometraje.toIntOrNull() ?: return
+        val kmMin = _uiState.value.kilometrajeMinimo
+        val diff = km - kmMin
+        if (km <= 0) return
+
+        when {
+            diff < 0 -> _uiState.update { it.copy(
+                showKmAlert = true,
+                kmAlertMessage = "El kilometraje ingresado es menor al último kilometraje registrado. Por favor, verifíquelo."
+            )}
+            diff == 0 || diff >= Constants.KM_THRESHOLD -> {
+                val msg = if (diff == 0)
+                    "El kilometraje ingresado es igual al último registrado. ¿Confirma que es correcto?"
+                else
+                    "Detectamos un incremento inusual en el kilometraje. ¿Está seguro de que es correcto?"
+                _uiState.update { it.copy(
+                    showKmYellowAlert = true,
+                    kmYellowConfirmed = false,
+                    kmAlertMessage = msg
+                )}
+            }
+        }
+    }
+
+    fun onConfirmKmException() {
+        _uiState.update { it.copy(showKmYellowAlert = false, kmYellowConfirmed = true) }
+        validateForm()
+    }
+
+    fun onCancelKmHighlight() {
+        _uiState.update { it.copy(showKmYellowAlert = false, kmYellowConfirmed = false) }
+    }
+
+    fun onKmYellowAlertDismiss() {
+        _uiState.update { it.copy(showKmYellowAlert = false) }
     }
 
     fun onVehicleSelected(v: VehiculoItem) {
@@ -405,89 +434,38 @@ class VehiculoViewModel @Inject constructor(
         validateForm()
     }
 
-    // ── Documentación ──────────────────────────────────────────────────────────────
-    fun onDocFechaVencChange(doc: String, date: String) {
-        val s = _uiState.value
-        val dbDate = when (doc) {
-            "SOAT"     -> s.fechaVencSoatDB
-            "Tecno"    -> s.fechaVencTecnoDB
-            "Licencia" -> s.fechaVencLicencioDB
-            else       -> ""
-        }
-        val estado = calcularEstadoVsDB(date, dbDate)
-        _uiState.update { st ->
-            when (doc) {
-                "SOAT"     -> st.copy(fechaVencSoat     = date, estadoSoat     = estado)
-                "Tecno"    -> st.copy(fechaVencTecno    = date, estadoTecno    = estado)
-                "Licencia" -> st.copy(fechaVencLicencia = date, estadoLicencia = estado)
-                else       -> st
-            }
-        }
-        validateForm()
-    }
-
-    fun onExtintorDateChange(year: Int, month: Int) {
-        val vigencia = "$year-${String.format("%02d", month + 1)}"
-        val estado = calcularEstadoExtintor(vigencia) // Corregido: Usar su propia lógica
-        _uiState.update { it.copy(vigenciaExtintor = vigencia, estadoExtintor = estado) }
-        validateForm()
-    }
-
     /**
-     * TRIPLE VALIDACIÓN (Día 1):
-     * 1. Autoridad: Ingresado vs DB (No puede ser mayor)
-     * 2. Realidad: Hoy vs Ingresado (No puede ser menor)
-     * 3. Expiración: El mes en que vence (DB) ya cuenta como vencido desde el día 1, 
-     *    A MENOS que sea el mes actual.
+     * Calcula el estado de vigencia basado en la fecha del backend.
+     * @SuppressLint("NewApi") se usa porque hemos habilitado Java 8+ Desugaring.
      */
-    private fun calcularEstadoVsDB(fechaIngresada: String, fechaDBFull: String): String {
-        if (fechaIngresada.isBlank() || fechaDBFull.isBlank()) return ""
+    @SuppressLint("NewApi")
+    private fun calcularEstadoPorDias(fechaDB: String): Pair<String, Long> {
+        if (fechaDB.isBlank()) return Pair("", 0L)
         return try {
-            // Parser Robusto: Acepta YYYY-MM-DD, DD-MM-YYYY, YYYY-MM, etc.
-            fun getVal(date: String): Int {
-                val parts = date.split("-").mapNotNull { it.toIntOrNull() }
-                if (parts.size < 2) return 0
-                val year = parts.find { it > 100 } ?: 0
-                val month = when {
-                    parts.size >= 2 && parts[0] == year -> parts[1]
-                    parts.size >= 3 && parts[2] == year -> parts[1]
-                    parts.size == 2 && parts[1] == year -> parts[0]
-                    else -> parts[1]
+            val hoy = LocalDate.now()
+            // Normalizar formato: si es YYYY-MM lo convertimos a YYYY-MM-01
+            val normalizada = when {
+                fechaDB.length == 10 && fechaDB.contains("-") && fechaDB.indexOf("-") == 4 -> fechaDB
+                fechaDB.length == 7 && fechaDB.contains("-") && fechaDB.indexOf("-") == 4 -> "$fechaDB-01"
+                fechaDB.length == 10 && fechaDB.contains("-") && fechaDB.indexOf("-") == 2 -> {
+                    val p = fechaDB.split("-")
+                    if (p.size == 3) "${p[2]}-${p[1]}-${p[0]}" else fechaDB
                 }
-
-
-                return year * 12 + month
-
-
+                else -> fechaDB
             }
-
-            val cal = Calendar.getInstance()
-            val valH = cal.get(Calendar.YEAR) * 12 + (cal.get(Calendar.MONTH) + 1)
-            val valD = getVal(fechaDBFull)
-            val valI = getVal(fechaIngresada)
-
-            Log.d("VencLogic", "Vehiculo - Hoy: $valH, DB: $valD, Sel: $valI")
-
-            when {
-                // 1. EL SUPERVISOR MANDA O YA VENCIÓ (Día 1 del mes de vencimiento)
-                valH >= valD -> "Vencido"
-
-                // 2. PRÓXIMO A VENCER (Anticipación de exatamente 1 mes)
-                valH == valD - 1 -> "Próximo a Vencer"
-                valI == valD - 1 -> "Próximo a Vencer"
-
-                // 3. SELECCIÓN INVÁLIDA
-                valI < valH  -> "Vencido"
-                valI >= valD -> "Vencido"
-
-                // 4. VIGENTE
-                else -> "Vigente"
+            val fechaVenc = LocalDate.parse(normalizada, DateTimeFormatter.ISO_LOCAL_DATE)
+            val dias = ChronoUnit.DAYS.between(hoy, fechaVenc)
+            Log.d("VencLogic", "fechaDB=$fechaDB → venc=$fechaVenc, hoy=$hoy, dias=$dias")
+            val estado = when {
+                dias < 0  -> "Vencido"
+                dias <= 30 -> "Próximo a Vencer"
+                else       -> "Vigente"
             }
-        } catch (e: Exception) { "" }
-    }
-
-    private fun calcularEstadoExtintor(vigencia: String): String {
-        return calcularEstadoVsDB(vigencia, _uiState.value.vigenciaExtintorDB)
+            Pair(estado, dias)
+        } catch (e: Exception) {
+            Log.e("VencLogic", "Error parseando fecha: $fechaDB", e)
+            Pair("", 0L)
+        }
     }
 
 
@@ -548,7 +526,10 @@ class VehiculoViewModel @Inject constructor(
     fun onExitFormHandled()        { _uiState.update { it.copy(shouldExitForm = false) } }
 
 
-    fun onObservacionesChange(v: String) { _uiState.update { it.copy(observaciones = v) } }
+    fun onObservacionesChange(v: String) { 
+        _uiState.update { it.copy(observaciones = v) }
+        validateForm()
+    }
 
     private fun validateForm() {
         val s = _uiState.value
@@ -567,14 +548,39 @@ class VehiculoViewModel @Inject constructor(
                 s.condicionParaConducir.isNotBlank() &&
                 s.conscienteResponsabilidad.isNotBlank() &&
                 s.aprobadoRuta.isNotBlank() &&
-                s.responsableInspeccion.isNotBlank() && 
-                !s.kmEsInvalido
+                s.responsableInspeccion.isNotBlank() &&
+                s.kilometraje.isNotBlank()
         _uiState.update { it.copy(isSaveButtonEnabled = valid) }
     }
 
     fun onSaveClick() {
         if (!_uiState.value.isSaveButtonEnabled) return
         val s = _uiState.value
+        val km = s.kilometraje.toIntOrNull() ?: 0
+        val kmMin = s.kilometrajeMinimo
+        val diff = km - kmMin
+
+        // Alerta ROJA: km menor al registrado — no bloquea si ya confirmó
+        if (km > 0 && diff < 0 && !s.kmRedConfirmed) {
+            _uiState.update { it.copy(
+                showKmAlert = true,
+                kmAlertMessage = "El kilometraje ingresado es menor al último kilometraje registrado. Por favor, verifíquelo."
+            ) }
+            return
+        }
+
+        // Alerta AMARILLA: incremento inusual (>=300) o igual — no bloquea si ya confirmó
+        if (km > 0 && !s.kmYellowConfirmed && (diff == 0 || diff >= Constants.KM_THRESHOLD)) {
+            val msg = if (diff == 0)
+                "El kilometraje ingresado es igual al último registrado. ¿Confirma que es correcto?"
+            else
+                "Detectamos un incremento inusual en el kilometraje. ¿Está seguro de que es correcto?"
+            _uiState.update { it.copy(
+                showKmYellowAlert = true,
+                kmAlertMessage = msg
+            ) }
+            return
+        }
 
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
@@ -602,10 +608,11 @@ class VehiculoViewModel @Inject constructor(
                     checkTecno             = s.estadoTecno,
                     checkLicencia          = s.estadoLicencia,
                     checkExtintor          = s.estadoExtintor,
-                    vigenciaExtintor       = s.vigenciaExtintor,
-                    fechaVencSoat          = s.fechaVencSoat,
-                    fechaVencTecno         = s.fechaVencTecno,
-                    fechaVencLicencia      = s.fechaVencLicencia,
+                    // Se guardan las fechas BD (la fecha de inspección es hoy, calculada automáticamente)
+                    vigenciaExtintor       = s.vigenciaExtintorDB,
+                    fechaVencSoat          = s.fechaVencSoatDB,
+                    fechaVencTecno         = s.fechaVencTecnoDB,
+                    fechaVencLicencia      = s.fechaVencLicencioDB,
                     tieneBotiquin          = s.tieneBotiquin == "Si",
                     tieneSeñalizacion      = s.tieneSeñalizacion == "Si",
                     tieneLineasEmergencia  = s.tieneLineasEmergencia == "Si",
@@ -623,10 +630,10 @@ class VehiculoViewModel @Inject constructor(
                 saveVehiculoInspectionUseCase(entity)
                 
                 val placa = s.selectedVehicle!!.placa
-                val km = s.kilometraje.toIntOrNull() ?: 0
+                val kmVal = s.kilometraje.toIntOrNull() ?: 0
                     
                 try {
-                    repository.updateVehicleMileage(placa, km)
+                    repository.updateVehicleMileage(placa, kmVal)
                 } catch (e: Exception) {
                     Log.e("VehiculoVM", "Error actualizando catálogo tras guardado", e)
                 }
@@ -643,15 +650,22 @@ class VehiculoViewModel @Inject constructor(
 
     fun onSyncClicked() {
         viewModelScope.launch {
-            // Sincroniza catálogo y documentos para asegurar que el formulario tenga lo último
+            _uiState.update { it.copy(isSyncing = true, syncMessage = "Actualizando datos del vehículo...") }
+            
+            // Realizar las sincronizaciones
             localSyncCoordinator.coordinateSync(
                 LocalSyncCoordinator.SyncTrigger.ManualSync(LocalSyncCoordinator.SyncType.VEHICLES_CATALOG)
             )
             localSyncCoordinator.coordinateSync(
                 LocalSyncCoordinator.SyncTrigger.ManualSync(LocalSyncCoordinator.SyncType.VEHICLES_DOCUMENTS)
             )
+
+            // Feedback final
+            _uiState.update { it.copy(isSyncing = false, syncMessage = "¡Datos actualizados con éxito!") }
         }
     }
+
+    fun onSyncMessageShown() { _uiState.update { it.copy(syncMessage = null) } }
 
     private fun triggerSync() {
         viewModelScope.launch {
