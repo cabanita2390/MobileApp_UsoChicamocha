@@ -8,7 +8,7 @@ import com.example.testusoandroidstudio_1_usochicamocha.data.local.TokenManager
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.ApiService
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.DocumentoVehiculoEntity
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.toVehiculoItem
-import com.example.testusoandroidstudio_1_usochicamocha.util.Constants
+// import com.example.testusoandroidstudio_1_usochicamocha.util.Constants // Removido por solicitud del usuario
 import kotlinx.coroutines.flow.first
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
@@ -373,7 +373,7 @@ class VehiculoViewModel @Inject constructor(
                 showKmAlert = true,
                 kmAlertMessage = "El kilometraje ingresado es menor al último kilometraje registrado. Por favor, verifíquelo."
             )}
-            diff == 0 || diff >= Constants.KM_THRESHOLD -> {
+            diff == 0 || diff >= 300 -> { // KM_THRESHOLD hardcoded
                 val msg = if (diff == 0)
                     "El kilometraje ingresado es igual al último registrado. ¿Confirma que es correcto?"
                 else
@@ -570,7 +570,7 @@ class VehiculoViewModel @Inject constructor(
         }
 
         // Alerta AMARILLA: incremento inusual (>=300) o igual — no bloquea si ya confirmó
-        if (km > 0 && !s.kmYellowConfirmed && (diff == 0 || diff >= Constants.KM_THRESHOLD)) {
+        if (km > 0 && !s.kmYellowConfirmed && (diff == 0 || diff >= 300)) { // KM_THRESHOLD hardcoded
             val msg = if (diff == 0)
                 "El kilometraje ingresado es igual al último registrado. ¿Confirma que es correcto?"
             else
