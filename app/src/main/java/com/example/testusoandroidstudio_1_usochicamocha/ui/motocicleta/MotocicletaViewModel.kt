@@ -33,6 +33,12 @@ import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import java.util.UUID
 
+// ─── CONSTANTES DE UMBRAL DE KILOMETRAJE ────────────────────────────────────
+/** Diferencia límite para el rango VERDE (hasta 200km es normal) */
+private const val KM_YELLOW_THRESHOLD = 200
+/** Diferencia mínima para mostrar alerta ROJA por exceso (incremento extremo, en km) */
+private const val KM_RED_THRESHOLD = 1000
+
 /** Estado de un documento individual (SOAT, Tecno, Licencia) */
 data class DocumentoState(
     val estadoDoc: String = "",         // Vigente / Próximo a Vencer / Vencido
@@ -55,10 +61,11 @@ data class MotocicletaUiState(
     val kilometrajeError: String? = null,
     val kmEsInvalido: Boolean = false,
     val kmAlertMessage: String = "",
-    val showKmAlert: Boolean = false,       // Rojo
-    val showKmYellowAlert: Boolean = false, // Amarillo
+    val showKmAlert: Boolean = false,       // Rojo: menor al registrado OR exceso >=800
+    val showKmYellowAlert: Boolean = false, // Amarillo: incremento 300-800 o igual
     val kmYellowConfirmed: Boolean = false,
-    val kmRedConfirmed: Boolean = false,    // Nuevo
+    val kmRedConfirmed: Boolean = false,
+    val kmColorEstado: Int? = null,
 
     // Documentos agrupados en DocumentoState
     val soat: DocumentoState = DocumentoState(),
@@ -248,25 +255,41 @@ class MotocicletaViewModel @Inject constructor(
         _uiState.update { it.copy(
             kilometraje = value,
             kmYellowConfirmed = false,
-            kmRedConfirmed = false,     // Reset
-            showKmAlert = false,        // Limpiar alerta roja previa
-            showKmYellowAlert = false   // Limpiar alerta amarilla previa
+            kmRedConfirmed = false,
+            showKmAlert = false,
+            showKmYellowAlert = false
         ) }
 
         val km = value.toIntOrNull() ?: 0
         val kmMin = _uiState.value.kilometrajeMinimo
-        
+        val diff = if (km > 0 && kmMin > 0) km - kmMin else Int.MIN_VALUE
+
+        val nuevoColorEstado: Int? = when {
+            km <= 0   -> null
+            kmMin == 0 -> null
+            diff < 0  -> 2
+            diff in 0..KM_YELLOW_THRESHOLD -> 0
+            diff in (KM_YELLOW_THRESHOLD + 1) until KM_RED_THRESHOLD -> 1
+            else -> 2
+        }
+
         // Validación Roja (Bloqueante) silenciosa para el botón
-        val isLowerThanMin = km > 0 && km < kmMin
+        val isLowerThanMin = km > 0 && kmMin > 0 && km < kmMin
         _uiState.update { it.copy(
             kmEsInvalido = isLowerThanMin,
-            kilometrajeError = null // Sin mensajes de error en campo
+            kilometrajeError = null,
+            kmColorEstado = nuevoColorEstado
         ) }
         validate()
     }
 
     /**
      * Se activa cuando el campo de kilometraje pierde el foco (onBlur).
+     * - diff < 0           → Alerta ROJA  (menor al registrado)
+     * - diff == 0          → Alerta AMARILLA (igual al registrado)
+     * - 300 <= diff < 800  → Alerta AMARILLA (incremento inusual)
+     * - diff >= 800        → Alerta ROJA  (incremento excesivo)
+     * - 0 < diff < 300     → Sin alerta (rango normal, campo verde)
      */
     fun onKilometrajeBlur() {
         val km = _uiState.value.kilometraje.toIntOrNull() ?: return
@@ -275,21 +298,25 @@ class MotocicletaViewModel @Inject constructor(
         if (km <= 0) return
 
         when {
+            // ROJO: menor al último registrado
             diff < 0 -> _uiState.update { it.copy(
                 showKmAlert = true,
                 kmAlertMessage = "El kilometraje ingresado es menor al último kilometraje registrado. Por favor, verifíquelo."
             )}
-            diff == 0 || diff >= 300 -> { // KM_THRESHOLD hardcoded
-                val msg = if (diff == 0)
-                    "El kilometraje ingresado es igual al último registrado. ¿Confirma que es correcto?"
-                else
-                    "Detectamos un incremento inusual en el kilometraje. ¿Está seguro de que es correcto?"
+            // ROJO: exceso extremo >=800 km
+            diff >= KM_RED_THRESHOLD -> _uiState.update { it.copy(
+                showKmAlert = true,
+                kmAlertMessage = "El incremento de kilometraje es muy elevado. Verifique que el valor sea correcto."
+            )}
+            // AMARILLO: incremento superior a 200km y menor a 1000km
+            diff > KM_YELLOW_THRESHOLD -> {
                 _uiState.update { it.copy(
                     showKmYellowAlert = true,
                     kmYellowConfirmed = false,
-                    kmAlertMessage = msg
+                    kmAlertMessage = "Detectamos un incremento inusual en el kilometraje. ¿Está seguro de que es correcto?"
                 )}
             }
+            // VERDE: 0 <= diff <= 200 → sin alerta, rango normal
         }
     }
 
@@ -583,15 +610,20 @@ class MotocicletaViewModel @Inject constructor(
             return
         }
 
-        // Alerta AMARILLA: incremento inusual (>=300) o igual — no bloquea si ya confirmó
-        if (km > 0 && !s.kmYellowConfirmed && (diff == 0 || diff >= 300)) { // KM_THRESHOLD hardcoded
-            val msg = if (diff == 0)
-                "El kilometraje ingresado es igual al último registrado. ¿Confirma que es correcto?"
-            else
-                "Detectamos un incremento inusual en el kilometraje. ¿Está seguro de que es correcto?"
+        // Alerta ROJA: exceso extremo >=800 — no bloquea si ya confirmó
+        if (km > 0 && diff >= KM_RED_THRESHOLD && !s.kmRedConfirmed) {
+            _uiState.update { it.copy(
+                showKmAlert = true,
+                kmAlertMessage = "El incremento de kilometraje es muy elevado. Verifique que el valor sea correcto."
+            ) }
+            return
+        }
+
+        // Alerta AMARILLA: incremento inusual > 200 — no bloquea si ya confirmó
+        if (km > 0 && !s.kmYellowConfirmed && diff in (KM_YELLOW_THRESHOLD + 1) until KM_RED_THRESHOLD) {
             _uiState.update { it.copy(
                 showKmYellowAlert = true,
-                kmAlertMessage = msg
+                kmAlertMessage = "Detectamos un incremento inusual en el kilometraje. ¿Está seguro de que es correcto?"
             ) }
             return
         }

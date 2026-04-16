@@ -131,6 +131,18 @@ fun MotocicletaScreen(
             // 3. KILOMETRAJE
             item {
                 SectionCard("Kilometraje", modifier = Modifier.testTag("section_km")) {
+                    // Solo aplicar color verde al borde cuando está en rango normal (0)
+                    val fieldColors = if (uiState.kmColorEstado == 0) {
+                        OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor   = ColorBueno,
+                            unfocusedBorderColor = ColorBueno,
+                            focusedLabelColor    = ColorBueno,
+                            unfocusedLabelColor  = ColorBueno
+                        )
+                    } else {
+                        OutlinedTextFieldDefaults.colors()
+                    }
+
                     OutlinedTextField(
                         value = uiState.kilometraje,
                         onValueChange = { if (it.all { c -> c.isDigit() }) viewModel.onKilometrajeChange(it) },
@@ -147,6 +159,7 @@ fun MotocicletaScreen(
                             keyboardType = KeyboardType.Number,
                             imeAction = ImeAction.Done
                         ),
+                        colors = fieldColors,
                         isError = uiState.kilometrajeError != null,
                         supportingText = {
                             if (uiState.kilometrajeError != null) {

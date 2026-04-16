@@ -339,6 +339,17 @@ fun VehiculoScreen(
                     )
                     Spacer(Modifier.height(10.dp))
 
+                    // Solo aplicar color verde al borde cuando está en rango normal (0)
+                    val fieldColors = if (uiState.kmColorEstado == 0) {
+                        OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor   = ColorBueno,
+                            unfocusedBorderColor = ColorBueno,
+                            focusedLabelColor    = ColorBueno,
+                            unfocusedLabelColor  = ColorBueno
+                        )
+                    } else {
+                        OutlinedTextFieldDefaults.colors()
+                    }
 
                     OutlinedTextField(
                         value = uiState.kilometraje,
@@ -354,7 +365,8 @@ fun VehiculoScreen(
                         keyboardOptions = KeyboardOptions(
                             keyboardType = KeyboardType.Number,
                             imeAction = androidx.compose.ui.text.input.ImeAction.Done
-                        )
+                        ),
+                        colors = fieldColors
                     )
                 }
             }
