@@ -11,7 +11,6 @@ import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.toVehi
 // import com.example.testusoandroidstudio_1_usochicamocha.util.Constants // Removido por solicitud del usuario
 import kotlinx.coroutines.flow.first
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import androidx.work.*
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.VehiculoInspectionEntity
@@ -134,9 +133,6 @@ class VehiculoViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(VehiculoUiState())
     val uiState: StateFlow<VehiculoUiState> = _uiState.asStateFlow()
-
-    // Job para el debounce de validación de kilometraje
-    private var kmValidationJob: Job? = null
 
     init {
         observeVehiclesCatalog()
@@ -267,9 +263,6 @@ class VehiculoViewModel @Inject constructor(
                 urlImagenTecno       = tecno?.imagenUrl,
                 urlImagenLicencia    = lic?.imagenUrl,
                 urlImagenExtintor    = ext?.imagenUrl,
-                // Kilometraje desde cache
-                kilometrajeMinimo    = cached.maxOfOrNull { it.kilometrajeActual } ?: 0,
-                kilometrajeDB        = (cached.maxOfOrNull { it.kilometrajeActual } ?: 0).toString(),
                 isLoadingDocs        = false
             )
         }
@@ -277,30 +270,7 @@ class VehiculoViewModel @Inject constructor(
 
 
 
-    // ── Validación de kilometraje contra el backend ───────────────────────
-    private suspend fun validarKilometrajeConBackend(placa: String, km: Int) {
-        try {
-            val response = apiService.validarKilometraje(placa, km)
-            if (response.isSuccessful) {
-                val resultado = response.body() ?: return
-                if (resultado.alerta) {
-                    // Solo actualizamos el estado interno, no mostramos alerta automática mientras escribe
-                    _uiState.update { it.copy(
-                        kmEsInvalido = true,
-                        kmAlertMessage = resultado.mensaje
-                    ) }
-                    validateForm()
-                } else {
-                    // Km correcto según backend
-                    _uiState.update { it.copy(kmEsInvalido = false) }
-                    validateForm()
-                }
-            }
-        } catch (e: Exception) {
-            Log.w("VehiculoVM", "Error validando kilometraje (sin conexión): ${e.message}")
-        }
-    }
-
+    // ── Previene que el diálogo se cierre accidentalmente ───────────────────
     fun onKmAlertDismiss() {
         _uiState.update { it.copy(
             showKmAlert = false,
@@ -332,7 +302,6 @@ class VehiculoViewModel @Inject constructor(
         
         // 2. Si el campo está vacío, limpiar errores inmediatamente
         if (v.isBlank()) {
-            kmValidationJob?.cancel()
             _uiState.update { it.copy(
                 kmEsInvalido = false,
                 kilometrajeError = null,
@@ -365,16 +334,6 @@ class VehiculoViewModel @Inject constructor(
             kmColorEstado = nuevoColorEstado
         ) }
         validateForm()
-
-        // 4. Validación con Backend (opcional/debounce)
-        val placa = _uiState.value.selectedVehicle?.placa ?: return
-        kmValidationJob?.cancel()
-        kmValidationJob = viewModelScope.launch {
-            delay(2000) // Delay corto para el backend
-            if (!isLowerThanMin && km > kmMin) {
-                validarKilometrajeConBackend(placa, km)
-            }
-        }
     }
 
     /**
@@ -434,11 +393,10 @@ class VehiculoViewModel @Inject constructor(
             kilometrajeDB = v.kilometrajeActual.toString()
         ) }
         loadDocumentosVehiculo(v.idVehiculo)
-        // Si ya hay un km ingresado, validarlo contra el nuevo vehículo
         val kmStr = _uiState.value.kilometraje
         val km = kmStr.toIntOrNull()
         if (km != null) {
-            onKilometrajeChange(kmStr) // Re-validar inmediatamente (incluye backend si es válido)
+            onKilometrajeChange(kmStr) 
         }
         validateForm()
     }
