@@ -372,13 +372,13 @@ fun MotocicletaScreen(
             )
         }
 
-        // ─ Alerta: Kilometraje menor al registrado (No bloqueante tras confirmar) ─
+        // ─ Alerta: Kilometraje menor al registrado (BLOQUEANTE) ─
         if (uiState.showKmAlert) {
             AlertDialog(
                 onDismissRequest = { viewModel.onCancelRedKmHighlight() },
                 icon = {
                     Icon(
-                        Icons.Default.Warning,
+                        Icons.Default.Error,
                         contentDescription = null,
                         tint = ColorMalo,
                         modifier = Modifier.size(40.dp)
@@ -394,20 +394,15 @@ fun MotocicletaScreen(
                 text = {
                     Text(
                         uiState.kmAlertMessage +
-                                "\n\nPor favor, verifica si el número es correcto o corrígelo.",
+                                "\n\nDebe corregir el valor antes de poder guardar la inspección.",
                         style = MaterialTheme.typography.bodyMedium
                     )
                 },
                 confirmButton = {
                     Button(
-                        onClick = { viewModel.onConfirmRedKmException() },
+                        onClick = { viewModel.onCancelRedKmHighlight() },
                         colors = ButtonDefaults.buttonColors(containerColor = ColorMalo)
                     ) {
-                        Text("Confirmar Excepción")
-                    }
-                },
-                dismissButton = {
-                    OutlinedButton(onClick = { viewModel.onCancelRedKmHighlight() }) {
                         Text("Corregir")
                     }
                 }

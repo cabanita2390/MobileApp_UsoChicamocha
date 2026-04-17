@@ -64,7 +64,6 @@ data class MotocicletaUiState(
     val showKmAlert: Boolean = false,       // Rojo: menor al registrado OR exceso >=800
     val showKmYellowAlert: Boolean = false, // Amarillo: incremento 300-800 o igual
     val kmYellowConfirmed: Boolean = false,
-    val kmRedConfirmed: Boolean = false,
     val kmColorEstado: Int? = null,
 
     // Documentos agrupados en DocumentoState
@@ -255,7 +254,6 @@ class MotocicletaViewModel @Inject constructor(
         _uiState.update { it.copy(
             kilometraje = value,
             kmYellowConfirmed = false,
-            kmRedConfirmed = false,
             showKmAlert = false,
             showKmYellowAlert = false
         ) }
@@ -328,13 +326,8 @@ class MotocicletaViewModel @Inject constructor(
         ) }
     }
 
-    fun onConfirmRedKmException() {
-        _uiState.update { it.copy(showKmAlert = false, kmRedConfirmed = true) }
-        validate()
-    }
-
     fun onCancelRedKmHighlight() {
-        _uiState.update { it.copy(showKmAlert = false, kmRedConfirmed = false) }
+        _uiState.update { it.copy(showKmAlert = false) }
     }
 
     fun onConfirmKmException() {
@@ -601,8 +594,8 @@ class MotocicletaViewModel @Inject constructor(
         val kmMin = s.kilometrajeMinimo
         val diff = km - kmMin
 
-        // Alerta ROJA: km menor al registrado — no bloquea si ya confirmó
-        if (km > 0 && diff < 0 && !s.kmRedConfirmed) {
+        // Alerta ROJA: km menor al registrado (BLOQUEANTE)
+        if (km > 0 && diff < 0) {
             _uiState.update { it.copy(
                 showKmAlert = true,
                 kmAlertMessage = "El kilometraje ingresado es menor al último kilometraje registrado. Por favor, verifíquelo."
@@ -610,8 +603,8 @@ class MotocicletaViewModel @Inject constructor(
             return
         }
 
-        // Alerta ROJA: exceso extremo >=800 — no bloquea si ya confirmó
-        if (km > 0 && diff >= KM_RED_THRESHOLD && !s.kmRedConfirmed) {
+        // Alerta ROJA: exceso extremo >=1000 — BLOQUEANTE
+        if (km > 0 && diff >= KM_RED_THRESHOLD) {
             _uiState.update { it.copy(
                 showKmAlert = true,
                 kmAlertMessage = "El incremento de kilometraje es muy elevado. Verifique que el valor sea correcto."
