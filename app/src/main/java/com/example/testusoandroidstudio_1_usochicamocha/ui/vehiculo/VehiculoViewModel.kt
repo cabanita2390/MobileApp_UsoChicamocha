@@ -273,8 +273,7 @@ class VehiculoViewModel @Inject constructor(
     fun onKmAlertDismiss() {
         _uiState.update { it.copy(
             showKmAlert = false,
-            kmEsInvalido = false,
-            kmRedConfirmed = false
+            kmEsInvalido = false
         ) }
     }
 
