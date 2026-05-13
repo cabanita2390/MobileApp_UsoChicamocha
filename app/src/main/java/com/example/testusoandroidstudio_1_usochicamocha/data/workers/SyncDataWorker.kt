@@ -288,6 +288,9 @@ class SyncDataWorker @AssistedInject constructor(
                         }
                         Log.d("SyncDataWorker", "✅ [$workId] Machines synced successfully")
                     } else if (syncOilsOnly) {
+                        withTimeout(60000) {
+                            syncOilsUseCase()
+                        }
                         Log.d("SyncDataWorker", "✅ [$workId] Oils synced successfully")
                     } else if (syncMotosOnly) {
                         withTimeout(60000) {

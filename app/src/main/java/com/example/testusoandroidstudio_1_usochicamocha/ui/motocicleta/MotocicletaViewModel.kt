@@ -239,7 +239,13 @@ class MotocicletaViewModel @Inject constructor(
     }
 
     fun onMotoSelected(moto: Moto) {
-        _uiState.update { it.copy(selectedMoto = moto) }
+        val autoUbicacion = if (moto.idUbicacionBase > 0)
+            _uiState.value.ubicaciones.firstOrNull { it.id == moto.idUbicacionBase }
+        else null
+        _uiState.update { it.copy(
+            selectedMoto = moto,
+            selectedUbicacion = autoUbicacion ?: it.selectedUbicacion
+        ) }
         loadDocumentosForMoto(moto.placa)
         validate()
     }
@@ -365,6 +371,18 @@ class MotocicletaViewModel @Inject constructor(
     fun onCheckEstadoLucesChange(value: String) {
         _uiState.update { it.copy(checkEstadoLuces = value) }
         validate()
+    }
+
+    // ── Documentación — confirmación manual del inspector ────────────────────
+    fun onDocEstadoChange(doc: String, estado: String) {
+        _uiState.update { s ->
+            when (doc) {
+                "Soat"     -> s.copy(soat = s.soat.copy(estadoDoc = estado))
+                "Tecno"    -> s.copy(revisionTecno = s.revisionTecno.copy(estadoDoc = estado))
+                "Licencia" -> s.copy(licencia = s.licencia.copy(estadoDoc = estado))
+                else       -> s
+            }
+        }
     }
 
     // ─── CARGA DE DOCUMENTOS ────────────────────────────────────────────────

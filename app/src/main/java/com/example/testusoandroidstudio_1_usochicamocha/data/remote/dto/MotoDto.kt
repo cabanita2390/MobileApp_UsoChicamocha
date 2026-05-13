@@ -1,6 +1,11 @@
 package com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto
 
-data class MotoPlacaDto(val id: Int, val placa: String)
+data class MotoPlacaDto(
+    val id: Int,
+    val placa: String,
+    val idUbicacionBase: Int? = null,
+    val ubicacionBase: String? = null
+)
 
 data class UbicacionDto(val id: Int, val nombreUbicacion: String)
 

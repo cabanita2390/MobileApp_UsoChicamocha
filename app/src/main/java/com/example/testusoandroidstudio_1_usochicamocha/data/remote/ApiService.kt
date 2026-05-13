@@ -16,6 +16,7 @@ import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.RefreshT
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.UbicacionDto
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.VehicleDto
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.request.OilChangeRequest
+import com.example.testusoandroidstudio_1_usochicamocha.data.remote.request.VehicleOilChangeRequest
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.request.VehiculoInspectionRequest
 import okhttp3.MultipartBody
 import retrofit2.Response
@@ -76,6 +77,10 @@ interface ApiService {
     suspend fun submitVehiculoInspection(
         @Body request: VehiculoInspectionRequest
     ): Response<com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.VehiculoInspectionResponse>
+
+    /** Cambio de aceite de vehículo liviano (monitoreo / historial aceite). */
+    @POST("v1/vehicle/oil-change")
+    suspend fun registerVehicleOilChange(@Body request: VehicleOilChangeRequest): Response<Unit>
 
     /** Consulta el estado actual de los documentos de un vehículo por ID */
     @GET("v1/vehicle-inspection/documentos/{idVehiculo}")

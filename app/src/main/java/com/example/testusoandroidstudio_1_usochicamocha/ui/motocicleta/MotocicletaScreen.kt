@@ -1,5 +1,6 @@
 package com.example.testusoandroidstudio_1_usochicamocha.ui.motocicleta
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -29,6 +30,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.Moto
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.Ubicacion
+import android.content.Intent
+import android.net.Uri
 
 // ─── COLORES COMPARTIDOS ─────────────────────────────────────────────────────
 private val ColorBueno   = Color(0xFF4CAF50)
@@ -103,6 +106,47 @@ fun MotocicletaScreen(
                             dropdownTag = "plate_option",
                             modifier = Modifier.testTag("plate_option_dropdown")
                         )
+                    }
+                    if (uiState.selectedMoto != null) {
+                        Spacer(Modifier.height(8.dp))
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = MaterialTheme.colorScheme.primaryContainer
+                            ) {
+                                Text(
+                                    "MOTOCICLETA",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                                )
+                            }
+                            val origen = uiState.selectedMoto!!.ubicacionBase
+                            if (origen.isNotBlank()) {
+                                Surface(
+                                    shape = RoundedCornerShape(6.dp),
+                                    color = MaterialTheme.colorScheme.secondaryContainer
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                                    ) {
+                                        Icon(Icons.Default.LocationOn, null, Modifier.size(14.dp),
+                                            tint = MaterialTheme.colorScheme.onSecondaryContainer)
+                                        Text(
+                                            origen,
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = MaterialTheme.colorScheme.onSecondaryContainer
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -211,12 +255,28 @@ fun MotocicletaScreen(
                     }
                     Spacer(Modifier.height(12.dp))
 
+                    val hayMoto = uiState.selectedMoto != null
+
                     // SOAT
                     DocLabelRow(label = "SOAT (Seguro Obligatorio)", icon = Icons.Default.Shield)
                     Spacer(Modifier.height(4.dp))
                     if (uiState.soat.estadoDoc.isNotBlank()) {
                         EstadoDocumentoChip(uiState.soat.estadoDoc, uiState.soat.diasRestantes)
+                        Spacer(Modifier.height(4.dp))
                     }
+                    Text(
+                        "Estado verificado por el inspector (*)",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    com.example.testusoandroidstudio_1_usochicamocha.ui.vehiculo.DocEstadoSelector(
+                        fechaVenc = uiState.soat.vigenciaMaster,
+                        estadoActual = uiState.soat.estadoDoc,
+                        habilitado = hayMoto && !uiState.isLoadingDocumentos,
+                        onEstadoSelected = { viewModel.onDocEstadoChange("Soat", it) }
+                    )
                     Spacer(Modifier.height(8.dp))
                     DocumentImage(
                         url = uiState.soat.imagenUrl,
@@ -231,7 +291,21 @@ fun MotocicletaScreen(
                     Spacer(Modifier.height(4.dp))
                     if (uiState.revisionTecno.estadoDoc.isNotBlank()) {
                         EstadoDocumentoChip(uiState.revisionTecno.estadoDoc, uiState.revisionTecno.diasRestantes)
+                        Spacer(Modifier.height(4.dp))
                     }
+                    Text(
+                        "Estado verificado por el inspector (*)",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    com.example.testusoandroidstudio_1_usochicamocha.ui.vehiculo.DocEstadoSelector(
+                        fechaVenc = uiState.revisionTecno.vigenciaMaster,
+                        estadoActual = uiState.revisionTecno.estadoDoc,
+                        habilitado = hayMoto && !uiState.isLoadingDocumentos,
+                        onEstadoSelected = { viewModel.onDocEstadoChange("Tecno", it) }
+                    )
                     Spacer(Modifier.height(8.dp))
                     DocumentImage(
                         url = uiState.revisionTecno.imagenUrl,
@@ -246,7 +320,21 @@ fun MotocicletaScreen(
                     Spacer(Modifier.height(4.dp))
                     if (uiState.licencia.estadoDoc.isNotBlank()) {
                         EstadoDocumentoChip(uiState.licencia.estadoDoc, uiState.licencia.diasRestantes)
+                        Spacer(Modifier.height(4.dp))
                     }
+                    Text(
+                        "Estado verificado por el inspector (*)",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    com.example.testusoandroidstudio_1_usochicamocha.ui.vehiculo.DocEstadoSelector(
+                        fechaVenc = uiState.licencia.vigenciaMaster,
+                        estadoActual = uiState.licencia.estadoDoc,
+                        habilitado = hayMoto && !uiState.isLoadingDocumentos,
+                        onEstadoSelected = { viewModel.onDocEstadoChange("Licencia", it) }
+                    )
                     Spacer(Modifier.height(8.dp))
                     DocumentImage(
                         url = uiState.licencia.imagenUrl,
@@ -573,6 +661,8 @@ fun DocumentImage(
     label: String,
     onClick: () -> Unit = {}
 ) {
+    val context = LocalContext.current
+    val isPdf = !url.isNullOrBlank() && url.trimEnd().lowercase().endsWith(".pdf")
     Column {
         Text(
             text = label,
@@ -583,14 +673,14 @@ fun DocumentImage(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(200.dp)
+                .height(if (isPdf) 100.dp else 200.dp)
                 .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
                 .clip(RoundedCornerShape(12.dp))
-                .then(if (!url.isNullOrBlank()) Modifier.clickable { onClick() } else Modifier),
+                .then(if (!url.isNullOrBlank() && !isPdf) Modifier.clickable { onClick() } else Modifier),
             contentAlignment = Alignment.Center
         ) {
-            if (url.isNullOrBlank()) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            when {
+                url.isNullOrBlank() -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(
                         imageVector = Icons.Default.PhotoLibrary,
                         contentDescription = null,
@@ -604,15 +694,32 @@ fun DocumentImage(
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                     )
                 }
-            } else {
-                Box(Modifier.fillMaxSize()) {
+                isPdf -> Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Description,
+                        contentDescription = null,
+                        tint = ColorMalo,
+                        modifier = Modifier.size(36.dp)
+                    )
+                    Text("Documento PDF", style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    OutlinedButton(
+                        onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) },
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp)
+                    ) {
+                        Text("Abrir PDF", style = MaterialTheme.typography.labelMedium)
+                    }
+                }
+                else -> Box(Modifier.fillMaxSize()) {
                     AsyncImage(
                         model = url,
                         contentDescription = label,
                         modifier = Modifier.fillMaxSize(),
                         contentScale = ContentScale.Crop
                     )
-                    // Indicador de que es clicable (Badge "Ver en grande")
                     Surface(
                         color = Color.Black.copy(alpha = 0.5f),
                         shape = RoundedCornerShape(bottomStart = 8.dp, topEnd = 8.dp),

@@ -28,14 +28,19 @@ class MotoRepositoryImpl @Inject constructor(
             val response = apiService.getMotocicletas()
             if (response.isSuccessful && response.body() != null) {
                 val motos = response.body()!!
-                if (motos.isEmpty() && motoDao.count() == 0) {
-                    return Result.failure(Exception("No se encontraron motocicletas en el servidor."))
+                if (motos.isEmpty()) {
+                    // No sobreescribir la BD local si el servidor devuelve vacío
+                    // (puede ser error del servidor o tipo sin configurar)
+                    return if (motoDao.count() == 0)
+                        Result.failure(Exception("No se encontraron motocicletas en el servidor."))
+                    else
+                        Result.success(Unit)
                 }
-                val entities = motos.map { MotoEntity(id = it.id, placa = it.placa) }
+                val entities = motos.map { MotoEntity(id = it.id, placa = it.placa, idUbicacionBase = it.idUbicacionBase ?: 0, ubicacionBase = it.ubicacionBase ?: "") }
                 motoDao.clearAndInsert(entities)
                 Result.success(Unit)
             } else {
-                Result.failure(Exception("Error al obtener motos del servidor."))
+                Result.failure(Exception("Error al obtener motos del servidor: ${response.code()}"))
             }
         } catch (e: Exception) {
             Result.failure(e)

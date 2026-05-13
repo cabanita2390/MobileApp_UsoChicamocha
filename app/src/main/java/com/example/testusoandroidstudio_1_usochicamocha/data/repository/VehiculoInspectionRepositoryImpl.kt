@@ -10,10 +10,12 @@ import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.Vehicu
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.toEntity
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.ApiService
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.toVehiculoItem
+import com.example.testusoandroidstudio_1_usochicamocha.data.remote.request.VehicleOilChangeRequest
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.request.VehiculoInspectionRequest
 import com.example.testusoandroidstudio_1_usochicamocha.domain.repository.VehiculoInspectionRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import java.time.LocalDateTime
 import javax.inject.Inject
 
 class VehiculoInspectionRepositoryImpl @Inject constructor(
@@ -62,6 +64,7 @@ class VehiculoInspectionRepositoryImpl @Inject constructor(
                 val serverId = response.body()!!.id
                 vehiculoInspectionDao.markAsSynced(inspection.UUID, serverId)
                 Log.d(TAG, "✅ Vehicle inspection ${inspection.UUID} synced successfully with serverId: $serverId")
+                syncVehicleOilIfNeeded(inspection)
                 Result.success(Unit)
             } else {
                 vehiculoInspectionDao.markAsNotSyncing(inspection.UUID)
@@ -181,10 +184,14 @@ class VehiculoInspectionRepositoryImpl @Inject constructor(
             checkTecno = this.checkTecno,
             checkLicencia = this.checkLicencia,
             checkExtintor = this.checkExtintor,
-            vigenciaExtintor = this.vigenciaExtintor,
             fechaVencSoat = this.fechaVencSoat,
             fechaVencTecno = this.fechaVencTecno,
             fechaVencLicencia = this.fechaVencLicencia,
+            vigenciaExtintor = this.vigenciaExtintor,
+            urlImagenSoat = this.urlImagenSoat.ifBlank { null },
+            urlImagenTecno = this.urlImagenTecno.ifBlank { null },
+            urlImagenLicencia = this.urlImagenLicencia.ifBlank { null },
+            urlImagenExtintor = this.urlImagenExtintor.ifBlank { null },
             tieneBotiquin = this.tieneBotiquin,
             tieneSeñalizacion = this.tieneSeñalizacion,
             tieneLineasEmergencia = this.tieneLineasEmergencia,
@@ -195,7 +202,38 @@ class VehiculoInspectionRepositoryImpl @Inject constructor(
             sobrio = this.sobrio,
             medicamentos = this.medicamentos,
             conscienteResponsabilidad = this.conscienteResponsabilidad,
-            condicionParaConducir = this.condicionParaConducir
+            condicionParaConducir = this.condicionParaConducir,
+            idUbicacion = null,
         )
+    }
+
+    private suspend fun syncVehicleOilIfNeeded(inspection: VehiculoInspectionEntity) {
+        if (!inspection.registrarCambioAceite) return
+        val brandId = inspection.oilBrandId
+        val interval = inspection.oilIntervalKm
+        if (brandId == null || interval == null || interval <= 0 || inspection.oilType.isBlank()) {
+            Log.w(TAG, "⚠️ Cambio de aceite marcado pero faltan datos (marca/intervalo/tipo). Se omite POST oil-change.")
+            return
+        }
+        try {
+            val req = VehicleOilChangeRequest(
+                placa = inspection.placaVehiculo,
+                dateStamp = LocalDateTime.now().toString(),
+                oilType = inspection.oilType.trim(),
+                brandId = brandId,
+                quantity = inspection.oilQuantity,
+                kmAtChange = inspection.kilometrajeReportado,
+                intervalKm = interval,
+                airFilterChanged = inspection.oilAirFilterChanged,
+            )
+            val oilResp = apiService.registerVehicleOilChange(req)
+            if (oilResp.isSuccessful) {
+                Log.d(TAG, "✅ Cambio de aceite registrado para ${inspection.placaVehiculo}")
+            } else {
+                Log.e(TAG, "❌ Error POST oil-change: ${oilResp.code()} ${oilResp.message()}")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Excepción al registrar cambio de aceite", e)
+        }
     }
 }

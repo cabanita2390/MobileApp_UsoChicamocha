@@ -47,7 +47,7 @@ import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.Docume
         com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.VehiculoEntity::class,
         com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.DocumentoVehiculoEntity::class
     ],
-    version = 26,
+    version = 28,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -75,6 +75,30 @@ abstract class AppDatabase : RoomDatabase() {
             override fun migrate(database: SupportSQLiteDatabase) {
                 database.execSQL("ALTER TABLE pending_inspecciones_moto ADD COLUMN conscienteResponsabilidad TEXT NOT NULL DEFAULT ''")
                 database.execSQL("ALTER TABLE pending_inspecciones_moto ADD COLUMN aprobadoRuta TEXT NOT NULL DEFAULT ''")
+            }
+        }
+
+        /** Migración 27 → 28: agrega ubicación base a la tabla de motos */
+        val MIGRATION_27_28 = object : Migration(27, 28) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE motos ADD COLUMN idUbicacionBase INTEGER NOT NULL DEFAULT 0")
+                database.execSQL("ALTER TABLE motos ADD COLUMN ubicacionBase TEXT NOT NULL DEFAULT ''")
+            }
+        }
+
+        /** Migración 26 → 27: URLs documentos + opcional cambio aceite en inspección vehículo */
+        val MIGRATION_26_27 = object : Migration(26, 27) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE vehiculo_inspections ADD COLUMN urlImagenSoat TEXT NOT NULL DEFAULT ''")
+                database.execSQL("ALTER TABLE vehiculo_inspections ADD COLUMN urlImagenTecno TEXT NOT NULL DEFAULT ''")
+                database.execSQL("ALTER TABLE vehiculo_inspections ADD COLUMN urlImagenLicencia TEXT NOT NULL DEFAULT ''")
+                database.execSQL("ALTER TABLE vehiculo_inspections ADD COLUMN urlImagenExtintor TEXT NOT NULL DEFAULT ''")
+                database.execSQL("ALTER TABLE vehiculo_inspections ADD COLUMN registrarCambioAceite INTEGER NOT NULL DEFAULT 0")
+                database.execSQL("ALTER TABLE vehiculo_inspections ADD COLUMN oilType TEXT NOT NULL DEFAULT ''")
+                database.execSQL("ALTER TABLE vehiculo_inspections ADD COLUMN oilBrandId INTEGER")
+                database.execSQL("ALTER TABLE vehiculo_inspections ADD COLUMN oilIntervalKm INTEGER")
+                database.execSQL("ALTER TABLE vehiculo_inspections ADD COLUMN oilQuantity REAL")
+                database.execSQL("ALTER TABLE vehiculo_inspections ADD COLUMN oilAirFilterChanged INTEGER NOT NULL DEFAULT 0")
             }
         }
     }

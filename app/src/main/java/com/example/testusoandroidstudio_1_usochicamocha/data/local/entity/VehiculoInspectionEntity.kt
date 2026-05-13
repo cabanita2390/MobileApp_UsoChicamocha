@@ -37,6 +37,18 @@ data class VehiculoInspectionEntity(
     val fechaVencSoat: String,
     val fechaVencTecno: String,
     val fechaVencLicencia: String,
+    /** URLs de documentos (referencia al guardar; se envían al backend). */
+    val urlImagenSoat: String = "",
+    val urlImagenTecno: String = "",
+    val urlImagenLicencia: String = "",
+    val urlImagenExtintor: String = "",
+    /** Si true, tras sincronizar inspección se llama POST vehicle/oil-change. */
+    val registrarCambioAceite: Boolean = false,
+    val oilType: String = "",
+    val oilBrandId: Long? = null,
+    val oilIntervalKm: Int? = null,
+    val oilQuantity: Double? = null,
+    val oilAirFilterChanged: Boolean = false,
 
     // ── insp_detalle_elementos ────────────────────────────────────────────
     val tieneBotiquin: Boolean,

@@ -23,6 +23,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.testusoandroidstudio_1_usochicamocha.domain.model.Oil
 import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.ConnectionStatusTopBar
 import coil.compose.SubcomposeAsyncImage
 import coil.request.ImageRequest
@@ -30,6 +31,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.draw.clip
 import kotlinx.coroutines.delay
+import android.content.Intent
+import android.net.Uri
 
 // ─── COLORES COMPARTIDOS ─────────────────────────────────────────────────────
 private val ColorBueno   = Color(0xFF4CAF50)
@@ -447,6 +450,20 @@ fun VehiculoScreen(
                     )
                     Spacer(Modifier.height(4.dp))
                     EstadoDocumentoChip(uiState.estadoSoat, uiState.diasRestantesSoat)
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "Estado verificado por el inspector (*)",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    DocEstadoSelector(
+                        fechaVenc = uiState.fechaVencSoatDB,
+                        estadoActual = uiState.estadoSoat,
+                        habilitado = hayVehiculo && !uiState.isLoadingDocs,
+                        onEstadoSelected = { viewModel.onDocEstadoChange("Soat", it) }
+                    )
                     Spacer(Modifier.height(8.dp))
                     DocumentImage(url = uiState.urlImagenSoat, label = "Imagen SOAT")
 
@@ -459,6 +476,20 @@ fun VehiculoScreen(
                     )
                     Spacer(Modifier.height(4.dp))
                     EstadoDocumentoChip(uiState.estadoTecno, uiState.diasRestantesTecno)
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "Estado verificado por el inspector (*)",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    DocEstadoSelector(
+                        fechaVenc = uiState.fechaVencTecnoDB,
+                        estadoActual = uiState.estadoTecno,
+                        habilitado = hayVehiculo && !uiState.isLoadingDocs,
+                        onEstadoSelected = { viewModel.onDocEstadoChange("Tecno", it) }
+                    )
                     Spacer(Modifier.height(8.dp))
                     DocumentImage(url = uiState.urlImagenTecno, label = "Imagen Tecnomecánica")
 
@@ -471,6 +502,20 @@ fun VehiculoScreen(
                     )
                     Spacer(Modifier.height(4.dp))
                     EstadoDocumentoChip(uiState.estadoLicencia, uiState.diasRestantesLicencia)
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "Estado verificado por el inspector (*)",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    DocEstadoSelector(
+                        fechaVenc = uiState.fechaVencLicencioDB,
+                        estadoActual = uiState.estadoLicencia,
+                        habilitado = hayVehiculo && !uiState.isLoadingDocs,
+                        onEstadoSelected = { viewModel.onDocEstadoChange("Licencia", it) }
+                    )
                     Spacer(Modifier.height(8.dp))
                     DocumentImage(url = uiState.urlImagenLicencia, label = "Imagen Licencia")
 
@@ -483,6 +528,20 @@ fun VehiculoScreen(
                     )
                     Spacer(Modifier.height(4.dp))
                     EstadoDocumentoChip(uiState.estadoExtintor, uiState.diasRestantesExtintor)
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        "Estado verificado por el inspector (*)",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    DocEstadoSelector(
+                        fechaVenc = uiState.vigenciaExtintorDB,
+                        estadoActual = uiState.estadoExtintor,
+                        habilitado = hayVehiculo && !uiState.isLoadingDocs,
+                        onEstadoSelected = { viewModel.onDocEstadoChange("Extintor", it) }
+                    )
                     Spacer(Modifier.height(8.dp))
                     DocumentImage(url = uiState.urlImagenExtintor, label = "Imagen Extintor")
                 }
@@ -530,6 +589,87 @@ fun VehiculoScreen(
                     saludItems.forEachIndexed { i, (key, pair) ->
                         YesNoSelector(pair.first, pair.second) { viewModel.onSaludChange(key, it) }
                         if (i < saludItems.lastIndex) Divider(Modifier.padding(vertical = 10.dp))
+                    }
+                }
+            }
+
+            // ── 5b. CAMBIO DE ACEITE (opcional) — fila compacta (no SectionCard) ─
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                ) {
+                    Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(Modifier.weight(1f).padding(end = 8.dp)) {
+                                Text(
+                                    "Cambio de aceite",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                                Text(
+                                    "Opcional. Se envía al sincronizar.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Switch(
+                                checked = uiState.registrarCambioAceite,
+                                onCheckedChange = { viewModel.onRegistrarCambioAceiteChange(it) }
+                            )
+                        }
+                    if (uiState.registrarCambioAceite) {
+                        HorizontalDivider(Modifier.padding(vertical = 8.dp))
+                        Spacer(Modifier.height(4.dp))
+                        // ── Marca de aceite (dropdown limpio) ────────────────
+                        VehicleOilDropdown(
+                            oils = uiState.vehicleOilBrands,
+                            selectedOil = uiState.selectedOil,
+                            enabled = uiState.oilType.isNotBlank(),
+                            onOilSelected = { viewModel.onOilSelected(it) }
+                        )
+                        Spacer(Modifier.height(10.dp))
+                        OutlinedTextField(
+                            value = uiState.oilIntervalKm,
+                            onValueChange = { viewModel.onOilIntervalKmChange(it) },
+                            label = { Text("Intervalo próximo cambio (km) (*)", fontWeight = FontWeight.Bold) },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
+                        )
+                        Spacer(Modifier.height(10.dp))
+                        OutlinedTextField(
+                            value = uiState.oilQuantity,
+                            onValueChange = { viewModel.onOilQuantityChange(it) },
+                            label = { Text("Cantidad (L) — opcional", fontWeight = FontWeight.Bold) },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Switch(
+                                checked = uiState.oilAirFilterChanged,
+                                onCheckedChange = { viewModel.onOilAirFilterChanged(it) }
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text("¿Se cambió filtro de aire?", style = MaterialTheme.typography.bodyMedium)
+                        }
+                        if (uiState.vehicleOilBrands.isEmpty()) {
+                            Spacer(Modifier.height(6.dp))
+                            Text(
+                                "Sincronice marcas de aceite (menú principal) para elegir marca.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
                     }
                 }
             }
@@ -602,6 +742,43 @@ fun VehiculoScreen(
 
 
 // ─── COMPOSABLES REUTILIZABLES ───────────────────────────────────────────────
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun VehicleOilDropdown(
+    oils: List<Oil>,
+    selectedOil: Oil?,
+    enabled: Boolean = true,
+    onOilSelected: (Oil?) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val displayText = selectedOil?.name ?: "Seleccione la marca de aceite (*)"
+    ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { if (enabled) expanded = !expanded }) {
+        OutlinedTextField(
+            value = displayText,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text("Marca de Aceite (*)", fontWeight = FontWeight.Bold) },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+            modifier = Modifier.menuAnchor().fillMaxWidth(),
+            enabled = enabled
+        )
+        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            if (oils.isEmpty()) {
+                DropdownMenuItem(
+                    text = { Text("Sin marcas. Sincronice desde el menú principal.") },
+                    onClick = { expanded = false }
+                )
+            }
+            oils.forEach { oil ->
+                DropdownMenuItem(
+                    text = { Text(oil.name) },
+                    onClick = { onOilSelected(oil); expanded = false }
+                )
+            }
+        }
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -788,10 +965,13 @@ fun DocEstadoSelector(
 
 /**
  * Muestra la imagen del documento desde una URL.
+ * Si el archivo es PDF, muestra un acceso directo para abrirlo.
  * Si no hay URL o falla la carga, muestra "Imagen no disponible".
  */
 @Composable
 fun DocumentImage(url: String?, label: String) {
+    val context = LocalContext.current
+    val isPdf = !url.isNullOrBlank() && url.trimEnd().lowercase().endsWith(".pdf")
     Column {
         Text(
             text = label,
@@ -802,14 +982,14 @@ fun DocumentImage(url: String?, label: String) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(180.dp)
+                .height(if (isPdf) 100.dp else 180.dp)
                 .clip(RoundedCornerShape(12.dp))
                 .background(MaterialTheme.colorScheme.surfaceVariant)
                 .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f), RoundedCornerShape(12.dp)),
             contentAlignment = Alignment.Center
         ) {
-            if (url.isNullOrBlank()) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            when {
+                url.isNullOrBlank() -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(
                         Icons.Default.HideImage,
                         contentDescription = null,
@@ -823,9 +1003,27 @@ fun DocumentImage(url: String?, label: String) {
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                     )
                 }
-            } else {
-                SubcomposeAsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
+                isPdf -> Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Description,
+                        contentDescription = null,
+                        tint = ColorMalo,
+                        modifier = Modifier.size(36.dp)
+                    )
+                    Text("Documento PDF", style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    OutlinedButton(
+                        onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) },
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp)
+                    ) {
+                        Text("Abrir PDF", style = MaterialTheme.typography.labelMedium)
+                    }
+                }
+                else -> SubcomposeAsyncImage(
+                    model = ImageRequest.Builder(context)
                         .data(url)
                         .crossfade(true)
                         .build(),

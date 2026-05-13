@@ -15,8 +15,10 @@ import kotlinx.coroutines.delay
 import androidx.work.*
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.VehiculoInspectionEntity
 import com.example.testusoandroidstudio_1_usochicamocha.data.workers.SyncDataWorker
+import com.example.testusoandroidstudio_1_usochicamocha.domain.model.Oil
 import com.example.testusoandroidstudio_1_usochicamocha.domain.repository.VehiculoInspectionRepository
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.LocalSyncCoordinator
+import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.oil.GetLocalOilsUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.vehiculo.SaveVehiculoInspectionUseCase
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -117,7 +119,15 @@ data class VehiculoUiState(
     val kilometrajeMinimo: Int = 0,
     val kilometrajeDB: String = "",
     val kilometrajeError: String? = null, // Error inmediato debajo del campo
-    val kmColorEstado: Int? = null  // null=vacío/sin vehículo, 0=verde, 1=amarillo, 2=rojo
+    val kmColorEstado: Int? = null,  // null=vacío/sin vehículo, 0=verde, 1=amarillo, 2=rojo
+    // Cambio de aceite (opcional; se envía tras sincronizar la inspección)
+    val vehicleOilBrands: List<Oil> = emptyList(),
+    val registrarCambioAceite: Boolean = false,
+    val oilType: String = "",          // "motor" o "hydraulic"
+    val selectedOil: Oil? = null,
+    val oilIntervalKm: String = "",
+    val oilQuantity: String = "",
+    val oilAirFilterChanged: Boolean = false,
 )
 
 // ─── VIEWMODEL ───────────────────────────────────────────────────────────────
@@ -127,7 +137,8 @@ class VehiculoViewModel @Inject constructor(
     private val tokenManager: TokenManager,
     private val repository: VehiculoInspectionRepository,
     private val saveVehiculoInspectionUseCase: SaveVehiculoInspectionUseCase,
-    private val localSyncCoordinator: LocalSyncCoordinator
+    private val localSyncCoordinator: LocalSyncCoordinator,
+    private val getLocalOilsUseCase: GetLocalOilsUseCase,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(VehiculoUiState())
@@ -136,6 +147,23 @@ class VehiculoViewModel @Inject constructor(
     init {
         observeVehiclesCatalog()
         loadUsername()
+        observeVehicleOilBrands()
+    }
+
+    private fun observeVehicleOilBrands() {
+        viewModelScope.launch {
+            getLocalOilsUseCase().collect { list ->
+                val forVehicle = list.filter { o ->
+                    val t = o.type.trim()
+                    t.equals("OIL_VEHICLE", ignoreCase = true) ||
+                        t.contains("VEHICLE", ignoreCase = true) ||
+                        t.equals("MOTOR", ignoreCase = true)
+                }
+                // Si no hay tipos explícitos de vehículo en BD, mostrar todo el catálogo (evita lista vacía).
+                val shown = if (forVehicle.isNotEmpty()) forVehicle else list
+                _uiState.update { it.copy(vehicleOilBrands = shown) }
+            }
+        }
     }
 
     // ── Carga el username del inspector logueado (campo de solo lectura) ──────
@@ -146,11 +174,13 @@ class VehiculoViewModel @Inject constructor(
         }
     }
 
-    // ── Observa vehículos desde el repositorio (Room) ────────────────────────
+    // ── Observa vehículos desde el repositorio (Room) — excluye motos ────────
     private fun observeVehiclesCatalog() {
         repository.getLocalVehiclesFlow()
             .onEach { entities ->
-                val list = entities.map { it.toVehiculoItem() }
+                val list = entities
+                    .filter { !it.tipoVehiculo.equals("MOTOCICLETA", ignoreCase = true) }
+                    .map { it.toVehiculoItem() }
                 _uiState.update { it.copy(vehicles = list) }
             }
             .launchIn(viewModelScope)
@@ -394,6 +424,20 @@ class VehiculoViewModel @Inject constructor(
     }
 
 
+    // ── Documentación — confirmación manual del inspector ────────────────────
+    fun onDocEstadoChange(doc: String, estado: String) {
+        _uiState.update { s ->
+            when (doc) {
+                "Soat"     -> s.copy(estadoSoat = estado)
+                "Tecno"    -> s.copy(estadoTecno = estado)
+                "Licencia" -> s.copy(estadoLicencia = estado)
+                "Extintor" -> s.copy(estadoExtintor = estado)
+                else       -> s
+            }
+        }
+        validateForm()
+    }
+
     // ── Mecánica ─────────────────────────────────────────────────────────────
     fun onMecanicoChange(field: String, value: String) {
         _uiState.update { s ->
@@ -510,6 +554,12 @@ class VehiculoViewModel @Inject constructor(
 
     private fun validateForm() {
         val s = _uiState.value
+        val oilOk = !s.registrarCambioAceite || (
+            s.oilType.isNotBlank() &&
+                s.selectedOil != null &&
+                s.oilIntervalKm.toIntOrNull() != null &&
+                (s.oilIntervalKm.toIntOrNull() ?: 0) > 0
+            )
         val valid = s.selectedVehicle != null && s.kilometraje.isNotBlank() &&
                 s.nivelAceite.isNotBlank() && s.nivelRefrigerante.isNotBlank() &&
                 s.nivelFrenos.isNotBlank() && s.estadoLlantas.isNotBlank() &&
@@ -526,8 +576,37 @@ class VehiculoViewModel @Inject constructor(
                 s.conscienteResponsabilidad.isNotBlank() &&
                 s.aprobadoRuta.isNotBlank() &&
                 s.responsableInspeccion.isNotBlank() &&
-                s.kilometraje.isNotBlank()
+                s.kilometraje.isNotBlank() &&
+                oilOk
         _uiState.update { it.copy(isSaveButtonEnabled = valid) }
+    }
+
+    fun onRegistrarCambioAceiteChange(v: Boolean) {
+        _uiState.update { it.copy(registrarCambioAceite = v, oilType = if (v) "motor" else "") }
+        validateForm()
+    }
+
+    fun onOilTypeChange(v: String) {
+        _uiState.update { it.copy(oilType = v, selectedOil = null) }
+        validateForm()
+    }
+
+    fun onOilSelected(oil: Oil?) {
+        _uiState.update { it.copy(selectedOil = oil) }
+        validateForm()
+    }
+
+    fun onOilIntervalKmChange(v: String) {
+        _uiState.update { it.copy(oilIntervalKm = v.filter { ch -> ch.isDigit() }) }
+        validateForm()
+    }
+
+    fun onOilQuantityChange(v: String) {
+        _uiState.update { it.copy(oilQuantity = v) }
+    }
+
+    fun onOilAirFilterChanged(v: Boolean) {
+        _uiState.update { it.copy(oilAirFilterChanged = v) }
     }
 
     fun onSaveClick() {
@@ -590,11 +669,20 @@ class VehiculoViewModel @Inject constructor(
                     checkTecno             = s.estadoTecno,
                     checkLicencia          = s.estadoLicencia,
                     checkExtintor          = s.estadoExtintor,
-                    // Se guardan las fechas BD (la fecha de inspección es hoy, calculada automáticamente)
                     vigenciaExtintor       = s.vigenciaExtintorDB,
                     fechaVencSoat          = s.fechaVencSoatDB,
                     fechaVencTecno         = s.fechaVencTecnoDB,
                     fechaVencLicencia      = s.fechaVencLicencioDB,
+                    urlImagenSoat          = s.urlImagenSoat.orEmpty(),
+                    urlImagenTecno         = s.urlImagenTecno.orEmpty(),
+                    urlImagenLicencia      = s.urlImagenLicencia.orEmpty(),
+                    urlImagenExtintor      = s.urlImagenExtintor.orEmpty(),
+                    registrarCambioAceite  = s.registrarCambioAceite,
+                    oilType                = s.oilType.trim(),
+                    oilBrandId             = s.selectedOil?.id?.toLong(),
+                    oilIntervalKm          = s.oilIntervalKm.toIntOrNull(),
+                    oilQuantity            = s.oilQuantity.toDoubleOrNull(),
+                    oilAirFilterChanged    = s.oilAirFilterChanged,
                     tieneBotiquin          = s.tieneBotiquin == "Si",
                     tieneSeñalizacion      = s.tieneSeñalizacion == "Si",
                     tieneLineasEmergencia  = s.tieneLineasEmergencia == "Si",

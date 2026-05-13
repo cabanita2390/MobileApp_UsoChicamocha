@@ -8,11 +8,11 @@ data class OilChangeRequest(
     @SerializedName("dateTime")
     val dateTime: String,
     @SerializedName("brandId")
-    val brandId: String,
+    val brandId: Long,
     @SerializedName("quantity")
     val quantity: Double,
     @SerializedName("currentHourMeter")
-    val currentHourMeter: Int,
+    val currentHourMeter: Double,
     @SerializedName("averageHoursChange")
     val averageHoursChange: Int
 )

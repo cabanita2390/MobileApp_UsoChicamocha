@@ -59,9 +59,9 @@ fun Maintenance.toOilChangeRequest(): OilChangeRequest {
     return OilChangeRequest(
         machineId = this.machineId,
         dateTime = isoDateString,
-        brandId = this.brandId.toString(),
+        brandId = this.brandId.toLong(),
         quantity = this.quantity.toDouble(),
-        currentHourMeter = this.currentHourMeter,
+        currentHourMeter = this.currentHourMeter.toDouble(),
         averageHoursChange = this.averageHoursChange
     )
 }

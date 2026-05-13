@@ -34,10 +34,14 @@ data class VehiculoInspectionRequest(
     val checkTecno: String,
     val checkLicencia: String,
     val checkExtintor: String,
-    val vigenciaExtintor: String,        // "YYYY-MM"
-    val fechaVencSoat: String,           // "YYYY-MM-DD"
-    val fechaVencTecno: String,          // "YYYY-MM-DD"
-    val fechaVencLicencia: String,       // "YYYY-MM-DD"
+    val fechaVencSoat: String,           // "YYYY-MM-DD" o prefijo ISO (backend fusiona en BD)
+    val fechaVencTecno: String,
+    val fechaVencLicencia: String,
+    val vigenciaExtintor: String,        // "YYYY-MM" extintor
+    val urlImagenSoat: String? = null,
+    val urlImagenTecno: String? = null,
+    val urlImagenLicencia: String? = null,
+    val urlImagenExtintor: String? = null,
 
     // ── insp_detalle_elementos ────────────────────────────────────────────────
     val tieneBotiquin: Boolean,
@@ -57,5 +61,6 @@ data class VehiculoInspectionRequest(
     val sobrio: Boolean,
     val medicamentos: Boolean,
     val conscienteResponsabilidad: Boolean,
-    val condicionParaConducir: Boolean
+    val condicionParaConducir: Boolean,
+    val idUbicacion: Int? = null,
 )
