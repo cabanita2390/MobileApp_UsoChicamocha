@@ -3,19 +3,30 @@ package com.example.testusoandroidstudio_1_usochicamocha.ui.mantenimiento
 import android.widget.Toast
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Error
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
@@ -127,7 +138,6 @@ fun MantenimientoScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MachineSelectorMantenimiento(
     machines: List<Machine>,
@@ -135,36 +145,100 @@ fun MachineSelectorMantenimiento(
     onMachineSelected: (Machine) -> Unit,
     isEnabled: Boolean
 ) {
-    var expanded by remember { mutableStateOf(false) }
+    var showDialog by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
     val displayText = selectedMachine?.let { "${it.name} - ${it.model} - ${it.internalIdentificationNumber}" } ?: "Seleccione una máquina"
+    val filteredMachines = remember(machines, searchQuery) {
+        if (searchQuery.isBlank()) machines
+        else machines.filter {
+            it.name.contains(searchQuery, ignoreCase = true) ||
+            it.model.contains(searchQuery, ignoreCase = true) ||
+            it.internalIdentificationNumber.contains(searchQuery, ignoreCase = true)
+        }
+    }
 
-    ExposedDropdownMenuBox(
-        expanded = expanded,
-        onExpandedChange = { if (isEnabled) expanded = !expanded }
-    ) {
+    Box(modifier = Modifier.fillMaxWidth()) {
         OutlinedTextField(
             value = displayText,
             onValueChange = {},
             readOnly = true,
             label = { Text("Máquina") },
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-            modifier = Modifier
-                .menuAnchor()
-                .fillMaxWidth(),
-            enabled = isEnabled
+            trailingIcon = { Icon(Icons.Default.ArrowDropDown, contentDescription = null) },
+            singleLine = true,
+            enabled = isEnabled,
+            modifier = Modifier.fillMaxWidth()
         )
-        ExposedDropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false }
+        if (isEnabled) {
+            Spacer(modifier = Modifier.matchParentSize().clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null
+            ) { showDialog = true })
+        }
+    }
+
+    if (showDialog) {
+        val focusRequester = remember { FocusRequester() }
+        val keyboardController = LocalSoftwareKeyboardController.current
+        LaunchedEffect(Unit) {
+            delay(50)
+            try { focusRequester.requestFocus() } catch (e: Exception) { }
+            keyboardController?.show()
+        }
+        Dialog(
+            onDismissRequest = { showDialog = false; searchQuery = "" },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
         ) {
-            machines.forEach { machine ->
-                DropdownMenuItem(
-                    text = { Text("${machine.name} - ${machine.model} - ${machine.internalIdentificationNumber}") },
-                    onClick = {
-                        onMachineSelected(machine)
-                        expanded = false
+            Surface(
+                modifier = Modifier.fillMaxWidth(0.92f),
+                shape = RoundedCornerShape(16.dp),
+                tonalElevation = 4.dp
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text("Seleccionar máquina", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        placeholder = { Text("Buscar nombre, modelo, código...") },
+                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(20.dp)) },
+                        trailingIcon = if (searchQuery.isNotEmpty()) {{
+                            IconButton(onClick = { searchQuery = "" }) {
+                                Icon(Icons.Default.Clear, contentDescription = "Limpiar", modifier = Modifier.size(18.dp))
+                            }
+                        }} else null,
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth().focusRequester(focusRequester)
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    LazyColumn(modifier = Modifier.heightIn(max = 320.dp)) {
+                        if (machines.isEmpty()) {
+                            item { Text("Sin máquinas disponibles. Sincronice.", color = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 12.dp)) }
+                        } else if (filteredMachines.isEmpty()) {
+                            item { Text("Sin resultados", color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 12.dp)) }
+                        } else {
+                            items(filteredMachines) { machine ->
+                                Column {
+                                    Text(
+                                        text = "${machine.name} - ${machine.model} - ${machine.internalIdentificationNumber}",
+                                        fontSize = 13.sp,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable { onMachineSelected(machine); showDialog = false; searchQuery = "" }
+                                            .padding(horizontal = 8.dp, vertical = 10.dp)
+                                    )
+                                    HorizontalDivider()
+                                }
+                            }
+                        }
                     }
-                )
+                    Spacer(Modifier.height(8.dp))
+                    TextButton(
+                        onClick = { showDialog = false; searchQuery = "" },
+                        modifier = Modifier.align(Alignment.End)
+                    ) { Text("Cancelar") }
+                }
             }
         }
     }
@@ -290,7 +364,6 @@ fun PreviewMantenimientoScreen() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OilSelector(
     oils: List<Oil>,
@@ -298,36 +371,93 @@ fun OilSelector(
     onOilSelected: (Oil) -> Unit,
     isEnabled: Boolean
 ) {
-    var expanded by remember { mutableStateOf(false) }
+    var showDialog by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
     val displayText = selectedOil?.name ?: "Seleccione un aceite"
+    val filteredOils = remember(oils, searchQuery) {
+        if (searchQuery.isBlank()) oils
+        else oils.filter { it.name.contains(searchQuery, ignoreCase = true) }
+    }
 
-    ExposedDropdownMenuBox(
-        expanded = expanded,
-        onExpandedChange = { if (isEnabled) expanded = !expanded }
-    ) {
+    Box(modifier = Modifier.fillMaxWidth()) {
         OutlinedTextField(
             value = displayText,
             onValueChange = {},
             readOnly = true,
             label = { Text("Marca del Aceite") },
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-            modifier = Modifier
-                .menuAnchor()
-                .fillMaxWidth(),
-            enabled = isEnabled
+            trailingIcon = { Icon(Icons.Default.ArrowDropDown, contentDescription = null) },
+            singleLine = true,
+            enabled = isEnabled,
+            modifier = Modifier.fillMaxWidth()
         )
-        ExposedDropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false }
+        if (isEnabled) {
+            Spacer(modifier = Modifier.matchParentSize().clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null
+            ) { showDialog = true })
+        }
+    }
+
+    if (showDialog) {
+        val focusRequester = remember { FocusRequester() }
+        val keyboardController = LocalSoftwareKeyboardController.current
+        LaunchedEffect(Unit) {
+            delay(50)
+            try { focusRequester.requestFocus() } catch (e: Exception) { }
+            keyboardController?.show()
+        }
+        Dialog(
+            onDismissRequest = { showDialog = false; searchQuery = "" },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
         ) {
-            oils.forEach { oil ->
-                DropdownMenuItem(
-                    text = { Text(oil.name) },
-                    onClick = {
-                        onOilSelected(oil) // <-- DEVUELVE EL OBJETO "oil" COMPLETO
-                        expanded = false
+            Surface(
+                modifier = Modifier.fillMaxWidth(0.92f),
+                shape = RoundedCornerShape(16.dp),
+                tonalElevation = 4.dp
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text("Seleccionar aceite", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        placeholder = { Text("Buscar marca...") },
+                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(20.dp)) },
+                        trailingIcon = if (searchQuery.isNotEmpty()) {{
+                            IconButton(onClick = { searchQuery = "" }) {
+                                Icon(Icons.Default.Clear, contentDescription = "Limpiar", modifier = Modifier.size(18.dp))
+                            }
+                        }} else null,
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth().focusRequester(focusRequester)
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    LazyColumn(modifier = Modifier.heightIn(max = 320.dp)) {
+                        if (filteredOils.isEmpty()) {
+                            item { Text("Sin resultados", color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 12.dp)) }
+                        } else {
+                            items(filteredOils) { oil ->
+                                Column {
+                                    Text(
+                                        text = oil.name,
+                                        fontSize = 13.sp,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable { onOilSelected(oil); showDialog = false; searchQuery = "" }
+                                            .padding(horizontal = 8.dp, vertical = 10.dp)
+                                    )
+                                    HorizontalDivider()
+                                }
+                            }
+                        }
                     }
-                )
+                    Spacer(Modifier.height(8.dp))
+                    TextButton(
+                        onClick = { showDialog = false; searchQuery = "" },
+                        modifier = Modifier.align(Alignment.End)
+                    ) { Text("Cancelar") }
+                }
             }
         }
     }

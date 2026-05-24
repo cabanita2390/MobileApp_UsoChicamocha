@@ -8,6 +8,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.filled.TwoWheeler
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -81,16 +82,19 @@ fun MotoHubScreen(
             // Sección 1: Formularios Disponibles
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp)
+                shape = RoundedCornerShape(16.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Formularios disponibles", style = MaterialTheme.typography.titleLarge)
-                    Spacer(modifier = Modifier.height(8.dp))
-                    OutlinedButton(
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text("Formularios Disponibles", style = MaterialTheme.typography.titleLarge)
+                    Button(
                         onClick = onNavigateToForm,
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth().height(56.dp),
+                        shape = RoundedCornerShape(12.dp)
                     ) {
-                        Text("Formulario de Motos", fontSize = 18.sp)
+                        Icon(Icons.Default.TwoWheeler, contentDescription = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Inspección Motocicleta", fontSize = 18.sp)
                     }
                 }
             }
@@ -105,44 +109,48 @@ fun MotoHubScreen(
             // Sección 3: Sincronización de Datos (2 botones)
             Card(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp)
+                shape = RoundedCornerShape(16.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
             ) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Sincronización de Datos", style = MaterialTheme.typography.titleLarge)
-                    Spacer(modifier = Modifier.height(4.dp))
-
-                    // Botón 1: Placas + Unidades juntos
-                    val isSyncingPlacasUnidades = uiState.isSyncingMotos || uiState.isSyncingUbicaciones
-                    Button(
-                        onClick = { viewModel.onSyncPlacasYUnidadesClicked() },
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = !isSyncingPlacasUnidades
-                    ) {
-                        if (isSyncingPlacasUnidades) {
-                            CircularProgressIndicator(modifier = Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary)
-                            Spacer(Modifier.width(8.dp))
-                            Text("Sincronizando...", fontSize = 16.sp)
-                        } else {
-                            Icon(Icons.Default.Sync, contentDescription = null, modifier = Modifier.size(20.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Text("Actualizar Placas y Unidades", fontSize = 16.sp)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        // Botón 1: Placas + Unidades juntos
+                        val isSyncingPlacasUnidades = uiState.isSyncingMotos || uiState.isSyncingUbicaciones
+                        Button(
+                            onClick = { viewModel.onSyncPlacasYUnidadesClicked() },
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = !isSyncingPlacasUnidades,
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            if (isSyncingPlacasUnidades) {
+                                CircularProgressIndicator(modifier = Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary)
+                                Spacer(Modifier.width(8.dp))
+                                Text("Sincronizando...", fontSize = 16.sp)
+                            } else {
+                                Icon(Icons.Default.Sync, contentDescription = null, modifier = Modifier.size(20.dp))
+                                Spacer(Modifier.width(8.dp))
+                                Text("Actualizar Placas y Unidades", fontSize = 16.sp)
+                            }
                         }
-                    }
 
-                    // Botón 2: Documentos (separado)
-                    Button(
-                        onClick = { viewModel.onSyncDocumentosClicked() },
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = !uiState.isSyncingDocumentos
-                    ) {
-                        if (uiState.isSyncingDocumentos) {
-                            CircularProgressIndicator(modifier = Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary)
-                            Spacer(Modifier.width(8.dp))
-                            Text("Sincronizando...", fontSize = 16.sp)
-                        } else {
-                            Icon(Icons.Default.Sync, contentDescription = null, modifier = Modifier.size(20.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Text("Sincronizar Documentos", fontSize = 16.sp)
+                        // Botón 2: Documentos (separado)
+                        Button(
+                            onClick = { viewModel.onSyncDocumentosClicked() },
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = !uiState.isSyncingDocumentos,
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            if (uiState.isSyncingDocumentos) {
+                                CircularProgressIndicator(modifier = Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary)
+                                Spacer(Modifier.width(8.dp))
+                                Text("Sincronizando...", fontSize = 16.sp)
+                            } else {
+                                Icon(Icons.Default.Sync, contentDescription = null, modifier = Modifier.size(20.dp))
+                                Spacer(Modifier.width(8.dp))
+                                Text("Sincronizar Documentos", fontSize = 16.sp)
+                            }
                         }
                     }
                 }
@@ -159,7 +167,8 @@ fun PendingInspeccionesCard(
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp)
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Row(
@@ -167,13 +176,9 @@ fun PendingInspeccionesCard(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text("Inspecciones Pendientes", style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
-                Button(
-                    onClick = onSyncClicked,
-                    enabled = !isSyncing,
-                    shape = RoundedCornerShape(16.dp),
-                ) {
+                IconButton(onClick = onSyncClicked, enabled = !isSyncing) {
                     if (isSyncing) {
-                        CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
+                        CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
                     } else {
                         Icon(Icons.Default.Sync, contentDescription = "Sincronizar")
                     }
@@ -182,13 +187,13 @@ fun PendingInspeccionesCard(
             Spacer(modifier = Modifier.height(16.dp))
             if (pendingList.isEmpty()) {
                 Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
-                    Text("No hay inspecciones de motos pendientes.")
+                    Text("No hay inspecciones de motos pendientes.", style = MaterialTheme.typography.bodyMedium, color = Color.Gray)
                 }
             } else {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     pendingList.forEach { inspeccion ->
                         PendingInspeccionItem(inspeccion)
-                        Divider()
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outlineVariant)
                     }
                 }
             }

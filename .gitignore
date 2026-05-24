@@ -13,3 +13,12 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# JVM crash logs (Gradle daemon)
+hs_err_pid*.log
+replay_pid*.log
+
+# Build/debug logs manuales
+build_log*.txt
+unmerged*.txt
+test_report.txt

@@ -4,6 +4,8 @@ import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -14,6 +16,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -23,16 +27,18 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.example.testusoandroidstudio_1_usochicamocha.domain.model.Oil
 import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.ConnectionStatusTopBar
 import coil.compose.SubcomposeAsyncImage
 import coil.request.ImageRequest
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.draw.clip
 import kotlinx.coroutines.delay
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 
 // ─── COLORES COMPARTIDOS ─────────────────────────────────────────────────────
 private val ColorBueno   = Color(0xFF4CAF50)
@@ -450,20 +456,6 @@ fun VehiculoScreen(
                     )
                     Spacer(Modifier.height(4.dp))
                     EstadoDocumentoChip(uiState.estadoSoat, uiState.diasRestantesSoat)
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        "Estado verificado por el inspector (*)",
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    DocEstadoSelector(
-                        fechaVenc = uiState.fechaVencSoatDB,
-                        estadoActual = uiState.estadoSoat,
-                        habilitado = hayVehiculo && !uiState.isLoadingDocs,
-                        onEstadoSelected = { viewModel.onDocEstadoChange("Soat", it) }
-                    )
                     Spacer(Modifier.height(8.dp))
                     DocumentImage(url = uiState.urlImagenSoat, label = "Imagen SOAT")
 
@@ -476,20 +468,6 @@ fun VehiculoScreen(
                     )
                     Spacer(Modifier.height(4.dp))
                     EstadoDocumentoChip(uiState.estadoTecno, uiState.diasRestantesTecno)
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        "Estado verificado por el inspector (*)",
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    DocEstadoSelector(
-                        fechaVenc = uiState.fechaVencTecnoDB,
-                        estadoActual = uiState.estadoTecno,
-                        habilitado = hayVehiculo && !uiState.isLoadingDocs,
-                        onEstadoSelected = { viewModel.onDocEstadoChange("Tecno", it) }
-                    )
                     Spacer(Modifier.height(8.dp))
                     DocumentImage(url = uiState.urlImagenTecno, label = "Imagen Tecnomecánica")
 
@@ -502,20 +480,6 @@ fun VehiculoScreen(
                     )
                     Spacer(Modifier.height(4.dp))
                     EstadoDocumentoChip(uiState.estadoLicencia, uiState.diasRestantesLicencia)
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        "Estado verificado por el inspector (*)",
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    DocEstadoSelector(
-                        fechaVenc = uiState.fechaVencLicencioDB,
-                        estadoActual = uiState.estadoLicencia,
-                        habilitado = hayVehiculo && !uiState.isLoadingDocs,
-                        onEstadoSelected = { viewModel.onDocEstadoChange("Licencia", it) }
-                    )
                     Spacer(Modifier.height(8.dp))
                     DocumentImage(url = uiState.urlImagenLicencia, label = "Imagen Licencia")
 
@@ -528,20 +492,6 @@ fun VehiculoScreen(
                     )
                     Spacer(Modifier.height(4.dp))
                     EstadoDocumentoChip(uiState.estadoExtintor, uiState.diasRestantesExtintor)
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        "Estado verificado por el inspector (*)",
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    DocEstadoSelector(
-                        fechaVenc = uiState.vigenciaExtintorDB,
-                        estadoActual = uiState.estadoExtintor,
-                        habilitado = hayVehiculo && !uiState.isLoadingDocs,
-                        onEstadoSelected = { viewModel.onDocEstadoChange("Extintor", it) }
-                    )
                     Spacer(Modifier.height(8.dp))
                     DocumentImage(url = uiState.urlImagenExtintor, label = "Imagen Extintor")
                 }
@@ -589,87 +539,6 @@ fun VehiculoScreen(
                     saludItems.forEachIndexed { i, (key, pair) ->
                         YesNoSelector(pair.first, pair.second) { viewModel.onSaludChange(key, it) }
                         if (i < saludItems.lastIndex) Divider(Modifier.padding(vertical = 10.dp))
-                    }
-                }
-            }
-
-            // ── 5b. CAMBIO DE ACEITE (opcional) — fila compacta (no SectionCard) ─
-            item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(12.dp),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-                ) {
-                    Column(Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
-                        Row(
-                            Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Column(Modifier.weight(1f).padding(end = 8.dp)) {
-                                Text(
-                                    "Cambio de aceite",
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.primary
-                                )
-                                Text(
-                                    "Opcional. Se envía al sincronizar.",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                            Switch(
-                                checked = uiState.registrarCambioAceite,
-                                onCheckedChange = { viewModel.onRegistrarCambioAceiteChange(it) }
-                            )
-                        }
-                    if (uiState.registrarCambioAceite) {
-                        HorizontalDivider(Modifier.padding(vertical = 8.dp))
-                        Spacer(Modifier.height(4.dp))
-                        // ── Marca de aceite (dropdown limpio) ────────────────
-                        VehicleOilDropdown(
-                            oils = uiState.vehicleOilBrands,
-                            selectedOil = uiState.selectedOil,
-                            enabled = uiState.oilType.isNotBlank(),
-                            onOilSelected = { viewModel.onOilSelected(it) }
-                        )
-                        Spacer(Modifier.height(10.dp))
-                        OutlinedTextField(
-                            value = uiState.oilIntervalKm,
-                            onValueChange = { viewModel.onOilIntervalKmChange(it) },
-                            label = { Text("Intervalo próximo cambio (km) (*)", fontWeight = FontWeight.Bold) },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            modifier = Modifier.fillMaxWidth(),
-                            singleLine = true
-                        )
-                        Spacer(Modifier.height(10.dp))
-                        OutlinedTextField(
-                            value = uiState.oilQuantity,
-                            onValueChange = { viewModel.onOilQuantityChange(it) },
-                            label = { Text("Cantidad (L) — opcional", fontWeight = FontWeight.Bold) },
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                            modifier = Modifier.fillMaxWidth(),
-                            singleLine = true
-                        )
-                        Spacer(Modifier.height(8.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Switch(
-                                checked = uiState.oilAirFilterChanged,
-                                onCheckedChange = { viewModel.onOilAirFilterChanged(it) }
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Text("¿Se cambió filtro de aire?", style = MaterialTheme.typography.bodyMedium)
-                        }
-                        if (uiState.vehicleOilBrands.isEmpty()) {
-                            Spacer(Modifier.height(6.dp))
-                            Text(
-                                "Sincronice marcas de aceite (menú principal) para elegir marca.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.error
-                            )
-                        }
-                    }
                     }
                 }
             }
@@ -745,71 +614,101 @@ fun VehiculoScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun VehicleOilDropdown(
-    oils: List<Oil>,
-    selectedOil: Oil?,
-    enabled: Boolean = true,
-    onOilSelected: (Oil?) -> Unit,
-) {
-    var expanded by remember { mutableStateOf(false) }
-    val displayText = selectedOil?.name ?: "Seleccione la marca de aceite (*)"
-    ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { if (enabled) expanded = !expanded }) {
-        OutlinedTextField(
-            value = displayText,
-            onValueChange = {},
-            readOnly = true,
-            label = { Text("Marca de Aceite (*)", fontWeight = FontWeight.Bold) },
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-            modifier = Modifier.menuAnchor().fillMaxWidth(),
-            enabled = enabled
-        )
-        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            if (oils.isEmpty()) {
-                DropdownMenuItem(
-                    text = { Text("Sin marcas. Sincronice desde el menú principal.") },
-                    onClick = { expanded = false }
-                )
-            }
-            oils.forEach { oil ->
-                DropdownMenuItem(
-                    text = { Text(oil.name) },
-                    onClick = { onOilSelected(oil); expanded = false }
-                )
-            }
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
 fun VehicleSelector(
     vehicles: List<VehiculoItem>,
     selectedVehicle: VehiculoItem?,
     onVehicleSelected: (VehiculoItem) -> Unit
 ) {
-    var expanded by remember { mutableStateOf(false) }
-    val displayText = selectedVehicle?.let { "${it.placa}  ${it.marca}" } ?: "Seleccione un vehículo (*)"
-    ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = !expanded }) {
+    var showDialog by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
+    val displayText = selectedVehicle?.let { "${it.placa}  •  ${it.marca}" } ?: "Seleccione un vehículo (*)"
+    val filteredVehicles = remember(vehicles, searchQuery) {
+        if (searchQuery.isBlank()) vehicles
+        else vehicles.filter {
+            it.placa.contains(searchQuery, ignoreCase = true) ||
+            it.marca.contains(searchQuery, ignoreCase = true) ||
+            it.tipoVehiculo.contains(searchQuery, ignoreCase = true)
+        }
+    }
+
+    Box(modifier = Modifier.fillMaxWidth()) {
         OutlinedTextField(
             value = displayText,
             onValueChange = {},
             readOnly = true,
             label = { Text("Vehículo (*)", fontWeight = FontWeight.Bold, fontSize = 17.sp) },
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-            modifier = Modifier.menuAnchor().fillMaxWidth()
+            trailingIcon = { Icon(Icons.Default.ArrowDropDown, contentDescription = null) },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
         )
-        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            if (vehicles.isEmpty()) {
-                DropdownMenuItem(
-                    text = { Text("No hay vehículos. Verifica la sincronización.", color = MaterialTheme.colorScheme.error) },
-                    onClick = { expanded = false }
-                )
-            } else {
-                vehicles.forEach { v ->
-                    DropdownMenuItem(
-                        text = { Text("${v.placa}  •  ${v.marca}  •  ${v.tipoVehiculo}") },
-                        onClick = { onVehicleSelected(v); expanded = false }
+        Spacer(modifier = Modifier.matchParentSize().clickable(
+            interactionSource = remember { MutableInteractionSource() },
+            indication = null
+        ) { showDialog = true })
+    }
+
+    if (showDialog) {
+        val focusRequester = remember { FocusRequester() }
+        val keyboardController = LocalSoftwareKeyboardController.current
+        LaunchedEffect(Unit) {
+            delay(50)
+            try { focusRequester.requestFocus() } catch (e: Exception) { }
+            keyboardController?.show()
+        }
+        Dialog(
+            onDismissRequest = { showDialog = false; searchQuery = "" },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Surface(
+                modifier = Modifier.fillMaxWidth(0.92f),
+                shape = RoundedCornerShape(16.dp),
+                tonalElevation = 4.dp
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text("Seleccionar vehículo", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        placeholder = { Text("Buscar placa, marca...") },
+                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(20.dp)) },
+                        trailingIcon = if (searchQuery.isNotEmpty()) {{
+                            IconButton(onClick = { searchQuery = "" }) {
+                                Icon(Icons.Default.Clear, contentDescription = "Limpiar", modifier = Modifier.size(18.dp))
+                            }
+                        }} else null,
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth().focusRequester(focusRequester)
                     )
+                    Spacer(Modifier.height(8.dp))
+                    LazyColumn(modifier = Modifier.heightIn(max = 320.dp)) {
+                        if (vehicles.isEmpty()) {
+                            item { Text("No hay vehículos. Verifica la sincronización.", color = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 12.dp)) }
+                        } else if (filteredVehicles.isEmpty()) {
+                            item { Text("Sin resultados", color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 12.dp)) }
+                        } else {
+                            items(filteredVehicles) { v ->
+                                Column {
+                                    Text(
+                                        text = "${v.placa}  •  ${v.marca}  •  ${v.tipoVehiculo}",
+                                        fontSize = 13.sp,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable { onVehicleSelected(v); showDialog = false; searchQuery = "" }
+                                            .padding(horizontal = 8.dp, vertical = 10.dp)
+                                    )
+                                    HorizontalDivider()
+                                }
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    TextButton(
+                        onClick = { showDialog = false; searchQuery = "" },
+                        modifier = Modifier.align(Alignment.End)
+                    ) { Text("Cancelar") }
                 }
             }
         }
@@ -966,12 +865,60 @@ fun DocEstadoSelector(
 /**
  * Muestra la imagen del documento desde una URL.
  * Si el archivo es PDF, muestra un acceso directo para abrirlo.
+ * Si es imagen, al hacer tap se abre a pantalla completa para mejor visualización.
  * Si no hay URL o falla la carga, muestra "Imagen no disponible".
  */
 @Composable
 fun DocumentImage(url: String?, label: String) {
     val context = LocalContext.current
     val isPdf = !url.isNullOrBlank() && url.trimEnd().lowercase().endsWith(".pdf")
+    val isImage = !url.isNullOrBlank() && !isPdf
+    var showFullscreen by remember { mutableStateOf(false) }
+
+    if (showFullscreen && isImage) {
+        Dialog(
+            onDismissRequest = { showFullscreen = false },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.95f))
+                    .clickable { showFullscreen = false },
+                contentAlignment = Alignment.Center
+            ) {
+                SubcomposeAsyncImage(
+                    model = ImageRequest.Builder(context).data(url).crossfade(true).build(),
+                    contentDescription = label,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    contentScale = ContentScale.Fit,
+                    loading = {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(40.dp),
+                            color = Color.White,
+                            strokeWidth = 2.dp
+                        )
+                    }
+                )
+                IconButton(
+                    onClick = { showFullscreen = false },
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(8.dp)
+                ) {
+                    Icon(
+                        Icons.Default.Close,
+                        contentDescription = "Cerrar",
+                        tint = Color.White,
+                        modifier = Modifier.size(32.dp)
+                    )
+                }
+            }
+        }
+    }
+
     Column {
         Text(
             text = label,
@@ -985,7 +932,8 @@ fun DocumentImage(url: String?, label: String) {
                 .height(if (isPdf) 100.dp else 180.dp)
                 .clip(RoundedCornerShape(12.dp))
                 .background(MaterialTheme.colorScheme.surfaceVariant)
-                .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f), RoundedCornerShape(12.dp)),
+                .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
+                .then(if (isImage) Modifier.clickable { showFullscreen = true } else Modifier),
             contentAlignment = Alignment.Center
         ) {
             when {
@@ -1022,24 +970,35 @@ fun DocumentImage(url: String?, label: String) {
                         Text("Abrir PDF", style = MaterialTheme.typography.labelMedium)
                     }
                 }
-                else -> SubcomposeAsyncImage(
-                    model = ImageRequest.Builder(context)
-                        .data(url)
-                        .crossfade(true)
-                        .build(),
-                    contentDescription = label,
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Fit,
-                    error = {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Icon(Icons.Default.ErrorOutline, null, tint = ColorMalo)
-                            Text("Error al cargar imagen", style = MaterialTheme.typography.bodySmall)
+                else -> {
+                    SubcomposeAsyncImage(
+                        model = ImageRequest.Builder(context)
+                            .data(url)
+                            .crossfade(true)
+                            .build(),
+                        contentDescription = label,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Fit,
+                        error = {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(Icons.Default.ErrorOutline, null, tint = ColorMalo)
+                                Text("Error al cargar imagen", style = MaterialTheme.typography.bodySmall)
+                            }
+                        },
+                        loading = {
+                            CircularProgressIndicator(modifier = Modifier.size(30.dp), strokeWidth = 2.dp)
                         }
-                    },
-                    loading = {
-                        CircularProgressIndicator(modifier = Modifier.size(30.dp), strokeWidth = 2.dp)
-                    }
-                )
+                    )
+                    Icon(
+                        Icons.Default.ZoomIn,
+                        contentDescription = "Ampliar imagen",
+                        tint = Color.White.copy(alpha = 0.8f),
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(8.dp)
+                            .size(24.dp)
+                    )
+                }
             }
         }
     }

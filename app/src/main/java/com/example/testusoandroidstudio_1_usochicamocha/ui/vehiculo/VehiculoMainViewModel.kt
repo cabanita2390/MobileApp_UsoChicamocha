@@ -3,11 +3,10 @@ package com.example.testusoandroidstudio_1_usochicamocha.ui.vehiculo
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.work.*
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.VehiculoInspectionEntity
-import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.toVehiculoItem
-import com.example.testusoandroidstudio_1_usochicamocha.data.workers.SyncDataWorker
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.VehiculoOilChangeEntity
 import com.example.testusoandroidstudio_1_usochicamocha.domain.repository.VehiculoInspectionRepository
+import com.example.testusoandroidstudio_1_usochicamocha.domain.repository.VehiculoOilChangeRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -16,8 +15,10 @@ import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.LocalSync
 
 data class VehiculoMainUiState(
     val pendingInspections: List<VehiculoInspectionEntity> = emptyList(),
+    val pendingOilChanges: List<VehiculoOilChangeEntity> = emptyList(),
     val totalVehicles: Int = 0,
     val isSyncingInspections: Boolean = false,
+    val isSyncingOilChanges: Boolean = false,
     val isSyncingCatalog: Boolean = false,
     val isSyncingDocuments: Boolean = false,
     val syncMessage: String? = null,
@@ -28,6 +29,7 @@ data class VehiculoMainUiState(
 @HiltViewModel
 class VehiculoMainViewModel @Inject constructor(
     private val repository: VehiculoInspectionRepository,
+    private val oilChangeRepository: VehiculoOilChangeRepository,
     private val localSyncCoordinator: LocalSyncCoordinator
 ) : ViewModel() {
 
@@ -36,6 +38,7 @@ class VehiculoMainViewModel @Inject constructor(
 
     init {
         observePendingInspections()
+        observePendingOilChanges()
         observeVehiclesCatalog()
         observeSyncStatuses()
     }
@@ -45,6 +48,15 @@ class VehiculoMainViewModel @Inject constructor(
             .onEach { list ->
                 val pending = list.filter { !it.isSynced }
                 _uiState.update { it.copy(pendingInspections = pending) }
+            }
+            .launchIn(viewModelScope)
+    }
+
+    private fun observePendingOilChanges() {
+        oilChangeRepository.getAllFlow()
+            .onEach { list ->
+                val pending = list.filter { !it.isSynced }
+                _uiState.update { it.copy(pendingOilChanges = pending) }
             }
             .launchIn(viewModelScope)
     }
@@ -75,6 +87,14 @@ class VehiculoMainViewModel @Inject constructor(
         ).onEach { isRunning ->
             _uiState.update { it.copy(isSyncingDocuments = isRunning) }
         }.launchIn(viewModelScope)
+    }
+
+    fun onSyncOilChangesClicked() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isSyncingOilChanges = true, syncMessage = "Sincronizando cambios de aceite...") }
+            oilChangeRepository.syncPending()
+            _uiState.update { it.copy(isSyncingOilChanges = false) }
+        }
     }
 
     fun onSyncInspectionsClicked() {

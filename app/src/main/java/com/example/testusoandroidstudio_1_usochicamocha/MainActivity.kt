@@ -37,6 +37,7 @@ import com.example.testusoandroidstudio_1_usochicamocha.ui.splash.SplashViewMode
 import com.example.testusoandroidstudio_1_usochicamocha.ui.theme.AppUsoChicamochaTheme
 import com.example.testusoandroidstudio_1_usochicamocha.ui.vehiculo.VehiculoScreen
 import com.example.testusoandroidstudio_1_usochicamocha.ui.vehiculo.VehiculoMainScreen
+import com.example.testusoandroidstudio_1_usochicamocha.ui.vehiculo.VehiculoCambioAceiteScreen
 import com.example.testusoandroidstudio_1_usochicamocha.util.NetworkMonitor
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.LocalSyncCoordinator
 import dagger.hilt.android.AndroidEntryPoint
@@ -178,12 +179,22 @@ class MainActivity : ComponentActivity() {
                             },
                             onNavigateToForm = {
                                 navController.navigate("vehiculo")
+                            },
+                            onNavigateToCambioAceite = {
+                                navController.navigate("vehiculo_cambio_aceite")
                             }
                         )
                     }
                     composable("vehiculo") {
                         VehiculoScreen(
                             networkStatus = networkStatus,
+                            onNavigateBack = {
+                                navController.popBackStack()
+                            }
+                        )
+                    }
+                    composable("vehiculo_cambio_aceite") {
+                        VehiculoCambioAceiteScreen(
                             onNavigateBack = {
                                 navController.popBackStack()
                             }

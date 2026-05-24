@@ -107,18 +107,15 @@ class FullAuditTest {
         }
 
         // Select Plate
-        // Select Plate
-        val plateLabel = "Seleccione La PLACA de Su Motocicleta (*)"
-        composeTestRule.onNodeWithText(plateLabel).performScrollTo().performClick()
+        composeTestRule.onNode(hasTestTag("plate_option_dropdown")).performScrollTo().performClick()
         Thread.sleep(2000)
-        
+
         // Pick any plate using the new unique tag
         composeTestRule.onAllNodes(hasTestTag("plate_option")).onFirst().performClick()
         Thread.sleep(2000)
 
         // Select Unit
-        val unitLabel = "Seleccione la UNIDAD a la que Pertenece (*)"
-        composeTestRule.onNodeWithText(unitLabel).performScrollTo().performClick()
+        composeTestRule.onNode(hasTestTag("unit_option_dropdown")).performScrollTo().performClick()
         
         // Wait for items to appear (up to 5 seconds)
         Thread.sleep(2000)

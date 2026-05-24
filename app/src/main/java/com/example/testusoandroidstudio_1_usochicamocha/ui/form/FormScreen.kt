@@ -9,6 +9,7 @@ import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -19,25 +20,33 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
@@ -317,7 +326,6 @@ fun GreasingSection(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MachineSelector(
     machines: List<Machine>,
@@ -325,48 +333,102 @@ fun MachineSelector(
     onMachineSelected: (Machine) -> Unit,
     isEnabled: Boolean = true
 ) {
-    var expanded by remember { mutableStateOf(false) }
+    var showDialog by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
     val displayText = selectedMachine?.let { "${it.name} - ${it.model} - ${it.internalIdentificationNumber}" } ?: "Seleccione una máquina"
+    val filteredMachines = remember(machines, searchQuery) {
+        if (searchQuery.isBlank()) machines
+        else machines.filter {
+            it.name.contains(searchQuery, ignoreCase = true) ||
+            it.model.contains(searchQuery, ignoreCase = true) ||
+            it.internalIdentificationNumber.contains(searchQuery, ignoreCase = true)
+        }
+    }
 
-    ExposedDropdownMenuBox(
-        expanded = expanded,
-        onExpandedChange = { if (isEnabled) expanded = !expanded }
-    ) {
+    Box(modifier = Modifier.fillMaxWidth()) {
         OutlinedTextField(
             value = displayText,
             onValueChange = {},
             readOnly = true,
             label = { Text("Máquina (*)", fontWeight = FontWeight.Bold, fontSize = 17.sp) },
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-            modifier = Modifier
-                .menuAnchor()
-                .fillMaxWidth(),
-            enabled = isEnabled
+            trailingIcon = { Icon(Icons.Default.ArrowDropDown, contentDescription = null) },
+            singleLine = true,
+            enabled = isEnabled,
+            modifier = Modifier.fillMaxWidth()
         )
-        ExposedDropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false }
-        ) {
-            machines.forEach { machine ->
-                DropdownMenuItem(
-                    text = { Text("${machine.name} - ${machine.model} - ${machine.internalIdentificationNumber}") },
-                    onClick = {
-                        onMachineSelected(machine)
-                        expanded = false
-                    }
-                )
-            }
+        if (isEnabled) {
+            Spacer(modifier = Modifier.matchParentSize().clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null
+            ) { showDialog = true })
         }
     }
 
-    // Debug: Show machines count for troubleshooting
-    if (machines.isEmpty()) {
-        Text(
-            text = "No hay máquinas disponibles. Verifica la sincronización.",
-            color = Color.Red,
-            style = MaterialTheme.typography.bodySmall,
-            modifier = Modifier.padding(top = 4.dp)
-        )
+    if (showDialog) {
+        val focusRequester = remember { FocusRequester() }
+        val keyboardController = LocalSoftwareKeyboardController.current
+        LaunchedEffect(Unit) {
+            delay(50)
+            try { focusRequester.requestFocus() } catch (e: Exception) { }
+            keyboardController?.show()
+        }
+        Dialog(
+            onDismissRequest = { showDialog = false; searchQuery = "" },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Surface(
+                modifier = Modifier.fillMaxWidth(0.92f),
+                shape = RoundedCornerShape(16.dp),
+                tonalElevation = 4.dp
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text("Seleccionar máquina", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        placeholder = { Text("Buscar nombre, modelo, código...") },
+                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(20.dp)) },
+                        trailingIcon = if (searchQuery.isNotEmpty()) {{
+                            IconButton(onClick = { searchQuery = "" }) {
+                                Icon(Icons.Default.Clear, contentDescription = "Limpiar", modifier = Modifier.size(18.dp))
+                            }
+                        }} else null,
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth().focusRequester(focusRequester)
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    LazyColumn(modifier = Modifier.heightIn(max = 320.dp)) {
+                        if (machines.isEmpty()) {
+                            item { Text("No hay máquinas disponibles. Verifica la sincronización.", color = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 12.dp)) }
+                        } else if (filteredMachines.isEmpty()) {
+                            item { Text("Sin resultados", color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 12.dp)) }
+                        } else {
+                            items(filteredMachines) { machine ->
+                                Column {
+                                    Text(
+                                        text = "${machine.name} - ${machine.model} - ${machine.internalIdentificationNumber}",
+                                        fontSize = 13.sp,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable { onMachineSelected(machine); showDialog = false; searchQuery = "" }
+                                            .padding(horizontal = 8.dp, vertical = 10.dp)
+                                    )
+                                    HorizontalDivider()
+                                }
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    TextButton(
+                        onClick = { showDialog = false; searchQuery = "" },
+                        modifier = Modifier.align(Alignment.End)
+                    ) { Text("Cancelar") }
+                }
+            }
+        }
     }
 }
 

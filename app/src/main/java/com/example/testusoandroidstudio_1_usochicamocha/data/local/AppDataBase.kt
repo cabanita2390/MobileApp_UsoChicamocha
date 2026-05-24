@@ -17,6 +17,7 @@ import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.Ubicacion
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.VehiculoDao
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.VehiculoInspectionDao
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.DocumentoVehiculoDao
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.VehiculoOilChangeDao
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.FormEntity
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.ImageEntity
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.DocumentoMotoEntity
@@ -30,6 +31,7 @@ import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.Ubicac
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.VehiculoEntity
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.VehiculoInspectionEntity
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.DocumentoVehiculoEntity
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.VehiculoOilChangeEntity
 
 @Database(
     entities = [
@@ -45,9 +47,10 @@ import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.Docume
         com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.DocumentoMotoEntity::class,
         com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.VehiculoInspectionEntity::class,
         com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.VehiculoEntity::class,
-        com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.DocumentoVehiculoEntity::class
+        com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.DocumentoVehiculoEntity::class,
+        com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.VehiculoOilChangeEntity::class
     ],
-    version = 28,
+    version = 29,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -86,6 +89,28 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /** Migración 28 → 29: crea tabla de cambios de aceite vehicular independiente */
+        val MIGRATION_28_29 = object : Migration(28, 29) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `vehiculo_oil_changes` (
+                        `localId` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `placa` TEXT NOT NULL,
+                        `timestamp` INTEGER NOT NULL,
+                        `oilType` TEXT NOT NULL,
+                        `oilBrandId` INTEGER NOT NULL,
+                        `oilBrandName` TEXT NOT NULL,
+                        `quantity` REAL,
+                        `kmAtChange` INTEGER NOT NULL,
+                        `intervalKm` INTEGER NOT NULL,
+                        `airFilterChanged` INTEGER NOT NULL DEFAULT 0,
+                        `isSynced` INTEGER NOT NULL DEFAULT 0,
+                        `isSyncing` INTEGER NOT NULL DEFAULT 0
+                    )
+                """.trimIndent())
+            }
+        }
+
         /** Migración 26 → 27: URLs documentos + opcional cambio aceite en inspección vehículo */
         val MIGRATION_26_27 = object : Migration(26, 27) {
             override fun migrate(database: SupportSQLiteDatabase) {
@@ -115,4 +140,5 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun vehiculoInspectionDao(): VehiculoInspectionDao
     abstract fun vehiculoDao(): VehiculoDao
     abstract fun documentoVehiculoDao(): DocumentoVehiculoDao
+    abstract fun vehiculoOilChangeDao(): VehiculoOilChangeDao
 }

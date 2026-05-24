@@ -5,6 +5,10 @@
         <domain includeSubdomains="true">145.223.121.6</domain>
         <domain includeSubdomains="true">10.0.2.2</domain>
     </domain-config>
+    <!-- Entorno de pruebas (HTTP mientras no haya SSL) -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">usochicamocha.co</domain>
+    </domain-config>
     <!-- Backend local - desarrollo (HTTP, dispositivo físico por WiFi) -->
     <domain-config cleartextTrafficPermitted="true">
         <domain includeSubdomains="false">10.2.236.89</domain>

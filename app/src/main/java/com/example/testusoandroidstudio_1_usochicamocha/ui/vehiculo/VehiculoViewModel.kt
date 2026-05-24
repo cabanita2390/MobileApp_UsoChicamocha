@@ -8,17 +8,12 @@ import com.example.testusoandroidstudio_1_usochicamocha.data.local.TokenManager
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.ApiService
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.DocumentoVehiculoEntity
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.toVehiculoItem
-// import com.example.testusoandroidstudio_1_usochicamocha.util.Constants // Removido por solicitud del usuario
 import kotlinx.coroutines.flow.first
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
-import androidx.work.*
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.VehiculoInspectionEntity
-import com.example.testusoandroidstudio_1_usochicamocha.data.workers.SyncDataWorker
-import com.example.testusoandroidstudio_1_usochicamocha.domain.model.Oil
 import com.example.testusoandroidstudio_1_usochicamocha.domain.repository.VehiculoInspectionRepository
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.LocalSyncCoordinator
-import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.oil.GetLocalOilsUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.vehiculo.SaveVehiculoInspectionUseCase
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -120,14 +115,6 @@ data class VehiculoUiState(
     val kilometrajeDB: String = "",
     val kilometrajeError: String? = null, // Error inmediato debajo del campo
     val kmColorEstado: Int? = null,  // null=vacío/sin vehículo, 0=verde, 1=amarillo, 2=rojo
-    // Cambio de aceite (opcional; se envía tras sincronizar la inspección)
-    val vehicleOilBrands: List<Oil> = emptyList(),
-    val registrarCambioAceite: Boolean = false,
-    val oilType: String = "",          // "motor" o "hydraulic"
-    val selectedOil: Oil? = null,
-    val oilIntervalKm: String = "",
-    val oilQuantity: String = "",
-    val oilAirFilterChanged: Boolean = false,
 )
 
 // ─── VIEWMODEL ───────────────────────────────────────────────────────────────
@@ -138,7 +125,6 @@ class VehiculoViewModel @Inject constructor(
     private val repository: VehiculoInspectionRepository,
     private val saveVehiculoInspectionUseCase: SaveVehiculoInspectionUseCase,
     private val localSyncCoordinator: LocalSyncCoordinator,
-    private val getLocalOilsUseCase: GetLocalOilsUseCase,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(VehiculoUiState())
@@ -147,23 +133,6 @@ class VehiculoViewModel @Inject constructor(
     init {
         observeVehiclesCatalog()
         loadUsername()
-        observeVehicleOilBrands()
-    }
-
-    private fun observeVehicleOilBrands() {
-        viewModelScope.launch {
-            getLocalOilsUseCase().collect { list ->
-                val forVehicle = list.filter { o ->
-                    val t = o.type.trim()
-                    t.equals("OIL_VEHICLE", ignoreCase = true) ||
-                        t.contains("VEHICLE", ignoreCase = true) ||
-                        t.equals("MOTOR", ignoreCase = true)
-                }
-                // Si no hay tipos explícitos de vehículo en BD, mostrar todo el catálogo (evita lista vacía).
-                val shown = if (forVehicle.isNotEmpty()) forVehicle else list
-                _uiState.update { it.copy(vehicleOilBrands = shown) }
-            }
-        }
     }
 
     // ── Carga el username del inspector logueado (campo de solo lectura) ──────
@@ -554,19 +523,11 @@ class VehiculoViewModel @Inject constructor(
 
     private fun validateForm() {
         val s = _uiState.value
-        val oilOk = !s.registrarCambioAceite || (
-            s.oilType.isNotBlank() &&
-                s.selectedOil != null &&
-                s.oilIntervalKm.toIntOrNull() != null &&
-                (s.oilIntervalKm.toIntOrNull() ?: 0) > 0
-            )
         val valid = s.selectedVehicle != null && s.kilometraje.isNotBlank() &&
                 s.nivelAceite.isNotBlank() && s.nivelRefrigerante.isNotBlank() &&
                 s.nivelFrenos.isNotBlank() && s.estadoLlantas.isNotBlank() &&
                 s.lucesGeneral.isNotBlank() && s.estadoVisual.isNotBlank() &&
                 s.limpiezaGeneral.isNotBlank() &&
-                s.estadoSoat.isNotBlank() && s.estadoTecno.isNotBlank() &&
-                s.estadoLicencia.isNotBlank() && s.estadoExtintor.isNotBlank() &&
                 s.tieneBotiquin.isNotBlank() && s.tieneSeñalizacion.isNotBlank() &&
                 s.tieneLineasEmergencia.isNotBlank() && s.tieneLlantaRepuesto.isNotBlank() &&
                 s.tieneGatoHidraulico.isNotBlank() &&
@@ -575,38 +536,8 @@ class VehiculoViewModel @Inject constructor(
                 s.condicionParaConducir.isNotBlank() &&
                 s.conscienteResponsabilidad.isNotBlank() &&
                 s.aprobadoRuta.isNotBlank() &&
-                s.responsableInspeccion.isNotBlank() &&
-                s.kilometraje.isNotBlank() &&
-                oilOk
+                s.responsableInspeccion.isNotBlank()
         _uiState.update { it.copy(isSaveButtonEnabled = valid) }
-    }
-
-    fun onRegistrarCambioAceiteChange(v: Boolean) {
-        _uiState.update { it.copy(registrarCambioAceite = v, oilType = if (v) "motor" else "") }
-        validateForm()
-    }
-
-    fun onOilTypeChange(v: String) {
-        _uiState.update { it.copy(oilType = v, selectedOil = null) }
-        validateForm()
-    }
-
-    fun onOilSelected(oil: Oil?) {
-        _uiState.update { it.copy(selectedOil = oil) }
-        validateForm()
-    }
-
-    fun onOilIntervalKmChange(v: String) {
-        _uiState.update { it.copy(oilIntervalKm = v.filter { ch -> ch.isDigit() }) }
-        validateForm()
-    }
-
-    fun onOilQuantityChange(v: String) {
-        _uiState.update { it.copy(oilQuantity = v) }
-    }
-
-    fun onOilAirFilterChanged(v: Boolean) {
-        _uiState.update { it.copy(oilAirFilterChanged = v) }
     }
 
     fun onSaveClick() {
@@ -677,12 +608,12 @@ class VehiculoViewModel @Inject constructor(
                     urlImagenTecno         = s.urlImagenTecno.orEmpty(),
                     urlImagenLicencia      = s.urlImagenLicencia.orEmpty(),
                     urlImagenExtintor      = s.urlImagenExtintor.orEmpty(),
-                    registrarCambioAceite  = s.registrarCambioAceite,
-                    oilType                = s.oilType.trim(),
-                    oilBrandId             = s.selectedOil?.id?.toLong(),
-                    oilIntervalKm          = s.oilIntervalKm.toIntOrNull(),
-                    oilQuantity            = s.oilQuantity.toDoubleOrNull(),
-                    oilAirFilterChanged    = s.oilAirFilterChanged,
+                    registrarCambioAceite  = false,
+                    oilType                = "",
+                    oilBrandId             = null,
+                    oilIntervalKm          = null,
+                    oilQuantity            = null,
+                    oilAirFilterChanged    = false,
                     tieneBotiquin          = s.tieneBotiquin == "Si",
                     tieneSeñalizacion      = s.tieneSeñalizacion == "Si",
                     tieneLineasEmergencia  = s.tieneLineasEmergencia == "Si",

@@ -59,9 +59,8 @@ class MotoHappyPathTest {
         composeTestRule.onAllNodesWithTag("plate_option")[0].performClick()
         
         // --- 2. UNIT ---
-        val unitLabel = "Seleccione la UNIDAD a la que Pertenece (*)"
         composeTestRule.onNodeWithTag("moto_form_scroll").performScrollToNode(hasTestTag("section_ubicacion"))
-        composeTestRule.onNodeWithText(unitLabel, substring = true).performClick()
+        composeTestRule.onNodeWithTag("unit_option_dropdown").performClick()
         
         composeTestRule.waitUntil(timeoutMillis = NAVIGATION_TIMEOUT) {
             composeTestRule.onAllNodesWithTag("unit_option").fetchSemanticsNodes().isNotEmpty()

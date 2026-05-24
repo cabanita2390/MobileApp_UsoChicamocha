@@ -39,6 +39,9 @@ import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.vehiculo.
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.vehiculo.SaveVehiculoInspectionUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.vehiculo.SyncVehiculoInspectionUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.vehiculo.SyncVehiclesCatalogUseCase
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.VehiculoOilChangeDao
+import com.example.testusoandroidstudio_1_usochicamocha.data.repository.VehiculoOilChangeRepositoryImpl
+import com.example.testusoandroidstudio_1_usochicamocha.domain.repository.VehiculoOilChangeRepository
 import com.example.testusoandroidstudio_1_usochicamocha.util.AppLogger
 import com.example.testusoandroidstudio_1_usochicamocha.util.NetworkMonitor
 import dagger.Module
@@ -58,10 +61,11 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object AppModule {
 
-    private const val BASE_URL = "http://localhost:8080/"+"api/" // DevTunnel (cualquier red)
+    //private const val BASE_URL = "http://localhost:8080/"+"api/" // DevTunnel (cualquier red)
     //private const val BASE_URL = "https://usochimocha.co/"+"api/"
     //private const val BASE_URL = "https://server.usochicamocha.co/"+"api/"
     //private const val BASE_URL = "http://10.0.2.2:8080/api/"
+    private const val BASE_URL = "https://back-test.usochicamocha.co/api/" // Test
     @Provides
     @Singleton
     fun provideWorkManager(@ApplicationContext context: Context): WorkManager {
@@ -98,6 +102,7 @@ object AppModule {
                 AppDatabase.MIGRATION_25_26,
                 AppDatabase.MIGRATION_26_27,
                 AppDatabase.MIGRATION_27_28,
+                AppDatabase.MIGRATION_28_29,
             )
             .build()
     }
@@ -195,6 +200,17 @@ object AppModule {
     @Provides
     @Singleton
     fun provideDocumentoVehiculoDao(db: AppDatabase): DocumentoVehiculoDao = db.documentoVehiculoDao()
+
+    @Provides
+    @Singleton
+    fun provideVehiculoOilChangeDao(db: AppDatabase): VehiculoOilChangeDao = db.vehiculoOilChangeDao()
+
+    @Provides
+    @Singleton
+    fun provideVehiculoOilChangeRepository(
+        dao: VehiculoOilChangeDao,
+        apiService: ApiService
+    ): VehiculoOilChangeRepository = VehiculoOilChangeRepositoryImpl(dao, apiService)
 
     // Use Cases
     @Provides

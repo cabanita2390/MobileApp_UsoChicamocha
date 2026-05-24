@@ -21,9 +21,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.VehiculoInspectionEntity
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.VehiculoOilChangeEntity
 import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.ConnectionStatusTopBar
 import java.text.SimpleDateFormat
 import java.util.*
+import androidx.compose.material.icons.filled.Build
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -32,7 +34,8 @@ fun VehiculoMainScreen(
     viewModel: VehiculoMainViewModel = hiltViewModel(),
     onLogout: () -> Unit,
     onNavigateBack: () -> Unit,
-    onNavigateToForm: () -> Unit
+    onNavigateToForm: () -> Unit,
+    onNavigateToCambioAceite: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
@@ -79,7 +82,16 @@ fun VehiculoMainScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            VehiculoAvailableFormsCard(onNavigateToForm = onNavigateToForm)
+            VehiculoAvailableFormsCard(
+                onNavigateToForm = onNavigateToForm,
+                onNavigateToCambioAceite = onNavigateToCambioAceite
+            )
+
+            PendingOilChangeVehiculoCard(
+                pendingOilChanges = uiState.pendingOilChanges,
+                isSyncing = uiState.isSyncingOilChanges,
+                onSyncClicked = { viewModel.onSyncOilChangesClicked() }
+            )
 
             PendingVehiculoFormsCard(
                 pendingInspections = uiState.pendingInspections,
@@ -105,7 +117,10 @@ fun VehiculoMainScreen(
 }
 
 @Composable
-fun VehiculoAvailableFormsCard(onNavigateToForm: () -> Unit) {
+fun VehiculoAvailableFormsCard(
+    onNavigateToForm: () -> Unit,
+    onNavigateToCambioAceite: () -> Unit
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -113,7 +128,7 @@ fun VehiculoAvailableFormsCard(onNavigateToForm: () -> Unit) {
     ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("Formularios Disponibles", style = MaterialTheme.typography.titleLarge)
-            
+
             Button(
                 onClick = onNavigateToForm,
                 modifier = Modifier.fillMaxWidth().height(56.dp),
@@ -123,6 +138,90 @@ fun VehiculoAvailableFormsCard(onNavigateToForm: () -> Unit) {
                 Spacer(Modifier.width(8.dp))
                 Text("Inspección Vehicular", fontSize = 18.sp)
             }
+
+            OutlinedButton(
+                onClick = onNavigateToCambioAceite,
+                modifier = Modifier.fillMaxWidth().height(56.dp),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Icon(Icons.Default.Build, null)
+                Spacer(Modifier.width(8.dp))
+                Text("Cambio aceite", fontSize = 18.sp)
+            }
+        }
+    }
+}
+
+@Composable
+fun PendingOilChangeVehiculoCard(
+    pendingOilChanges: List<VehiculoOilChangeEntity>,
+    isSyncing: Boolean,
+    onSyncClicked: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "Cambio aceite Pendientes",
+                    style = MaterialTheme.typography.titleLarge,
+                    modifier = Modifier.weight(1f)
+                )
+                IconButton(onClick = onSyncClicked, enabled = !isSyncing) {
+                    if (isSyncing) {
+                        CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                    } else {
+                        Icon(Icons.Default.Sync, contentDescription = "Sincronizar cambios de aceite")
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            if (pendingOilChanges.isEmpty()) {
+                Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                    Text(
+                        "No hay formularios de cambio de aceite pendientes.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.Gray
+                    )
+                }
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    pendingOilChanges.forEach { item ->
+                        PendingOilChangeVehiculoItem(oilChange = item)
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outlineVariant)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun PendingOilChangeVehiculoItem(oilChange: VehiculoOilChangeEntity) {
+    val sdf = SimpleDateFormat("HH:mm - dd/MM/yyyy", Locale.getDefault())
+    val formattedDate = sdf.format(Date(oilChange.timestamp))
+
+    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("Placa: ${oilChange.placa}", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            Text(formattedDate, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+        }
+        Text("Marca: ${oilChange.oilBrandName}", style = MaterialTheme.typography.bodyMedium)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("Estado: ", style = MaterialTheme.typography.bodySmall)
+            Text("Pendiente 🔄", color = Color(0xFFFFA000), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodySmall)
         }
     }
 }
@@ -166,7 +265,7 @@ fun PendingVehiculoFormsCard(
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     pendingInspections.forEach { inspection ->
                         PendingVehiculoItem(inspection = inspection)
-                        Divider(modifier = Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outlineVariant)
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outlineVariant)
                     }
                 }
             }
@@ -179,7 +278,7 @@ fun PendingVehiculoItem(inspection: VehiculoInspectionEntity) {
     val sdf = SimpleDateFormat("HH:mm - dd/MM/yyyy", Locale.getDefault())
     val formattedDate = sdf.format(Date(inspection.timestamp))
     
-    Column(modifier = Modifier.fillMaxWidth()) {
+    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,

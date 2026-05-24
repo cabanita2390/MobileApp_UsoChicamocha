@@ -3,6 +3,8 @@ package com.example.testusoandroidstudio_1_usochicamocha.ui.motocicleta
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.layout.*
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.lazy.LazyColumn
@@ -16,20 +18,28 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
+import kotlinx.coroutines.delay
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
-import coil.compose.AsyncImage
+import coil.compose.SubcomposeAsyncImage
+import coil.request.ImageRequest
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.Moto
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.Ubicacion
+import com.example.testusoandroidstudio_1_usochicamocha.ui.vehiculo.DocLabelRow
+import com.example.testusoandroidstudio_1_usochicamocha.ui.vehiculo.EstadoDocumentoChip
 import android.content.Intent
 import android.net.Uri
 
@@ -52,7 +62,6 @@ fun MotocicletaScreen(
 
 
     val snackbarHostState = remember { SnackbarHostState() }
-    var focusedImage by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(uiState.errorMessage) {
         uiState.errorMessage?.let {
@@ -98,10 +107,14 @@ fun MotocicletaScreen(
                         }
                     } else {
                         DropdownField(
-                            label = "Seleccione La PLACA de Su Motocicleta (*)",
-                            displayValue = uiState.selectedMoto?.placa ?: "Seleccione una placa",
+                            label = "Placa (*)",
+                            displayValue = uiState.selectedMoto?.let {
+                                if (it.ubicacionBase.isNotBlank()) "${it.placa}  •  ${it.ubicacionBase}" else it.placa
+                            } ?: "Seleccione una placa",
                             items = uiState.motocicletas,
-                            itemLabel = { it.placa },
+                            itemLabel = {
+                                if (it.ubicacionBase.isNotBlank()) "${it.placa}  •  ${it.ubicacionBase}" else it.placa
+                            },
                             onItemSelected = { viewModel.onMotoSelected(it) },
                             dropdownTag = "plate_option",
                             modifier = Modifier.testTag("plate_option_dropdown")
@@ -161,12 +174,13 @@ fun MotocicletaScreen(
                         }
                     } else {
                         DropdownField(
-                            label = "Seleccione la UNIDAD a la que Pertenece (*)",
-                            displayValue = uiState.selectedUbicacion?.nombreUbicacion ?: "Seleccione la UNIDAD",
+                            label = "Unidad (*)",
+                            displayValue = uiState.selectedUbicacion?.nombreUbicacion ?: "Seleccione una unidad",
                             items = uiState.ubicaciones,
                             itemLabel = { it.nombreUbicacion },
                             onItemSelected = { viewModel.onUbicacionSelected(it) },
-                            dropdownTag = "unit_option"
+                            dropdownTag = "unit_option",
+                            modifier = Modifier.testTag("unit_option_dropdown")
                         )
                     }
                 }
@@ -255,33 +269,14 @@ fun MotocicletaScreen(
                     }
                     Spacer(Modifier.height(12.dp))
 
-                    val hayMoto = uiState.selectedMoto != null
-
                     // SOAT
                     DocLabelRow(label = "SOAT (Seguro Obligatorio)", icon = Icons.Default.Shield)
                     Spacer(Modifier.height(4.dp))
-                    if (uiState.soat.estadoDoc.isNotBlank()) {
-                        EstadoDocumentoChip(uiState.soat.estadoDoc, uiState.soat.diasRestantes)
-                        Spacer(Modifier.height(4.dp))
-                    }
-                    Text(
-                        "Estado verificado por el inspector (*)",
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    com.example.testusoandroidstudio_1_usochicamocha.ui.vehiculo.DocEstadoSelector(
-                        fechaVenc = uiState.soat.vigenciaMaster,
-                        estadoActual = uiState.soat.estadoDoc,
-                        habilitado = hayMoto && !uiState.isLoadingDocumentos,
-                        onEstadoSelected = { viewModel.onDocEstadoChange("Soat", it) }
-                    )
+                    EstadoDocumentoChip(uiState.soat.estadoDoc, uiState.soat.diasRestantes)
                     Spacer(Modifier.height(8.dp))
                     DocumentImage(
                         url = uiState.soat.imagenUrl,
-                        label = "Imagen SOAT",
-                        onClick = { focusedImage = uiState.soat.imagenUrl }
+                        label = "Imagen SOAT"
                     )
 
                     HorizontalDivider(Modifier.padding(vertical = 10.dp))
@@ -289,28 +284,11 @@ fun MotocicletaScreen(
                     // TECNO
                     DocLabelRow(label = "Revisión TECNICOMECÁNICA", icon = Icons.Default.Build)
                     Spacer(Modifier.height(4.dp))
-                    if (uiState.revisionTecno.estadoDoc.isNotBlank()) {
-                        EstadoDocumentoChip(uiState.revisionTecno.estadoDoc, uiState.revisionTecno.diasRestantes)
-                        Spacer(Modifier.height(4.dp))
-                    }
-                    Text(
-                        "Estado verificado por el inspector (*)",
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    com.example.testusoandroidstudio_1_usochicamocha.ui.vehiculo.DocEstadoSelector(
-                        fechaVenc = uiState.revisionTecno.vigenciaMaster,
-                        estadoActual = uiState.revisionTecno.estadoDoc,
-                        habilitado = hayMoto && !uiState.isLoadingDocumentos,
-                        onEstadoSelected = { viewModel.onDocEstadoChange("Tecno", it) }
-                    )
+                    EstadoDocumentoChip(uiState.revisionTecno.estadoDoc, uiState.revisionTecno.diasRestantes)
                     Spacer(Modifier.height(8.dp))
                     DocumentImage(
                         url = uiState.revisionTecno.imagenUrl,
-                        label = "Imagen Tecnomecánica",
-                        onClick = { focusedImage = uiState.revisionTecno.imagenUrl }
+                        label = "Imagen Tecnomecánica"
                     )
 
                     HorizontalDivider(Modifier.padding(vertical = 10.dp))
@@ -318,28 +296,11 @@ fun MotocicletaScreen(
                     // LICENCIA
                     DocLabelRow(label = "Licencia de Conducción", icon = Icons.Default.AccountBox)
                     Spacer(Modifier.height(4.dp))
-                    if (uiState.licencia.estadoDoc.isNotBlank()) {
-                        EstadoDocumentoChip(uiState.licencia.estadoDoc, uiState.licencia.diasRestantes)
-                        Spacer(Modifier.height(4.dp))
-                    }
-                    Text(
-                        "Estado verificado por el inspector (*)",
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.SemiBold,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    com.example.testusoandroidstudio_1_usochicamocha.ui.vehiculo.DocEstadoSelector(
-                        fechaVenc = uiState.licencia.vigenciaMaster,
-                        estadoActual = uiState.licencia.estadoDoc,
-                        habilitado = hayMoto && !uiState.isLoadingDocumentos,
-                        onEstadoSelected = { viewModel.onDocEstadoChange("Licencia", it) }
-                    )
+                    EstadoDocumentoChip(uiState.licencia.estadoDoc, uiState.licencia.diasRestantes)
                     Spacer(Modifier.height(8.dp))
                     DocumentImage(
                         url = uiState.licencia.imagenUrl,
-                        label = "Imagen Licencia",
-                        onClick = { focusedImage = uiState.licencia.imagenUrl }
+                        label = "Imagen Licencia"
                     )
                 }
             }
@@ -347,6 +308,12 @@ fun MotocicletaScreen(
             // 6. INSPECCIÓN MECÁNICA (NUEVO)
             item {
                 SectionCard("Inspección Mecánica", modifier = Modifier.testTag("section_mecanica")) {
+                    Text(
+                        "BUENO: No requiere acción.  REGULAR: Requiere solución a corto plazo.  MALO: Requiere reparación inmediata.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(12.dp))
                     MotoStatusSelector(
                         label = "Nivel de Aceite (*)",
                         selectedOption = uiState.checkNivelAceite,
@@ -354,7 +321,7 @@ fun MotocicletaScreen(
                         tagPrefix = "status_aceite",
                         options = listOf("Bueno", "Regular", "Malo")
                     )
-                    Spacer(Modifier.height(12.dp))
+                    HorizontalDivider(Modifier.padding(vertical = 10.dp))
                     MotoStatusSelector(
                         label = "Estado de Llantas (*)",
                         selectedOption = uiState.checkEstadoLlantas,
@@ -362,7 +329,7 @@ fun MotocicletaScreen(
                         tagPrefix = "status_llantas",
                         options = listOf("Bueno", "Regular", "Malo")
                     )
-                    Spacer(Modifier.height(12.dp))
+                    HorizontalDivider(Modifier.padding(vertical = 10.dp))
                     MotoStatusSelector(
                         label = "Estado de Luces (*)",
                         selectedOption = uiState.checkEstadoLuces,
@@ -407,19 +374,14 @@ fun MotocicletaScreen(
                         value = uiState.responsable,
                         onValueChange = {},
                         readOnly = true,
-                        label = { Text("Responsable de la Inspección (Sesión Activa)", fontWeight = FontWeight.Bold) },
+                        label = { Text("RESPONSABLE de la Inspección", fontWeight = FontWeight.Bold, fontSize = 17.sp) },
                         modifier = Modifier.fillMaxWidth(),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = MaterialTheme.colorScheme.secondary,
-                            unfocusedBorderColor = MaterialTheme.colorScheme.secondary.copy(alpha = 0.5f),
-                            focusedLabelColor = MaterialTheme.colorScheme.secondary,
-                            cursorColor = Color.Transparent
-                        ),
-                        leadingIcon = {
+                        singleLine = true,
+                        trailingIcon = {
                             Icon(
-                                imageVector = Icons.Default.AccountCircle,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.secondary
+                                Icons.Default.Lock,
+                                contentDescription = "Campo de solo lectura",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                     )
@@ -434,9 +396,11 @@ fun MotocicletaScreen(
                     enabled = uiState.isSaveButtonEnabled && !uiState.isSaving
                 ) {
                     if (uiState.isSaving) {
-                        CircularProgressIndicator(modifier = Modifier.size(20.dp), color = MaterialTheme.colorScheme.onPrimary)
+                        CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.5.dp)
+                        Spacer(Modifier.width(12.dp))
+                        Text("Enviando...", fontSize = 18.sp, fontWeight = FontWeight.Bold)
                     } else {
-                        Text("Guardar", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                        Text("Guardar Inspección", fontSize = 18.sp, fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -447,13 +411,28 @@ fun MotocicletaScreen(
         if (uiState.saveCompleted) {
             AlertDialog(
                 onDismissRequest = { /* No hacer nada para forzar click en Aceptar */ },
+                icon = {
+                    Icon(
+                        Icons.Default.CheckCircle,
+                        contentDescription = null,
+                        tint = Color(0xFF4CAF50),
+                        modifier = Modifier.size(40.dp)
+                    )
+                },
                 title = { Text("¡Inspección Guardada!", fontWeight = FontWeight.Bold) },
-                text = { Text("La inspección se ha guardado correctamente.") },
+                text = {
+                    Text(
+                        "La inspección de la motocicleta fue registrada correctamente en el sistema.",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                },
                 confirmButton = {
                     Button(
                         onClick = { onNavigateBack(); viewModel.onNavigationDone() },
                         modifier = Modifier.testTag("btn_done_audit")
                     ) {
+                        Icon(Icons.Default.CheckCircle, null, Modifier.size(18.dp))
+                        Spacer(Modifier.size(ButtonDefaults.IconSpacing))
                         Text("Aceptar")
                     }
                 }
@@ -539,12 +518,6 @@ fun MotocicletaScreen(
             )
         }
 
-        if (focusedImage != null) {
-            ImageDialog(
-                imageUrl = focusedImage!!,
-                onDismissRequest = { focusedImage = null }
-            )
-        }
     }
 }
 
@@ -574,95 +547,49 @@ private fun SectionCard(
     }
 }
 
-@Composable
-fun DocLabelRow(
-    label: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector
-) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Surface(
-            shape = RoundedCornerShape(8.dp),
-            color = MaterialTheme.colorScheme.primaryContainer,
-            modifier = Modifier.size(40.dp)
-        ) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                    modifier = Modifier.size(22.dp)
-                )
-            }
-        }
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyLarge,
-            fontWeight = FontWeight.Bold,
-            fontSize = 16.sp
-        )
-    }
-}
-
 
 @Composable
-fun EstadoDocumentoChip(estado: String, diasRestantes: Long = 0L) {
-    if (estado.isBlank()) return
-    val (bgColor, textColor, icon) = when (estado) {
-        "Vigente"          -> Triple(ColorBueno.copy(alpha = 0.12f),   ColorBueno,   Icons.Default.CheckCircle)
-        "Próximo a Vencer" -> Triple(ColorRegular.copy(alpha = 0.12f), ColorRegular, Icons.Default.Warning)
-        "Vencido"          -> Triple(ColorMalo.copy(alpha = 0.12f),    ColorMalo,    Icons.Default.Cancel)
-        else               -> Triple(Color.Gray.copy(alpha = 0.12f),   Color.Gray,   Icons.Default.Info)
-    }
-    // Leyenda de días según el estado
-    val leyenda = when (estado) {
-        "Vigente"          -> "— quedan $diasRestantes días"
-        "Próximo a Vencer" -> "— quedan $diasRestantes días"
-        "Vencido"          -> "— venció hace ${-diasRestantes} días"
-        else               -> ""
-    }
-    Surface(
-        shape = RoundedCornerShape(8.dp),
-        color = bgColor,
-        modifier = Modifier
-            .fillMaxWidth()
-            .border(width = 1.dp, color = textColor, shape = RoundedCornerShape(8.dp))
-    ) {
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                modifier = Modifier.size(18.dp),
-                tint = textColor
-            )
-            Spacer(Modifier.width(8.dp))
-            Text(
-                "$estado $leyenda",
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-                color = textColor
-            )
-        }
-    }
-}
-
-@Composable
-fun DocumentImage(
-    url: String?,
-    label: String,
-    onClick: () -> Unit = {}
-) {
+fun DocumentImage(url: String?, label: String) {
     val context = LocalContext.current
     val isPdf = !url.isNullOrBlank() && url.trimEnd().lowercase().endsWith(".pdf")
+    val isImage = !url.isNullOrBlank() && !isPdf
+    var showFullscreen by remember { mutableStateOf(false) }
+
+    if (showFullscreen && isImage) {
+        Dialog(
+            onDismissRequest = { showFullscreen = false },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.95f))
+                    .clickable { showFullscreen = false },
+                contentAlignment = Alignment.Center
+            ) {
+                SubcomposeAsyncImage(
+                    model = ImageRequest.Builder(context).data(url).crossfade(true).build(),
+                    contentDescription = label,
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    contentScale = ContentScale.Fit,
+                    loading = {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(40.dp),
+                            color = Color.White,
+                            strokeWidth = 2.dp
+                        )
+                    }
+                )
+                IconButton(
+                    onClick = { showFullscreen = false },
+                    modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)
+                ) {
+                    Icon(Icons.Default.Close, contentDescription = "Cerrar", tint = Color.White, modifier = Modifier.size(32.dp))
+                }
+            }
+        }
+    }
+
     Column {
         Text(
             text = label,
@@ -673,16 +600,17 @@ fun DocumentImage(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(if (isPdf) 100.dp else 200.dp)
-                .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
+                .height(if (isPdf) 100.dp else 180.dp)
                 .clip(RoundedCornerShape(12.dp))
-                .then(if (!url.isNullOrBlank() && !isPdf) Modifier.clickable { onClick() } else Modifier),
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .border(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
+                .then(if (isImage) Modifier.clickable { showFullscreen = true } else Modifier),
             contentAlignment = Alignment.Center
         ) {
             when {
                 url.isNullOrBlank() -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Icon(
-                        imageVector = Icons.Default.PhotoLibrary,
+                        Icons.Default.HideImage,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                         modifier = Modifier.size(40.dp)
@@ -698,14 +626,8 @@ fun DocumentImage(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Icon(
-                        Icons.Default.Description,
-                        contentDescription = null,
-                        tint = ColorMalo,
-                        modifier = Modifier.size(36.dp)
-                    )
-                    Text("Documento PDF", style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Icon(Icons.Default.Description, contentDescription = null, tint = ColorMalo, modifier = Modifier.size(36.dp))
+                    Text("Documento PDF", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     OutlinedButton(
                         onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) },
                         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 4.dp)
@@ -713,25 +635,28 @@ fun DocumentImage(
                         Text("Abrir PDF", style = MaterialTheme.typography.labelMedium)
                     }
                 }
-                else -> Box(Modifier.fillMaxSize()) {
-                    AsyncImage(
-                        model = url,
+                else -> {
+                    SubcomposeAsyncImage(
+                        model = ImageRequest.Builder(context).data(url).crossfade(true).build(),
                         contentDescription = label,
                         modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
+                        contentScale = ContentScale.Fit,
+                        error = {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Icon(Icons.Default.ErrorOutline, null, tint = ColorMalo)
+                                Text("Error al cargar imagen", style = MaterialTheme.typography.bodySmall)
+                            }
+                        },
+                        loading = {
+                            CircularProgressIndicator(modifier = Modifier.size(30.dp), strokeWidth = 2.dp)
+                        }
                     )
-                    Surface(
-                        color = Color.Black.copy(alpha = 0.5f),
-                        shape = RoundedCornerShape(bottomStart = 8.dp, topEnd = 8.dp),
-                        modifier = Modifier.align(Alignment.BottomStart)
-                    ) {
-                        Text(
-                            "Ver en grande",
-                            color = Color.White,
-                            style = MaterialTheme.typography.labelSmall,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                        )
-                    }
+                    Icon(
+                        Icons.Default.ZoomIn,
+                        contentDescription = "Ampliar imagen",
+                        tint = Color.White.copy(alpha = 0.8f),
+                        modifier = Modifier.align(Alignment.BottomEnd).padding(8.dp).size(24.dp)
+                    )
                 }
             }
         }
@@ -757,7 +682,6 @@ fun CheckDropdown(
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun <T> DropdownField(
     label: String,
@@ -768,26 +692,93 @@ fun <T> DropdownField(
     dropdownTag: String = "dropdown_option",
     modifier: Modifier = Modifier
 ) {
-    var expanded by remember { mutableStateOf(false) }
-    ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = !expanded }) {
+    var showDialog by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
+    val filteredItems = remember(items, searchQuery) {
+        if (searchQuery.isBlank()) items
+        else items.filter { itemLabel(it).contains(searchQuery, ignoreCase = true) }
+    }
+
+    Box(modifier = modifier.fillMaxWidth()) {
         OutlinedTextField(
             value = displayValue,
             onValueChange = {},
             readOnly = true,
-            label = { Text(label, fontWeight = FontWeight.Bold, fontSize = 14.sp) },
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-            modifier = modifier.menuAnchor().fillMaxWidth()
+            label = { Text(label, fontWeight = FontWeight.Bold, fontSize = 17.sp) },
+            trailingIcon = { Icon(Icons.Default.ArrowDropDown, contentDescription = null) },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
         )
-        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            if (items.isEmpty()) {
-                DropdownMenuItem(text = { Text("No hay opciones disponibles") }, onClick = { expanded = false })
-            }
-            items.forEach { item ->
-                DropdownMenuItem(
-                    text = { Text(itemLabel(item)) },
-                    onClick = { onItemSelected(item); expanded = false },
-                    modifier = Modifier.testTag(dropdownTag)
-                )
+        Spacer(modifier = Modifier.matchParentSize().clickable(
+            interactionSource = remember { MutableInteractionSource() },
+            indication = null
+        ) { showDialog = true })
+    }
+
+    if (showDialog) {
+        val focusRequester = remember { FocusRequester() }
+        val keyboardController = LocalSoftwareKeyboardController.current
+        LaunchedEffect(Unit) {
+            delay(50)
+            try { focusRequester.requestFocus() } catch (e: Exception) { }
+            keyboardController?.show()
+        }
+        Dialog(
+            onDismissRequest = { showDialog = false; searchQuery = "" },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Surface(
+                modifier = Modifier.fillMaxWidth(0.92f),
+                shape = RoundedCornerShape(16.dp),
+                tonalElevation = 4.dp
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(label, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        placeholder = { Text("Buscar...") },
+                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(20.dp)) },
+                        trailingIcon = if (searchQuery.isNotEmpty()) {{
+                            IconButton(onClick = { searchQuery = "" }) {
+                                Icon(Icons.Default.Clear, contentDescription = "Limpiar", modifier = Modifier.size(18.dp))
+                            }
+                        }} else null,
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth().focusRequester(focusRequester)
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    LazyColumn(modifier = Modifier.heightIn(max = 320.dp)) {
+                        if (items.isEmpty()) {
+                            item { Text("No hay opciones disponibles", color = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 12.dp)) }
+                        } else if (filteredItems.isEmpty()) {
+                            item { Text("Sin resultados", color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 12.dp)) }
+                        } else {
+                            items(filteredItems) { listItem ->
+                                Column {
+                                    Text(
+                                        text = itemLabel(listItem),
+                                        fontSize = 13.sp,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable { onItemSelected(listItem); showDialog = false; searchQuery = "" }
+                                            .padding(horizontal = 8.dp, vertical = 10.dp)
+                                            .testTag(dropdownTag)
+                                    )
+                                    HorizontalDivider()
+                                }
+                            }
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    TextButton(
+                        onClick = { showDialog = false; searchQuery = "" },
+                        modifier = Modifier.align(Alignment.End)
+                    ) { Text("Cancelar") }
+                }
             }
         }
     }
@@ -802,7 +793,7 @@ fun MotoStatusSelector(
     options: List<String> = listOf("Óptimo", "Regular", "Malo")
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(label, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, fontSize = 17.sp))
+        Text(label, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, fontSize = 17.sp)
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -814,8 +805,7 @@ fun MotoStatusSelector(
                     "Regular" -> Color(0xFFFFA000)
                     else -> Color(0xFFD32F2F)
                 }
-                val textColor = if (isSelected) Color.White
-                    else Color.Black
+                val textColor = if (isSelected) Color.White else Color.Black
 
                 Surface(
                     modifier = Modifier
@@ -825,12 +815,12 @@ fun MotoStatusSelector(
                         .border(2.dp, if (isSelected) backgroundColor else Color.LightGray, RoundedCornerShape(8.dp))
                         .clickable { onOptionSelected(option) },
                     shape = RoundedCornerShape(8.dp),
-                    color = if (isSelected) backgroundColor else backgroundColor.copy(alpha = 0.2f)
+                    color = if (isSelected) backgroundColor else backgroundColor.copy(alpha = 0.15f)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Text(
                             text = option,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                             color = textColor,
                             fontSize = 14.sp
                         )
@@ -841,31 +831,6 @@ fun MotoStatusSelector(
     }
 }
 
-@Composable
-fun ImageDialog(imageUrl: String, onDismissRequest: () -> Unit) {
-    Dialog(onDismissRequest = onDismissRequest) {
-        Surface(
-            modifier = Modifier.fillMaxWidth().wrapContentHeight(),
-            shape = RoundedCornerShape(16.dp),
-            color = Color.Black
-        ) {
-            Box(modifier = Modifier.padding(8.dp)) {
-                AsyncImage(
-                    model = imageUrl,
-                    contentDescription = "Vista ampliada",
-                    modifier = Modifier.fillMaxWidth().height(400.dp),
-                    contentScale = ContentScale.Fit
-                )
-                IconButton(
-                    onClick = onDismissRequest,
-                    modifier = Modifier.align(Alignment.TopEnd)
-                ) {
-                    Icon(imageVector = Icons.Default.CheckCircle, contentDescription = "Cerrar", tint = Color.White)
-                }
-            }
-        }
-    }
-}
 
 
 
