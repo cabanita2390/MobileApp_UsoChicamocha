@@ -339,7 +339,8 @@ fun VehiculoScreen(
                     VehicleSelector(
                         vehicles = uiState.vehicles,
                         selectedVehicle = uiState.selectedVehicle,
-                        onVehicleSelected = { viewModel.onVehicleSelected(it) }
+                        onVehicleSelected = { viewModel.onVehicleSelected(it) },
+                        syncError = uiState.vehicleSyncError
                     )
                     Spacer(Modifier.height(10.dp))
 
@@ -617,7 +618,8 @@ fun VehiculoScreen(
 fun VehicleSelector(
     vehicles: List<VehiculoItem>,
     selectedVehicle: VehiculoItem?,
-    onVehicleSelected: (VehiculoItem) -> Unit
+    onVehicleSelected: (VehiculoItem) -> Unit,
+    syncError: String? = null
 ) {
     var showDialog by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
@@ -683,8 +685,11 @@ fun VehicleSelector(
                     Spacer(Modifier.height(8.dp))
                     LazyColumn(modifier = Modifier.heightIn(max = 320.dp)) {
                         if (vehicles.isEmpty()) {
-                            item { Text("No hay vehículos. Verifica la sincronización.", color = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 12.dp)) }
+                            item { Text(
+                                syncError ?: "No hay vehículos. Verifica la sincronización.",
+                                color = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 12.dp)
+                            ) }
                         } else if (filteredVehicles.isEmpty()) {
                             item { Text("Sin resultados", color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 12.dp)) }

@@ -99,6 +99,7 @@ data class VehiculoUiState(
     val errorMessage: String? = null,
     val isSyncing: Boolean = false,
     val syncMessage: String? = null,
+    val vehicleSyncError: String? = null,
     // AlertDialogs y lógica de doble "No" en campos de cierre
     val showConscienteAlert: Boolean = false,
     val conscienteNoCount: Int = 0,
@@ -652,17 +653,18 @@ class VehiculoViewModel @Inject constructor(
     fun onSyncClicked() {
         viewModelScope.launch {
             _uiState.update { it.copy(isSyncing = true, syncMessage = "Actualizando datos del vehículo...") }
-            
-            // Realizar las sincronizaciones
-            localSyncCoordinator.coordinateSync(
-                LocalSyncCoordinator.SyncTrigger.ManualSync(LocalSyncCoordinator.SyncType.VEHICLES_CATALOG)
-            )
-            localSyncCoordinator.coordinateSync(
-                LocalSyncCoordinator.SyncTrigger.ManualSync(LocalSyncCoordinator.SyncType.VEHICLES_DOCUMENTS)
-            )
 
-            // Feedback final
-            _uiState.update { it.copy(isSyncing = false, syncMessage = "¡Datos actualizados con éxito!") }
+            val result = repository.syncVehiclesCatalog()
+
+            if (result.isSuccess) {
+                _uiState.update { it.copy(isSyncing = false, syncMessage = "¡Datos actualizados con éxito!", vehicleSyncError = null) }
+                localSyncCoordinator.coordinateSync(
+                    LocalSyncCoordinator.SyncTrigger.ManualSync(LocalSyncCoordinator.SyncType.VEHICLES_DOCUMENTS)
+                )
+            } else {
+                val errorMsg = result.exceptionOrNull()?.message ?: "Error al actualizar. Intenta de nuevo."
+                _uiState.update { it.copy(isSyncing = false, syncMessage = errorMsg, vehicleSyncError = errorMsg) }
+            }
         }
     }
 

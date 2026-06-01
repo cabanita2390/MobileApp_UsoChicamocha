@@ -104,7 +104,11 @@ class VehiculoInspectionRepositoryImpl @Inject constructor(
                 Log.d(TAG, "✅ Vehicles catalog updated successfully in local DB (${entities.size} entities)")
                 Result.success(Unit)
             } else {
-                val errorMsg = "Error syncing vehicles catalog: ${response.code()} ${response.message()}"
+                val code = response.code()
+                val errorMsg = when (code) {
+                    401, 403 -> "Sin permisos para acceder a vehículos (error $code). Contacta al administrador para actualizar tu rol."
+                    else -> "Error sincronizando catálogo de vehículos: $code ${response.message()}"
+                }
                 Log.e(TAG, "❌ $errorMsg")
                 Result.failure(Exception(errorMsg))
             }

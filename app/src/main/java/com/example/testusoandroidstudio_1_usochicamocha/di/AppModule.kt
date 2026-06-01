@@ -35,20 +35,13 @@ import com.example.testusoandroidstudio_1_usochicamocha.data.repository.Inspecci
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.inspeccionmoto.SaveInspeccionMotoLocalUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.inspeccionmoto.SyncInspeccionMotoUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.inspeccionmoto.GetPendingInspeccionesMotoUseCase
-import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.vehiculo.GetLocalVehiculosUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.vehiculo.GetPendingVehiculoInspectionsUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.vehiculo.SaveVehiculoInspectionUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.vehiculo.SyncVehiculoInspectionUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.vehiculo.SyncVehiclesCatalogUseCase
-import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.FuelLogDao
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.VehiculoOilChangeDao
-import com.example.testusoandroidstudio_1_usochicamocha.data.repository.FuelRepositoryImpl
 import com.example.testusoandroidstudio_1_usochicamocha.data.repository.VehiculoOilChangeRepositoryImpl
-import com.example.testusoandroidstudio_1_usochicamocha.domain.repository.FuelRepository
 import com.example.testusoandroidstudio_1_usochicamocha.domain.repository.VehiculoOilChangeRepository
-import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.fuel.GetLocalFuelLogsUseCase
-import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.fuel.SaveFuelLogLocalUseCase
-import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.fuel.SyncFuelLogsUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.util.AppLogger
 import com.example.testusoandroidstudio_1_usochicamocha.util.NetworkMonitor
 import dagger.Module
@@ -110,9 +103,6 @@ object AppModule {
                 AppDatabase.MIGRATION_26_27,
                 AppDatabase.MIGRATION_27_28,
                 AppDatabase.MIGRATION_28_29,
-                AppDatabase.MIGRATION_29_30,
-                AppDatabase.MIGRATION_30_31,
-                AppDatabase.MIGRATION_31_32,
             )
             .build()
     }
@@ -326,10 +316,6 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideGetLocalVehiculosUseCase(repo: VehiculoInspectionRepository): GetLocalVehiculosUseCase = GetLocalVehiculosUseCase(repo)
-
-    @Provides
-    @Singleton
     fun provideLocalSyncCoordinator(
         @ApplicationContext context: Context,
         workManager: WorkManager
@@ -361,40 +347,16 @@ object AppModule {
     fun provideGetPendingInspeccionesMotoUseCase(repo: InspeccionMotoRepository): GetPendingInspeccionesMotoUseCase =
         GetPendingInspeccionesMotoUseCase(repo)
 
-    // --- Combustibles ---
     @Provides
     @Singleton
     fun provideFuelLogDao(db: AppDatabase): FuelLogDao = db.fuelLogDao()
 
     @Provides
     @Singleton
-    fun provideFuelStationDao(db: AppDatabase): com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.FuelStationDao = db.fuelStationDao()
+    fun provideFuelStationDao(db: AppDatabase): FuelStationDao = db.fuelStationDao()
 
     @Provides
     @Singleton
-    fun provideSyncFuelStationsUseCase(
-        api: ApiService,
-        dao: com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.FuelStationDao
-    ): com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.fuel.SyncFuelStationsUseCase =
-        com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.fuel.SyncFuelStationsUseCase(api, dao)
-
-    @Provides
-    @Singleton
-    fun provideFuelRepository(dao: FuelLogDao, api: ApiService): FuelRepository =
-        FuelRepositoryImpl(dao, api)
-
-    @Provides
-    @Singleton
-    fun provideSaveFuelLogLocalUseCase(repo: FuelRepository): SaveFuelLogLocalUseCase =
-        SaveFuelLogLocalUseCase(repo)
-
-    @Provides
-    @Singleton
-    fun provideSyncFuelLogsUseCase(repo: FuelRepository): SyncFuelLogsUseCase =
-        SyncFuelLogsUseCase(repo)
-
-    @Provides
-    @Singleton
-    fun provideGetLocalFuelLogsUseCase(repo: FuelRepository): GetLocalFuelLogsUseCase =
-        GetLocalFuelLogsUseCase(repo)
+    fun provideFuelRepository(dao: FuelLogDao, apiService: ApiService): FuelRepository =
+        FuelRepositoryImpl(dao, apiService)
 }
