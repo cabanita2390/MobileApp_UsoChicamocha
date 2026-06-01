@@ -2,6 +2,7 @@ package com.example.testusoandroidstudio_1_usochicamocha.ui.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.TokenManager
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.LocalSyncCoordinator
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.auth.LogoutUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -14,19 +15,26 @@ import javax.inject.Inject
 
 data class HomeUiState(
     val showLogoutDialog: Boolean = false,
-    val logoutCompleted: Boolean = false
+    val logoutCompleted: Boolean = false,
+    val userRole: String = "OPERARIO"
 )
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val logoutUseCase: LogoutUseCase,
-    private val localSyncCoordinator: LocalSyncCoordinator
+    private val localSyncCoordinator: LocalSyncCoordinator,
+    private val tokenManager: TokenManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = _uiState.asStateFlow()
 
     init {
+        viewModelScope.launch {
+            tokenManager.getRole().collect { role ->
+                _uiState.update { it.copy(userRole = role ?: "OPERARIO") }
+            }
+        }
         triggerAutoSync()
     }
 

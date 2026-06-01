@@ -26,6 +26,7 @@ import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.ConnectionStat
 import java.text.SimpleDateFormat
 import java.util.*
 import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.LocalGasStation
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -35,7 +36,8 @@ fun VehiculoMainScreen(
     onLogout: () -> Unit,
     onNavigateBack: () -> Unit,
     onNavigateToForm: () -> Unit,
-    onNavigateToCambioAceite: () -> Unit
+    onNavigateToCambioAceite: () -> Unit,
+    onNavigateToCombustible: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
@@ -84,7 +86,8 @@ fun VehiculoMainScreen(
         ) {
             VehiculoAvailableFormsCard(
                 onNavigateToForm = onNavigateToForm,
-                onNavigateToCambioAceite = onNavigateToCambioAceite
+                onNavigateToCambioAceite = onNavigateToCambioAceite,
+                onNavigateToCombustible = onNavigateToCombustible
             )
 
             PendingOilChangeVehiculoCard(
@@ -119,7 +122,8 @@ fun VehiculoMainScreen(
 @Composable
 fun VehiculoAvailableFormsCard(
     onNavigateToForm: () -> Unit,
-    onNavigateToCambioAceite: () -> Unit
+    onNavigateToCambioAceite: () -> Unit,
+    onNavigateToCombustible: () -> Unit = {}
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -148,6 +152,7 @@ fun VehiculoAvailableFormsCard(
                 Spacer(Modifier.width(8.dp))
                 Text("Cambio aceite", fontSize = 18.sp)
             }
+
         }
     }
 }

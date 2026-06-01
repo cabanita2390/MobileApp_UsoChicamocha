@@ -6,8 +6,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.DirectionsBike
 import androidx.compose.material.icons.filled.DirectionsCar
+import androidx.compose.material.icons.filled.LocalGasStation
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -32,9 +34,13 @@ fun HomeScreen(
     onLogout: () -> Unit,
     onNavigateToMaquinaria: () -> Unit,
     onNavigateToVehicular: () -> Unit,
-    onNavigateToMotos: () -> Unit
+    onNavigateToMotos: () -> Unit,
+    onNavigateToCombustible: () -> Unit = {},
+    onNavigateToCambioAceiteMaquinaria: () -> Unit = {},
+    onNavigateToCambioAceiteVehicular: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val isAceite = uiState.userRole == "ACEITE"
 
     LaunchedEffect(uiState.logoutCompleted) {
         if (uiState.logoutCompleted) {
@@ -71,35 +77,52 @@ fun HomeScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "Selecciona el tipo de inspección",
+                text = if (isAceite) "Operaciones de aceite" else "¿Qué deseas registrar?",
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(4.dp))
 
-            InspectionCategoryCard(
-                title = "Inspección Maquinaria",
-                subtitle = "Registro de inspección\nde maquinaria pesada",
-                icon = Icons.Filled.Settings,
-                onClick = onNavigateToMaquinaria
-            )
+            if (isAceite) {
+                // Rol ACEITE: solo acceso a cambios de aceite
+                InspectionCategoryCard(
+                    title = "Cambio Aceite Maquinaria",
+                    subtitle = "Registrar cambio de aceite\nen maquinaria pesada",
+                    icon = Icons.Filled.Build,
+                    onClick = onNavigateToCambioAceiteMaquinaria
+                )
+                InspectionCategoryCard(
+                    title = "Cambio Aceite Vehicular",
+                    subtitle = "Registrar cambio de aceite\nen vehículos",
+                    icon = Icons.Filled.DirectionsCar,
+                    onClick = onNavigateToCambioAceiteVehicular
+                )
+            } else {
+                // Roles OPERARIO y ADMIN: acceso completo a inspecciones
+                InspectionCategoryCard(
+                    title = "Inspección Maquinaria",
+                    subtitle = "Registro de inspección\nde maquinaria pesada",
+                    icon = Icons.Filled.Settings,
+                    onClick = onNavigateToMaquinaria
+                )
+                InspectionCategoryCard(
+                    title = "Inspección Vehicular",
+                    subtitle = "Registro de inspección\nde vehículos",
+                    icon = Icons.Filled.DirectionsCar,
+                    onClick = onNavigateToVehicular
+                )
+                InspectionCategoryCard(
+                    title = "Inspección de Motos",
+                    subtitle = "Registro de inspección\nde motocicletas",
+                    icon = Icons.Filled.DirectionsBike,
+                    onClick = onNavigateToMotos
+                )
+            }
 
-            InspectionCategoryCard(
-                title = "Inspección Vehicular",
-                subtitle = "Registro de inspección\nde vehículos",
-                icon = Icons.Filled.DirectionsCar,
-                onClick = onNavigateToVehicular
-            )
-
-            InspectionCategoryCard(
-                title = "Inspección de Motos",
-                subtitle = "Registro de inspección\nde motocicletas",
-                icon = Icons.Filled.DirectionsBike,
-                onClick = onNavigateToMotos
-            )
+            FuelCategoryCard(onClick = onNavigateToCombustible)
         }
 
         if (uiState.showLogoutDialog) {
@@ -155,6 +178,54 @@ fun InspectionCategoryCard(
                     )
                     Text(
                         text = subtitle,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun FuelCategoryCard(onClick: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
+    ) {
+        OutlinedButton(
+            onClick = onClick,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp)
+                .height(100.dp),
+            shape = RoundedCornerShape(12.dp),
+            border = ButtonDefaults.outlinedButtonBorder,
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onPrimaryContainer)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Start,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.LocalGasStation,
+                    contentDescription = null,
+                    modifier = Modifier.size(40.dp),
+                    tint = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.width(16.dp))
+                Column(verticalArrangement = Arrangement.Center) {
+                    Text(
+                        text = "Registrar Combustible",
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Text(
+                        text = "Maquinaria · Vehículos · Motos",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

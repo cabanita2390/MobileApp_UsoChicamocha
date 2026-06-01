@@ -25,6 +25,7 @@ class TokenManager @Inject constructor(private val dataStore: DataStore<Preferen
         val USER_ID_KEY = intPreferencesKey("user_id")
         val INSPECTOR_INFO_KEY = stringPreferencesKey("inspector_info")
         val USERNAME_KEY = stringPreferencesKey("username")
+        val USER_ROLE_KEY = stringPreferencesKey("user_role")
     }
 
     // --- SAVE METHODS ---
@@ -51,6 +52,12 @@ class TokenManager @Inject constructor(private val dataStore: DataStore<Preferen
     suspend fun saveUsername(username: String) {
         dataStore.edit { preferences ->
             preferences[USERNAME_KEY] = username
+        }
+    }
+
+    suspend fun saveRole(role: String) {
+        dataStore.edit { preferences ->
+            preferences[USER_ROLE_KEY] = role
         }
     }
 
@@ -83,6 +90,12 @@ class TokenManager @Inject constructor(private val dataStore: DataStore<Preferen
     fun getUsername(): Flow<String?> {
         return dataStore.data.map { preferences ->
             preferences[USERNAME_KEY]
+        }
+    }
+
+    fun getRole(): Flow<String?> {
+        return dataStore.data.map { preferences ->
+            preferences[USER_ROLE_KEY]
         }
     }
 

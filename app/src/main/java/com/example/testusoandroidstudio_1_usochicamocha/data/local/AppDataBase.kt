@@ -17,7 +17,11 @@ import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.Ubicacion
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.VehiculoDao
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.VehiculoInspectionDao
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.DocumentoVehiculoDao
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.FuelLogDao
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.FuelStationDao
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.FuelStationEntity
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.VehiculoOilChangeDao
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.FuelLogEntity
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.FormEntity
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.ImageEntity
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.DocumentoMotoEntity
@@ -48,9 +52,11 @@ import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.Vehicu
         com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.VehiculoInspectionEntity::class,
         com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.VehiculoEntity::class,
         com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.DocumentoVehiculoEntity::class,
-        com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.VehiculoOilChangeEntity::class
+        com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.VehiculoOilChangeEntity::class,
+        com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.FuelLogEntity::class,
+        FuelStationEntity::class
     ],
-    version = 29,
+    version = 32,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -111,7 +117,106 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /** Migración 29 → 30: crea tabla de registros de combustible offline (esquema inicial) */
+        val MIGRATION_29_30 = object : Migration(29, 30) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `fuel_logs_local` (
+                        `localId` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `remoteId` INTEGER,
+                        `syncId` TEXT NOT NULL,
+                        `assetType` TEXT NOT NULL,
+                        `assetId` INTEGER NOT NULL,
+                        `assetPlate` TEXT,
+                        `fuelDate` TEXT NOT NULL,
+                        `odometerKm` REAL,
+                        `hourMeter` REAL,
+                        `litersLoaded` REAL NOT NULL,
+                        `costPerLiter` REAL NOT NULL,
+                        `fuelType` TEXT NOT NULL,
+                        `serviceStation` TEXT,
+                        `isFullTank` INTEGER NOT NULL DEFAULT 1,
+                        `notes` TEXT,
+                        `isSynced` INTEGER NOT NULL DEFAULT 0,
+                        `isSyncing` INTEGER NOT NULL DEFAULT 0,
+                        `createdAt` INTEGER NOT NULL
+                    )
+                """.trimIndent())
+            }
+        }
+
+        /** Migración 30 → 31: reestructura fuel_logs_local con todos los campos del módulo de combustibles */
+        val MIGRATION_30_31 = object : Migration(30, 31) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `fuel_logs_local_new` (
+                        `localId` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `remoteId` INTEGER,
+                        `syncId` TEXT NOT NULL,
+                        `assetType` TEXT NOT NULL,
+                        `assetId` INTEGER NOT NULL,
+                        `assetPlate` TEXT,
+                        `fuelDateTime` TEXT NOT NULL,
+                        `odometerKm` REAL,
+                        `hourMeter` REAL,
+                        `quantity` REAL NOT NULL,
+                        `quantityUnit` TEXT NOT NULL DEFAULT 'LITERS',
+                        `quantityLiters` REAL NOT NULL,
+                        `pricePerUnit` REAL NOT NULL,
+                        `totalCostCalculated` REAL NOT NULL,
+                        `totalCostActual` REAL,
+                        `totalCostMismatch` INTEGER NOT NULL DEFAULT 0,
+                        `fuelType` TEXT NOT NULL,
+                        `serviceStation` TEXT,
+                        `isFullTank` INTEGER NOT NULL DEFAULT 1,
+                        `discountAmount` REAL,
+                        `invoicePhotoPath` TEXT,
+                        `invoicePhotoUrl` TEXT,
+                        `invoiceStatus` TEXT NOT NULL DEFAULT 'PENDING_REVIEW',
+                        `voucherNumber` TEXT,
+                        `notes` TEXT,
+                        `efficiencyValue` REAL,
+                        `efficiencyUnit` TEXT,
+                        `isAnomaly` INTEGER NOT NULL DEFAULT 0,
+                        `isSynced` INTEGER NOT NULL DEFAULT 0,
+                        `isSyncing` INTEGER NOT NULL DEFAULT 0,
+                        `createdAt` INTEGER NOT NULL
+                    )
+                """.trimIndent())
+
+                database.execSQL("""
+                    INSERT INTO `fuel_logs_local_new`
+                        (`localId`, `remoteId`, `syncId`, `assetType`, `assetId`, `assetPlate`,
+                         `fuelDateTime`, `odometerKm`, `hourMeter`, `quantity`, `quantityUnit`, `quantityLiters`,
+                         `pricePerUnit`, `totalCostCalculated`, `fuelType`, `serviceStation`, `isFullTank`,
+                         `notes`, `isSynced`, `isSyncing`, `createdAt`,
+                         `totalCostMismatch`, `isAnomaly`, `invoiceStatus`)
+                    SELECT `localId`, `remoteId`, `syncId`, `assetType`, `assetId`, `assetPlate`,
+                           `fuelDate`, `odometerKm`, `hourMeter`, `litersLoaded`, 'LITERS', `litersLoaded`,
+                           `costPerLiter`, (`litersLoaded` * `costPerLiter`), `fuelType`, `serviceStation`, `isFullTank`,
+                           `notes`, `isSynced`, `isSyncing`, `createdAt`,
+                           0, 0, 'PENDING_REVIEW'
+                    FROM `fuel_logs_local`
+                """.trimIndent())
+
+                database.execSQL("DROP TABLE `fuel_logs_local`")
+                database.execSQL("ALTER TABLE `fuel_logs_local_new` RENAME TO `fuel_logs_local`")
+            }
+        }
+
         /** Migración 26 → 27: URLs documentos + opcional cambio aceite en inspección vehículo */
+        /** Migración 31 → 32: crea tabla de estaciones de combustible (catálogo del admin) */
+        val MIGRATION_31_32 = object : Migration(31, 32) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `fuel_stations_local` (
+                        `id` INTEGER PRIMARY KEY NOT NULL,
+                        `name` TEXT NOT NULL
+                    )
+                """.trimIndent())
+            }
+        }
+
         val MIGRATION_26_27 = object : Migration(26, 27) {
             override fun migrate(database: SupportSQLiteDatabase) {
                 database.execSQL("ALTER TABLE vehiculo_inspections ADD COLUMN urlImagenSoat TEXT NOT NULL DEFAULT ''")
@@ -141,4 +246,6 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun vehiculoDao(): VehiculoDao
     abstract fun documentoVehiculoDao(): DocumentoVehiculoDao
     abstract fun vehiculoOilChangeDao(): VehiculoOilChangeDao
+    abstract fun fuelLogDao(): FuelLogDao
+    abstract fun fuelStationDao(): FuelStationDao
 }

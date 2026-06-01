@@ -7,6 +7,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.LocalGasStation
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.TwoWheeler
 import androidx.compose.material3.*
@@ -32,6 +33,7 @@ fun MotoHubScreen(
     networkStatus: Boolean,
     onNavigateBack: () -> Unit,
     onNavigateToForm: () -> Unit,
+    onNavigateToCombustible: () -> Unit = {},
     viewModel: MotocicletaViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -96,6 +98,7 @@ fun MotoHubScreen(
                         Spacer(Modifier.width(8.dp))
                         Text("Inspección Motocicleta", fontSize = 18.sp)
                     }
+
                 }
             }
 

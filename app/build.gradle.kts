@@ -28,7 +28,19 @@ android {
         }
     }
 
+    signingConfigs {
+        create("debugFixed") {
+            storeFile = file("usochicamocha-debug.keystore")
+            storePassword = "Usochicamocha1"
+            keyAlias = "usochicamocha"
+            keyPassword = "Usochicamocha1"
+        }
+    }
+
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("debugFixed")
+        }
         release {
             isMinifyEnabled = false
             proguardFiles(
@@ -106,7 +118,7 @@ dependencies {
     implementation("com.squareup.okhttp3:logging-interceptor:4.11.0")
 
     // DataStore para guardar tokens
-    implementation("androidx.datastore:datastore-preferences:1.1.1")
+    implementation("androidx.datastore:datastore-preferences:1.1.7")
 
     // Hilt para Inyección de Dependencias
     implementation("com.google.dagger:hilt-android:2.51.1")

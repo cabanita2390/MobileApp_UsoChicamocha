@@ -38,6 +38,8 @@ import com.example.testusoandroidstudio_1_usochicamocha.ui.theme.AppUsoChicamoch
 import com.example.testusoandroidstudio_1_usochicamocha.ui.vehiculo.VehiculoScreen
 import com.example.testusoandroidstudio_1_usochicamocha.ui.vehiculo.VehiculoMainScreen
 import com.example.testusoandroidstudio_1_usochicamocha.ui.vehiculo.VehiculoCambioAceiteScreen
+import com.example.testusoandroidstudio_1_usochicamocha.ui.combustible.CombustibleScreen
+import com.example.testusoandroidstudio_1_usochicamocha.ui.combustible.CombustibleHistorialScreen
 import com.example.testusoandroidstudio_1_usochicamocha.util.NetworkMonitor
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.LocalSyncCoordinator
 import dagger.hilt.android.AndroidEntryPoint
@@ -116,7 +118,16 @@ class MainActivity : ComponentActivity() {
                                 navController.navigate("vehiculo_main")
                             },
                             onNavigateToMotos = {
-                                navController.navigate("motocicleta") // User's preferred route
+                                navController.navigate("motocicleta")
+                            },
+                            onNavigateToCombustible = {
+                                navController.navigate("combustible")
+                            },
+                            onNavigateToCambioAceiteMaquinaria = {
+                                navController.navigate("mantenimiento")
+                            },
+                            onNavigateToCambioAceiteVehicular = {
+                                navController.navigate("vehiculo_cambio_aceite")
                             }
                         )
                     }
@@ -144,6 +155,9 @@ class MainActivity : ComponentActivity() {
                             onNavigateToMantenimiento = { maintenanceId ->
                                 val route = if (maintenanceId != null) "mantenimiento?maintenanceId=$maintenanceId" else "mantenimiento"
                                 navController.navigate(route)
+                            },
+                            onNavigateToCombustible = {
+                                navController.navigate("combustible")
                             }
                         )
                     }
@@ -155,6 +169,9 @@ class MainActivity : ComponentActivity() {
                             },
                             onNavigateToForm = {
                                 navController.navigate("motocicleta_form")
+                            },
+                            onNavigateToCombustible = {
+                                navController.navigate("combustible")
                             }
                         )
                     }
@@ -182,6 +199,9 @@ class MainActivity : ComponentActivity() {
                             },
                             onNavigateToCambioAceite = {
                                 navController.navigate("vehiculo_cambio_aceite")
+                            },
+                            onNavigateToCombustible = {
+                                navController.navigate("combustible")
                             }
                         )
                     }
@@ -220,6 +240,32 @@ class MainActivity : ComponentActivity() {
                             onNavigateBack = {
                                 navController.popBackStack()
                             }
+                        )
+                    }
+                    composable("combustible") {
+                        CombustibleScreen(
+                            onNavigateBack = { navController.popBackStack() }
+                        )
+                    }
+                    composable(
+                        route = "combustible_historial/{assetType}/{assetId}",
+                        arguments = listOf(
+                            androidx.navigation.navArgument("assetType") {
+                                type = androidx.navigation.NavType.StringType
+                                defaultValue = "MACHINE"
+                            },
+                            androidx.navigation.navArgument("assetId") {
+                                type = androidx.navigation.NavType.LongType
+                                defaultValue = -1L
+                            }
+                        )
+                    ) { backStackEntry ->
+                        val assetType = backStackEntry.arguments?.getString("assetType") ?: "MACHINE"
+                        val assetId = backStackEntry.arguments?.getLong("assetId") ?: -1L
+                        CombustibleHistorialScreen(
+                            assetType = assetType,
+                            assetId = assetId,
+                            onNavigateBack = { navController.popBackStack() }
                         )
                     }
                     composable(

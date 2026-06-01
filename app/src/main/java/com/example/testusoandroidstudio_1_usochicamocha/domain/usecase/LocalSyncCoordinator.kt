@@ -149,10 +149,11 @@ class LocalSyncCoordinator @Inject constructor(
             activeSyncOperations[workName] = currentTime
             _syncStatus.value = SyncStatus.COORDINATING
             
-            // 4. Crear constraints para el work
+            // 4. Crear constraints para el work.
+            // No se restringe por batería: un sync manual es una acción explícita del usuario
+            // y debe ejecutarse aunque la batería esté baja.
             val constraints = Constraints.Builder()
                 .setRequiredNetworkType(NetworkType.CONNECTED)
-                .setRequiresBatteryNotLow(true)
                 .build()
             
             // 5. Crear el work request apropiado
@@ -188,7 +189,8 @@ class LocalSyncCoordinator @Inject constructor(
     }
     
     /**
-     * Limpia trabajos que puedan estar bloqueados
+     * Limpia trabajos genuinamente bloqueados (ENQUEUED hace más de 2 min sin ejecutarse).
+     * No cancela trabajos recién encolados que solo estén esperando red.
      */
     private suspend fun cleanupStuckWork(workName: String) {
         try {
@@ -196,11 +198,21 @@ class LocalSyncCoordinator @Inject constructor(
             val stuckWork = existingWorkInfos.find { workInfo ->
                 workInfo.state == WorkInfo.State.ENQUEUED
             }
-            
+
             if (stuckWork != null) {
-                Log.d(TAG, "🧹 Cancelling stuck work: $workName")
-                workManager.cancelWorkById(stuckWork.id)
-                kotlinx.coroutines.delay(1000) // Dar tiempo para la cancelación
+                // Solo cancelar si el trabajo lleva más de 2 minutos sin ejecutarse
+                // (indica que está genuinamente bloqueado, no simplemente esperando red)
+                val enqueuedAt = stuckWork.outputData.getLong("enqueued_at", 0L)
+                val isGenuinelyStuck = enqueuedAt > 0 &&
+                        (System.currentTimeMillis() - enqueuedAt) > 120_000L
+
+                if (isGenuinelyStuck) {
+                    Log.d(TAG, "🧹 Cancelling genuinely stuck work: $workName (>2min)")
+                    workManager.cancelWorkById(stuckWork.id)
+                    kotlinx.coroutines.delay(500)
+                } else {
+                    Log.d(TAG, "⏳ Work $workName is ENQUEUED but recent, letting it proceed")
+                }
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error cleaning up stuck work for $workName", e)

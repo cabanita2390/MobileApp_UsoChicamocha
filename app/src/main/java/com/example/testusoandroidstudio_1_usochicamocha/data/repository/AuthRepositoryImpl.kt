@@ -31,6 +31,7 @@ class AuthRepositoryImpl @Inject constructor(
                 tokenManager.saveTokens(accessToken, refreshToken)
                 tokenManager.saveUserId(userId)
                 tokenManager.saveUsername(username)
+                tokenManager.saveRole(loginResponse.role ?: "OPERARIO")
 
                 // Save inspector info: "FullName (ROLE)" or username as fallback
                 val displayInfo = if (!loginResponse.fullName.isNullOrBlank()) {

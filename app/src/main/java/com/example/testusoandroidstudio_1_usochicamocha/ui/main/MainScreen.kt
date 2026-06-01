@@ -43,7 +43,8 @@ fun MainScreen(
     onNavigateToLogs: () -> Unit,
     onNavigateToForm: () -> Unit,
     onNavigateToImprevisto: () -> Unit,
-    onNavigateToMantenimiento: (Int?) -> Unit
+    onNavigateToMantenimiento: (Int?) -> Unit,
+    onNavigateToCombustible: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
@@ -125,7 +126,8 @@ fun MainScreen(
             AvailableFormsCard(
                 onNavigateToForm = onNavigateToForm,
                 onNavigateToImprevisto = onNavigateToImprevisto,
-                onNavigateToMantenimiento = { onNavigateToMantenimiento(null) }
+                onNavigateToMantenimiento = { onNavigateToMantenimiento(null) },
+                onNavigateToCombustible = onNavigateToCombustible
             )
 
             PendingMaintenanceCard(
@@ -262,7 +264,8 @@ fun PendingFormsCard(
 fun AvailableFormsCard(
     onNavigateToForm: () -> Unit,
     onNavigateToImprevisto: () -> Unit,
-    onNavigateToMantenimiento: () -> Unit
+    onNavigateToMantenimiento: () -> Unit,
+    onNavigateToCombustible: () -> Unit = {}
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),

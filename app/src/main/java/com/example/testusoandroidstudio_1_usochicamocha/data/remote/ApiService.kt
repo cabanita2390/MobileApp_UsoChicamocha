@@ -2,6 +2,8 @@ package com.example.testusoandroidstudio_1_usochicamocha.data.remote
 
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.DocumentoVehiculoResponse
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.KilometrajeValidacionResponse
+import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.FuelLogRequest
+import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.FuelLogResponse
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.FormDto
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.FormSyncResponse
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.InspeccionMotoRequest
@@ -94,4 +96,17 @@ interface ApiService {
         @retrofit2.http.Query("placa") placa: String,
         @retrofit2.http.Query("kilometraje") kilometraje: Int
     ): Response<KilometrajeValidacionResponse>
+
+    // --- Combustible endpoints ---
+    @POST("v1/fuel")
+    suspend fun registerFuelLog(@Body request: FuelLogRequest): Response<FuelLogResponse>
+
+    @GET("v1/fuel/asset/{assetType}/{assetId}")
+    suspend fun getFuelHistory(
+        @Path("assetType") assetType: String,
+        @Path("assetId") assetId: Long
+    ): Response<List<FuelLogResponse>>
+
+    @GET("v1/fuel/stations")
+    suspend fun getFuelStations(): Response<List<Map<String, Any>>>
 }

@@ -27,6 +27,7 @@ import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.vehiculo.
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.vehiculo.SyncVehiculoInspectionUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.vehiculo.SyncVehiclesCatalogUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.repository.VehiculoInspectionRepository
+import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.fuel.SyncFuelLogsUseCase
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.flow.first
@@ -55,7 +56,9 @@ class SyncDataWorker @AssistedInject constructor(
     private val getPendingVehiculoInspectionsUseCase: GetPendingVehiculoInspectionsUseCase,
     private val syncVehiculoInspectionUseCase: SyncVehiculoInspectionUseCase,
     private val syncVehiclesCatalogUseCase: SyncVehiclesCatalogUseCase,
-    private val vehiculoRepository: VehiculoInspectionRepository
+    private val vehiculoRepository: VehiculoInspectionRepository,
+    private val syncFuelLogsUseCase: SyncFuelLogsUseCase,
+    private val syncFuelStationsUseCase: com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.fuel.SyncFuelStationsUseCase
 ) : CoroutineWorker(appContext, workerParams) {
 
     override suspend fun doWork(): Result {
@@ -258,6 +261,18 @@ class SyncDataWorker @AssistedInject constructor(
                 }
             }
 
+            // 4.5 FUEL LOGS pendientes (siempre que haya sync de formularios o reconexión)
+            if (shouldSyncForms || syncAll) {
+                try {
+                    Log.d("SyncDataWorker", "⛽ [$workId] Syncing pending fuel logs...")
+                    withTimeout(60000) { syncFuelLogsUseCase() }
+                    Log.d("SyncDataWorker", "✅ [$workId] Fuel logs synced")
+                } catch (e: Exception) {
+                    totalErrors++
+                    Log.e("SyncDataWorker", "❌ [$workId] Error syncing fuel logs", e)
+                }
+            }
+
             // 5. IMÁGENES con timeout
             if (shouldSyncForms || shouldSyncMaintenance || shouldSyncVehicles || syncImagesOnly) {
                 try {
@@ -276,10 +291,12 @@ class SyncDataWorker @AssistedInject constructor(
             }
 
             // 5. DATOS MAESTROS con timeout
+            // La descarga del catálogo (máquinas, vehículos, motos) es independiente de si hay
+            // formularios pendientes de subir. Siempre debe ejecutarse para que el dispositivo
+            // reciba los activos nuevos creados desde el admin web.
             val isExplicitMasterSync = syncMasterDataOnly || syncMachinesOnly || syncOilsOnly || syncMotosOnly || syncUbicacionesOnly || syncDocumentsOnly || syncVehiclesCatalogOnly || syncVehiclesDocumentsOnly
-            val hasPendingData = pendingForms.isNotEmpty() || pendingMaintenance.isNotEmpty()
-            
-            if (isExplicitMasterSync || (syncAll && !hasPendingData)) {
+
+            if (isExplicitMasterSync || syncAll) {
                 Log.d("SyncDataWorker", "⚙️ [$workId] Syncing master data... Type: $syncType")
                 try {
                     if (syncMachinesOnly) {
@@ -319,7 +336,7 @@ class SyncDataWorker @AssistedInject constructor(
                         Log.d("SyncDataWorker", "✅ [$workId] Vehicles Documents synced successfully")
                     } else {
                         // Por defecto: sincroniza todo (MASTER_DATA o ALL_DATA)
-                        withTimeout(240000) {
+                        withTimeout(270000) {
                             syncMachinesUseCase()
                             syncOilsUseCase()
                             syncMotosUseCase()
@@ -327,8 +344,10 @@ class SyncDataWorker @AssistedInject constructor(
                             syncVehiclesCatalogUseCase()
                             vehiculoRepository.syncAllVehiclesDocuments()
                             syncDocumentosUseCase() // Moto documents
+                            syncFuelLogsUseCase()      // Fuel logs pending upload
+                            syncFuelStationsUseCase()  // Catálogo de estaciones (del admin)
                         }
-                        Log.d("SyncDataWorker", "✅ [$workId] Master data (Machines, Oils, Motos, Ubicaciones, Vehicles & Documents) synced successfully")
+                        Log.d("SyncDataWorker", "✅ [$workId] Master data (Machines, Oils, Motos, Ubicaciones, Vehicles, Documents, Fuel, Stations) synced successfully")
                     }
                 } catch (e: Exception) {
                     totalErrors++
