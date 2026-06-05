@@ -1,4 +1,4 @@
-package com.example.testusoandroidstudio_1_usochicamocha.ui.vehiculo
+package com.example.testusoandroidstudio_1_usochicamocha.ui.motocicleta
 
 import android.util.Log
 import androidx.lifecycle.ViewModel
@@ -6,18 +6,26 @@ import androidx.lifecycle.viewModelScope
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.TokenManager
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.VehiculoOilChangeEntity
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.Oil
-import com.example.testusoandroidstudio_1_usochicamocha.domain.repository.VehiculoInspectionRepository
+import com.example.testusoandroidstudio_1_usochicamocha.domain.repository.MotoRepository
 import com.example.testusoandroidstudio_1_usochicamocha.domain.repository.VehiculoOilChangeRepository
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.oil.GetLocalOilsUseCase
+import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.oil.SyncOilsUseCase
+import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.moto.SyncMotosUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-data class VehiculoCambioAceiteUiState(
-    val vehicles: List<VehiculoItem> = emptyList(),
-    val selectedVehicle: VehiculoItem? = null,
-    val vehicleOilBrands: List<Oil> = emptyList(),
+data class MotoItem(
+    val id: Int,
+    val placa: String,
+    val marca: String? = null
+)
+
+data class MotoCambioAceiteUiState(
+    val motos: List<MotoItem> = emptyList(),
+    val selectedMoto: MotoItem? = null,
+    val motoOilBrands: List<Oil> = emptyList(),
     val selectedOil: Oil? = null,
     val oilType: String = "motor",
     val kmAtChange: String = "",
@@ -31,10 +39,12 @@ data class VehiculoCambioAceiteUiState(
 )
 
 @HiltViewModel
-class VehiculoCambioAceiteViewModel @Inject constructor(
-    private val vehiculoInspectionRepository: VehiculoInspectionRepository,
+class MotoCambioAceiteViewModel @Inject constructor(
+    private val motoRepository: MotoRepository,
     private val oilChangeRepository: VehiculoOilChangeRepository,
     private val getLocalOilsUseCase: GetLocalOilsUseCase,
+    private val syncMotosUseCase: SyncMotosUseCase,
+    private val syncOilsUseCase: SyncOilsUseCase,
     private val tokenManager: TokenManager
 ) : ViewModel() {
 
@@ -42,12 +52,13 @@ class VehiculoCambioAceiteViewModel @Inject constructor(
         private val ALLOWED_ROLES = setOf("SUPERVISOR_OPERATIVO", "ACEITE", "MECANIC", "ADMIN")
     }
 
-    private val _uiState = MutableStateFlow(VehiculoCambioAceiteUiState())
-    val uiState: StateFlow<VehiculoCambioAceiteUiState> = _uiState.asStateFlow()
+    private val _uiState = MutableStateFlow(MotoCambioAceiteUiState())
+    val uiState: StateFlow<MotoCambioAceiteUiState> = _uiState.asStateFlow()
 
     init {
         validateRoleAccess()
-        loadVehicles()
+        syncMotosAndOils()
+        loadMotos()
         loadOils()
     }
 
@@ -64,11 +75,22 @@ class VehiculoCambioAceiteViewModel @Inject constructor(
         }
     }
 
-    private fun loadVehicles() {
-        vehiculoInspectionRepository.getLocalVehiclesFlow()
+    private fun syncMotosAndOils() {
+        viewModelScope.launch {
+            try {
+                syncMotosUseCase()
+                syncOilsUseCase()
+            } catch (e: Exception) {
+                Log.e("MotoCambioAcVM", "Error syncing data: ${e.message}")
+            }
+        }
+    }
+
+    private fun loadMotos() {
+        motoRepository.getLocalMotos()
             .onEach { list ->
-                val items = list.map { VehiculoItem(it.idVehiculo, it.placa, it.marca, it.tipoVehiculo, it.kilometrajeActual) }
-                _uiState.update { it.copy(vehicles = items) }
+                val items = list.map { MotoItem(it.id, it.placa, it.marca) }
+                _uiState.update { it.copy(motos = items) }
             }
             .launchIn(viewModelScope)
     }
@@ -76,19 +98,19 @@ class VehiculoCambioAceiteViewModel @Inject constructor(
     private fun loadOils() {
         viewModelScope.launch {
             getLocalOilsUseCase().collect { list ->
-                val forVehicle = list.filter { o ->
+                val forMoto = list.filter { o ->
                     val t = o.type.trim()
                     t.equals("OIL_VEHICLE", ignoreCase = true) ||
                         t.contains("VEHICLE", ignoreCase = true) ||
                         t.equals("motor", ignoreCase = true)
                 }
-                _uiState.update { it.copy(vehicleOilBrands = forVehicle) }
+                _uiState.update { it.copy(motoOilBrands = forMoto) }
             }
         }
     }
 
-    fun onVehicleSelected(vehicle: VehiculoItem) {
-        _uiState.update { it.copy(selectedVehicle = vehicle, kmAtChange = vehicle.kilometrajeActual.toString()) }
+    fun onMotoSelected(moto: MotoItem) {
+        _uiState.update { it.copy(selectedMoto = moto, kmAtChange = "") }
     }
 
     fun onOilTypeChange(type: String) {
@@ -140,8 +162,8 @@ class VehiculoCambioAceiteViewModel @Inject constructor(
             }
 
             // Validar datos del formulario
-            if (state.selectedVehicle == null) {
-                _uiState.update { it.copy(error = "Seleccione un vehículo.") }
+            if (state.selectedMoto == null) {
+                _uiState.update { it.copy(error = "Seleccione una motocicleta.") }
                 return@launch
             }
             if (state.selectedOil == null) {
@@ -163,7 +185,7 @@ class VehiculoCambioAceiteViewModel @Inject constructor(
             _uiState.update { it.copy(isLoading = true) }
             try {
                 val entity = VehiculoOilChangeEntity(
-                    placa = state.selectedVehicle!!.placa,
+                    placa = state.selectedMoto!!.placa,
                     timestamp = System.currentTimeMillis(),
                     oilType = state.oilType.ifBlank { "motor" },
                     oilBrandId = state.selectedOil!!.id.toLong(),
@@ -172,13 +194,13 @@ class VehiculoCambioAceiteViewModel @Inject constructor(
                     kmAtChange = km,
                     intervalKm = interval,
                     airFilterChanged = state.airFilterChanged,
-                    assetType = "VEHICLE"
+                    assetType = "MOTO"
                 )
                 oilChangeRepository.saveLocally(entity)
                 oilChangeRepository.syncPending()
                 _uiState.update { it.copy(isLoading = false, submissionSuccess = true) }
             } catch (e: Exception) {
-                Log.e("VehiculoCambioAcVM", "Error saving oil change", e)
+                Log.e("MotoCambioAcVM", "Error saving oil change", e)
                 _uiState.update { it.copy(isLoading = false, error = "Error al guardar: ${e.message}") }
             }
         }
