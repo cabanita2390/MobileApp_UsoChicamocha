@@ -70,6 +70,7 @@ data class MotocicletaUiState(
     val soat: DocumentoState = DocumentoState(),
     val revisionTecno: DocumentoState = DocumentoState(),
     val licencia: DocumentoState = DocumentoState(),
+    val licenciaCategoria: String = "",
 
     val checkExtintor: String = "No Aplica",
     val isLoadingDocumentos: Boolean = false,
@@ -95,7 +96,8 @@ data class MotocicletaUiState(
     val isSyncingUbicaciones: Boolean = false,
     val isSyncingDocumentos: Boolean = false,
     val isSyncingPending: Boolean = false,
-    val syncMessage: String? = null
+    val syncMessage: String? = null,
+    val userRole: String? = null
 )
 
 @HiltViewModel
@@ -117,6 +119,7 @@ class MotocicletaViewModel @Inject constructor(
     init {
         loadMotos()
         loadUbicaciones()
+        loadUserRole()
         viewModelScope.launch {
             tokenManager.getInspectorInfo().first()?.let { info ->
                 _uiState.update { it.copy(responsable = info) }
@@ -124,6 +127,13 @@ class MotocicletaViewModel @Inject constructor(
         }
         observePending()
         observeSyncStatuses()
+    }
+
+    private fun loadUserRole() {
+        viewModelScope.launch {
+            val role = tokenManager.getRole().firstOrNull()
+            _uiState.update { it.copy(userRole = role) }
+        }
     }
 
     private fun observePending() {
@@ -437,11 +447,25 @@ class MotocicletaViewModel @Inject constructor(
                     _uiState.update { s ->
                         val soatApi  = apiDocs.find { it.tipoDocumento == "SOAT" }
                         val tecnoApi = apiDocs.find { it.tipoDocumento == "REVISION_TECNO" }
-                        val licApi   = apiDocs.find { it.tipoDocumento == "LICENCIA" }
 
                         val soatFecha  = soatApi?.fechaVencimiento?.takeIf { it.isNotBlank() } ?: soatApi?.mesyear ?: ""
                         val tecnoFecha = tecnoApi?.fechaVencimiento?.takeIf { it.isNotBlank() } ?: tecnoApi?.mesyear ?: ""
-                        val licFecha   = licApi?.fechaVencimiento?.takeIf { it.isNotBlank() } ?: licApi?.mesyear ?: ""
+
+                        // Licencia del conductor — viene del perfil del usuario, no del vehículo
+                        var licFecha = ""
+                        var licImagenUrl: String? = null
+                        var licCategoria = ""
+                        try {
+                            val userResp = apiService.getUsuarioActual()
+                            if (userResp.isSuccessful) {
+                                val user = userResp.body()
+                                licFecha     = user?.licenseExpiry      ?: ""
+                                licImagenUrl = user?.licenseDocumentUrl
+                                licCategoria = user?.licenseCategory    ?: ""
+                            }
+                        } catch (e: Exception) {
+                            android.util.Log.w("DocsMoto", "No se pudo cargar licencia del usuario: ${e.message}")
+                        }
 
                         val (soatEst, soatDias)   = calcularEstadoPorDias(soatFecha)
                         val (tecnoEst, tecnoDias) = calcularEstadoPorDias(tecnoFecha)
@@ -449,10 +473,20 @@ class MotocicletaViewModel @Inject constructor(
 
                         android.util.Log.d("DocsMoto", "🔄 [API] SOAT: $soatEst($soatDias d) TECNO: $tecnoEst($tecnoDias d) LIC: $licEst($licDias d)")
 
+                        // Actualizar cache con licencia del usuario
+                        val licEntity = com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.DocumentoMotoEntity(
+                            tipoDocumento = "LICENCIA", placa = placa,
+                            vigencia = licFecha, kilometrajeActual = kmMinimo, imagenUrl = licImagenUrl
+                        )
+                        if (licFecha.isNotBlank()) {
+                            try { documentoMotoDao.refreshForPlaca(placa, entities + licEntity) } catch (_: Exception) {}
+                        }
+
                         s.copy(
-                            soat          = s.soat.copy(vigenciaMaster = soatFecha, estadoDoc = soatEst, diasRestantes = soatDias, yaRegistrado = true, imagenUrl = soatApi?.imagenUrl),
-                            revisionTecno = s.revisionTecno.copy(vigenciaMaster = tecnoFecha, estadoDoc = tecnoEst, diasRestantes = tecnoDias, yaRegistrado = true, imagenUrl = tecnoApi?.imagenUrl),
-                            licencia      = s.licencia.copy(vigenciaMaster = licFecha, estadoDoc = licEst, diasRestantes = licDias, yaRegistrado = true, imagenUrl = licApi?.imagenUrl),
+                            soat              = s.soat.copy(vigenciaMaster = soatFecha, estadoDoc = soatEst, diasRestantes = soatDias, yaRegistrado = true, imagenUrl = soatApi?.imagenUrl),
+                            revisionTecno     = s.revisionTecno.copy(vigenciaMaster = tecnoFecha, estadoDoc = tecnoEst, diasRestantes = tecnoDias, yaRegistrado = true, imagenUrl = tecnoApi?.imagenUrl),
+                            licencia          = s.licencia.copy(vigenciaMaster = licFecha, estadoDoc = licEst, diasRestantes = licDias, yaRegistrado = licFecha.isNotBlank(), imagenUrl = licImagenUrl),
+                            licenciaCategoria = licCategoria,
                             kilometrajeMinimo = kmMinimo,
                             isLoadingDocumentos = false
                         )

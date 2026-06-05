@@ -40,7 +40,10 @@ fun HomeScreen(
     onNavigateToCambioAceiteVehicular: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val isAceite = uiState.userRole == "ACEITE"
+    // SUPERVISOR_OPERATIVO (nuevo) + ACEITE (legacy en BD aún no migrada) = mismo acceso
+    val isSupervisorOperativo = uiState.userRole == "SUPERVISOR_OPERATIVO" || uiState.userRole == "ACEITE" || uiState.userRole == "MECANIC"
+    val isAdmin = uiState.userRole == "ADMIN"
+    @Suppress("UNUSED_VARIABLE") val isAceite = isSupervisorOperativo  // alias para compatibilidad
 
     LaunchedEffect(uiState.logoutCompleted) {
         if (uiState.logoutCompleted) {
@@ -77,7 +80,7 @@ fun HomeScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = if (isAceite) "Operaciones de aceite" else "¿Qué deseas registrar?",
+                text = "¿Qué deseas hacer?",
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
@@ -86,43 +89,75 @@ fun HomeScreen(
 
             Spacer(modifier = Modifier.height(4.dp))
 
-            if (isAceite) {
-                // Rol ACEITE: solo acceso a cambios de aceite
-                InspectionCategoryCard(
-                    title = "Cambio Aceite Maquinaria",
-                    subtitle = "Registrar cambio de aceite\nen maquinaria pesada",
-                    icon = Icons.Filled.Build,
-                    onClick = onNavigateToCambioAceiteMaquinaria
-                )
-                InspectionCategoryCard(
-                    title = "Cambio Aceite Vehicular",
-                    subtitle = "Registrar cambio de aceite\nen vehículos",
-                    icon = Icons.Filled.DirectionsCar,
-                    onClick = onNavigateToCambioAceiteVehicular
-                )
-            } else {
-                // Roles OPERARIO y ADMIN: acceso completo a inspecciones
-                InspectionCategoryCard(
-                    title = "Inspección Maquinaria",
-                    subtitle = "Registro de inspección\nde maquinaria pesada",
-                    icon = Icons.Filled.Settings,
-                    onClick = onNavigateToMaquinaria
-                )
-                InspectionCategoryCard(
-                    title = "Inspección Vehicular",
-                    subtitle = "Registro de inspección\nde vehículos",
-                    icon = Icons.Filled.DirectionsCar,
-                    onClick = onNavigateToVehicular
-                )
-                InspectionCategoryCard(
-                    title = "Inspección de Motos",
-                    subtitle = "Registro de inspección\nde motocicletas",
-                    icon = Icons.Filled.DirectionsBike,
-                    onClick = onNavigateToMotos
-                )
+            when {
+                isSupervisorOperativo -> {
+                    // SUPERVISOR_OPERATIVO: acceso directo a inspecciones y combustible
+                    // Cambio de aceite es accesible desde dentro de cada módulo
+                    InspectionCategoryCard(
+                        title = "Inspección Maquinaria",
+                        subtitle = "Registro de inspección\nde maquinaria pesada",
+                        icon = Icons.Filled.Settings,
+                        onClick = onNavigateToMaquinaria
+                    )
+                    InspectionCategoryCard(
+                        title = "Inspección Vehicular",
+                        subtitle = "Registro de inspección\nde vehículos",
+                        icon = Icons.Filled.DirectionsCar,
+                        onClick = onNavigateToVehicular
+                    )
+                    InspectionCategoryCard(
+                        title = "Inspección de Motos",
+                        subtitle = "Registro de inspección\nde motocicletas",
+                        icon = Icons.Filled.DirectionsBike,
+                        onClick = onNavigateToMotos
+                    )
+                    FuelCategoryCard(onClick = onNavigateToCombustible)
+                }
+                isAdmin -> {
+                    // ADMIN: acceso completo
+                    InspectionCategoryCard(
+                        title = "Inspección Maquinaria",
+                        subtitle = "Registro de inspección\nde maquinaria pesada",
+                        icon = Icons.Filled.Settings,
+                        onClick = onNavigateToMaquinaria
+                    )
+                    InspectionCategoryCard(
+                        title = "Inspección Vehicular",
+                        subtitle = "Registro de inspección\nde vehículos",
+                        icon = Icons.Filled.DirectionsCar,
+                        onClick = onNavigateToVehicular
+                    )
+                    InspectionCategoryCard(
+                        title = "Inspección de Motos",
+                        subtitle = "Registro de inspección\nde motocicletas",
+                        icon = Icons.Filled.DirectionsBike,
+                        onClick = onNavigateToMotos
+                    )
+                    FuelCategoryCard(onClick = onNavigateToCombustible)
+                }
+                else -> {
+                    // OPERARIO: solo inspecciones pre-operativas + combustible (sin aceite)
+                    InspectionCategoryCard(
+                        title = "Inspección Maquinaria",
+                        subtitle = "Registro de inspección\nde maquinaria pesada",
+                        icon = Icons.Filled.Settings,
+                        onClick = onNavigateToMaquinaria
+                    )
+                    InspectionCategoryCard(
+                        title = "Inspección Vehicular",
+                        subtitle = "Registro de inspección\nde vehículos",
+                        icon = Icons.Filled.DirectionsCar,
+                        onClick = onNavigateToVehicular
+                    )
+                    InspectionCategoryCard(
+                        title = "Inspección de Motos",
+                        subtitle = "Registro de inspección\nde motocicletas",
+                        icon = Icons.Filled.DirectionsBike,
+                        onClick = onNavigateToMotos
+                    )
+                    FuelCategoryCard(onClick = onNavigateToCombustible)
+                }
             }
-
-            FuelCategoryCard(onClick = onNavigateToCombustible)
         }
 
         if (uiState.showLogoutDialog) {

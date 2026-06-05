@@ -36,7 +36,7 @@ class MotoRepositoryImpl @Inject constructor(
                     else
                         Result.success(Unit)
                 }
-                val entities = motos.map { MotoEntity(id = it.id, placa = it.placa, idUbicacionBase = it.idUbicacionBase ?: 0, ubicacionBase = it.ubicacionBase ?: "") }
+                val entities = motos.map { MotoEntity(id = it.id, placa = it.placa, marca = it.marca, idUbicacionBase = it.idUbicacionBase ?: 0, ubicacionBase = it.ubicacionBase ?: "") }
                 motoDao.clearAndInsert(entities)
                 Result.success(Unit)
             } else {

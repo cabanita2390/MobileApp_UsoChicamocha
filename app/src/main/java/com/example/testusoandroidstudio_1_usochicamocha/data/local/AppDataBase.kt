@@ -56,7 +56,7 @@ import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.Vehicu
         com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.FuelLogEntity::class,
         FuelStationEntity::class
     ],
-    version = 32,
+    version = 34,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -204,7 +204,6 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
-        /** Migración 26 → 27: URLs documentos + opcional cambio aceite en inspección vehículo */
         /** Migración 31 → 32: crea tabla de estaciones de combustible (catálogo del admin) */
         val MIGRATION_31_32 = object : Migration(31, 32) {
             override fun migrate(database: SupportSQLiteDatabase) {
@@ -214,6 +213,72 @@ abstract class AppDatabase : RoomDatabase() {
                         `name` TEXT NOT NULL
                     )
                 """.trimIndent())
+            }
+        }
+
+        /** Migración 32 → 33: elimina campo isFullTank de fuel_logs_local */
+        val MIGRATION_32_33 = object : Migration(32, 33) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `fuel_logs_local_new` (
+                        `localId` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `remoteId` INTEGER,
+                        `syncId` TEXT NOT NULL,
+                        `assetType` TEXT NOT NULL,
+                        `assetId` INTEGER NOT NULL,
+                        `assetPlate` TEXT,
+                        `fuelDateTime` TEXT NOT NULL,
+                        `odometerKm` REAL,
+                        `hourMeter` REAL,
+                        `quantity` REAL NOT NULL,
+                        `quantityUnit` TEXT NOT NULL DEFAULT 'LITERS',
+                        `quantityLiters` REAL NOT NULL,
+                        `pricePerUnit` REAL NOT NULL,
+                        `totalCostCalculated` REAL NOT NULL,
+                        `totalCostActual` REAL,
+                        `totalCostMismatch` INTEGER NOT NULL DEFAULT 0,
+                        `fuelType` TEXT NOT NULL,
+                        `serviceStation` TEXT,
+                        `discountAmount` REAL,
+                        `invoicePhotoPath` TEXT,
+                        `invoicePhotoUrl` TEXT,
+                        `invoiceStatus` TEXT NOT NULL DEFAULT 'PENDING_REVIEW',
+                        `voucherNumber` TEXT,
+                        `notes` TEXT,
+                        `efficiencyValue` REAL,
+                        `efficiencyUnit` TEXT,
+                        `isAnomaly` INTEGER NOT NULL DEFAULT 0,
+                        `isSynced` INTEGER NOT NULL DEFAULT 0,
+                        `isSyncing` INTEGER NOT NULL DEFAULT 0,
+                        `createdAt` INTEGER NOT NULL
+                    )
+                """.trimIndent())
+
+                database.execSQL("""
+                    INSERT INTO `fuel_logs_local_new`
+                        (`localId`, `remoteId`, `syncId`, `assetType`, `assetId`, `assetPlate`,
+                         `fuelDateTime`, `odometerKm`, `hourMeter`, `quantity`, `quantityUnit`, `quantityLiters`,
+                         `pricePerUnit`, `totalCostCalculated`, `totalCostActual`, `totalCostMismatch`,
+                         `fuelType`, `serviceStation`, `discountAmount`, `invoicePhotoPath`, `invoicePhotoUrl`,
+                         `invoiceStatus`, `voucherNumber`, `notes`, `efficiencyValue`, `efficiencyUnit`,
+                         `isAnomaly`, `isSynced`, `isSyncing`, `createdAt`)
+                    SELECT `localId`, `remoteId`, `syncId`, `assetType`, `assetId`, `assetPlate`,
+                           `fuelDateTime`, `odometerKm`, `hourMeter`, `quantity`, `quantityUnit`, `quantityLiters`,
+                           `pricePerUnit`, `totalCostCalculated`, `totalCostActual`, `totalCostMismatch`,
+                           `fuelType`, `serviceStation`, `discountAmount`, `invoicePhotoPath`, `invoicePhotoUrl`,
+                           `invoiceStatus`, `voucherNumber`, `notes`, `efficiencyValue`, `efficiencyUnit`,
+                           `isAnomaly`, `isSynced`, `isSyncing`, `createdAt`
+                    FROM `fuel_logs_local`
+                """.trimIndent())
+
+                database.execSQL("DROP TABLE `fuel_logs_local`")
+                database.execSQL("ALTER TABLE `fuel_logs_local_new` RENAME TO `fuel_logs_local`")
+            }
+        }
+
+        val MIGRATION_33_34 = object : Migration(33, 34) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE vehiculo_oil_changes ADD COLUMN assetType TEXT NOT NULL DEFAULT 'VEHICLE'")
             }
         }
 

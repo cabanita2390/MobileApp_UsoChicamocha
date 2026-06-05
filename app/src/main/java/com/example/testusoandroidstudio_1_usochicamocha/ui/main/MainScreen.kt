@@ -48,6 +48,7 @@ fun MainScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
+    val isOperario = uiState.userRole == "OPERARIO"
 
     LaunchedEffect(uiState.logoutCompleted) {
         if (uiState.logoutCompleted) {
@@ -127,7 +128,8 @@ fun MainScreen(
                 onNavigateToForm = onNavigateToForm,
                 onNavigateToImprevisto = onNavigateToImprevisto,
                 onNavigateToMantenimiento = { onNavigateToMantenimiento(null) },
-                onNavigateToCombustible = onNavigateToCombustible
+                onNavigateToCombustible = onNavigateToCombustible,
+                showOilChange = !isOperario
             )
 
             PendingMaintenanceCard(
@@ -265,7 +267,8 @@ fun AvailableFormsCard(
     onNavigateToForm: () -> Unit,
     onNavigateToImprevisto: () -> Unit,
     onNavigateToMantenimiento: () -> Unit,
-    onNavigateToCombustible: () -> Unit = {}
+    onNavigateToCombustible: () -> Unit = {},
+    showOilChange: Boolean = true
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -280,8 +283,10 @@ fun AvailableFormsCard(
             OutlinedButton(onClick = onNavigateToImprevisto, modifier = Modifier.fillMaxWidth()) {
                 Text("Imprevisto Maquinaria", fontSize = 18.sp)
             }
-            OutlinedButton(onClick = onNavigateToMantenimiento, modifier = Modifier.fillMaxWidth()) {
-                Text("Cambio aceite", fontSize = 18.sp)
+            if (showOilChange) {
+                OutlinedButton(onClick = onNavigateToMantenimiento, modifier = Modifier.fillMaxWidth()) {
+                    Text("Cambio aceite", fontSize = 18.sp)
+                }
             }
         }
     }

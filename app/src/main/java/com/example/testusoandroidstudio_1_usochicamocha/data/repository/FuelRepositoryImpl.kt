@@ -7,6 +7,7 @@ import com.example.testusoandroidstudio_1_usochicamocha.data.remote.ApiService
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.FuelLogRequest
 import com.example.testusoandroidstudio_1_usochicamocha.domain.repository.FuelRepository
 import kotlinx.coroutines.flow.Flow
+import java.io.File
 
 class FuelRepositoryImpl(
     private val dao: FuelLogDao,
@@ -31,6 +32,20 @@ class FuelRepositoryImpl(
             if (locked == 0) continue
 
             try {
+                // Prepare invoice photo: if local path exists, convert to Base64
+                var invoicePhotoBase64: String? = null
+                var invoiceFileName: String? = null
+                if (!entity.invoicePhotoPath.isNullOrBlank()) {
+                    val file = File(entity.invoicePhotoPath)
+                    if (file.exists()) {
+                        invoicePhotoBase64 = file.readBytes().let {
+                            java.util.Base64.getEncoder().encodeToString(it)
+                        }
+                        invoiceFileName = file.name
+                        Log.d("FuelRepository", "📸 Invoice photo converted to Base64 for fuel log ${entity.localId}")
+                    }
+                }
+
                 val request = FuelLogRequest(
                     syncId = entity.syncId,
                     assetType = entity.assetType,
@@ -45,9 +60,10 @@ class FuelRepositoryImpl(
                     totalCostActual = entity.totalCostActual,
                     fuelType = entity.fuelType,
                     serviceStation = entity.serviceStation,
-                    isFullTank = entity.isFullTank,
                     discountAmount = entity.discountAmount,
                     invoicePhotoUrl = entity.invoicePhotoUrl,
+                    invoicePhotoBase64 = invoicePhotoBase64,
+                    invoiceFileName = invoiceFileName,
                     voucherNumber = entity.voucherNumber,
                     notes = entity.notes
                 )
@@ -75,4 +91,5 @@ class FuelRepositoryImpl(
             }
         }
     }
+
 }

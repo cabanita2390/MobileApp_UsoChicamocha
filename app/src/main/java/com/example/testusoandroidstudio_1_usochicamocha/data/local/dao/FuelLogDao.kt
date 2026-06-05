@@ -33,4 +33,7 @@ interface FuelLogDao {
 
     @Query("SELECT COUNT(*) FROM fuel_logs_local WHERE isSynced = 0")
     fun getPendingCount(): Flow<Int>
+
+    @Query("UPDATE fuel_logs_local SET invoicePhotoUrl = :url WHERE localId = :id")
+    suspend fun updateInvoiceUrl(id: Int, url: String)
 }

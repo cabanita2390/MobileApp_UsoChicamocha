@@ -41,6 +41,7 @@ fun VehiculoMainScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
+    val isOperario = uiState.userRole == "OPERARIO"
 
     LaunchedEffect(uiState.logoutCompleted) {
         if (uiState.logoutCompleted) {
@@ -87,7 +88,8 @@ fun VehiculoMainScreen(
             VehiculoAvailableFormsCard(
                 onNavigateToForm = onNavigateToForm,
                 onNavigateToCambioAceite = onNavigateToCambioAceite,
-                onNavigateToCombustible = onNavigateToCombustible
+                onNavigateToCombustible = onNavigateToCombustible,
+                showOilChange = !isOperario
             )
 
             PendingOilChangeVehiculoCard(
@@ -123,7 +125,8 @@ fun VehiculoMainScreen(
 fun VehiculoAvailableFormsCard(
     onNavigateToForm: () -> Unit,
     onNavigateToCambioAceite: () -> Unit,
-    onNavigateToCombustible: () -> Unit = {}
+    onNavigateToCombustible: () -> Unit = {},
+    showOilChange: Boolean = true
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -143,14 +146,16 @@ fun VehiculoAvailableFormsCard(
                 Text("Inspección Vehicular", fontSize = 18.sp)
             }
 
-            OutlinedButton(
-                onClick = onNavigateToCambioAceite,
-                modifier = Modifier.fillMaxWidth().height(56.dp),
-                shape = RoundedCornerShape(12.dp)
-            ) {
-                Icon(Icons.Default.Build, null)
-                Spacer(Modifier.width(8.dp))
-                Text("Cambio aceite", fontSize = 18.sp)
+            if (showOilChange) {
+                OutlinedButton(
+                    onClick = onNavigateToCambioAceite,
+                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(Icons.Default.Build, null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Cambio aceite", fontSize = 18.sp)
+                }
             }
 
         }

@@ -263,22 +263,6 @@ fun CombustibleScreen(
                         modifier = Modifier.weight(1f)
                     )
                 }
-                // Llenado completo — dentro de la sección combustible, junto a cantidad y tipo
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
-                            viewModel.setIsFullTank(!uiState.isFullTank)
-                        }
-                ) {
-                    Checkbox(checked = uiState.isFullTank, onCheckedChange = viewModel::setIsFullTank)
-                    Spacer(Modifier.width(4.dp))
-                    Column {
-                        Text("Llenado completo", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
-                        Text("Necesario para calcular eficiencia", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                }
             }
 
             // ── 5. Costos ─────────────────────────────────────────────────────
@@ -587,18 +571,8 @@ private fun CostCard(
 
             // Alerta discrepancia
             AnimatedVisibility(visible = hasMismatch, enter = expandVertically(), exit = shrinkVertically()) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(Icons.Default.Warning, null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(16.dp))
-                    Text(
-                        "Discrepancia >1% con el tiquete — se marcará para revisión.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error
-                    )
-                }
+                // Discrepancia detectada pero no mostrada al usuario (se marca en backend)
+                // Esto se revisa en el dashboard del admin
             }
 
             // Descuento (opcional, colapsable)

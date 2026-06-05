@@ -8,9 +8,10 @@ import com.example.testusoandroidstudio_1_usochicamocha.domain.model.Moto
 data class MotoEntity(
     @PrimaryKey val id: Int,
     val placa: String,
+    @androidx.room.ColumnInfo(defaultValue = "") val marca: String? = null,
     @androidx.room.ColumnInfo(defaultValue = "0") val idUbicacionBase: Int = 0,
     @androidx.room.ColumnInfo(defaultValue = "") val ubicacionBase: String = ""
 )
 
-fun MotoEntity.toDomain(): Moto = Moto(id = id, placa = placa, idUbicacionBase = idUbicacionBase, ubicacionBase = ubicacionBase)
-fun Moto.toEntity(): MotoEntity = MotoEntity(id = id, placa = placa, idUbicacionBase = idUbicacionBase, ubicacionBase = ubicacionBase)
+fun MotoEntity.toDomain(): Moto = Moto(id = id, placa = placa, marca = marca ?: "", idUbicacionBase = idUbicacionBase, ubicacionBase = ubicacionBase)
+fun Moto.toEntity(): MotoEntity = MotoEntity(id = id, placa = placa, marca = marca, idUbicacionBase = idUbicacionBase, ubicacionBase = ubicacionBase)

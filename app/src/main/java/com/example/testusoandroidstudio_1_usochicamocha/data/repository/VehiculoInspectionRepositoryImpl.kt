@@ -143,16 +143,15 @@ class VehiculoInspectionRepositoryImpl @Inject constructor(
                     if (resp.isSuccessful && resp.body() != null) {
                         val doc = resp.body()!!
                         
-                        val soatDB     = doc.fechaVencSoat?.take(7)     ?: ""
-                        val tecnoDB    = doc.fechaVencTecno?.take(7)    ?: ""
-                        val licDB      = doc.fechaVencLicencia?.take(7) ?: ""
-                        val extDB      = doc.fechaVencExtintor?.take(7) ?: ""
-                        
+                        val soatDB  = doc.fechaVencSoat?.take(7)  ?: ""
+                        val tecnoDB = doc.fechaVencTecno?.take(7) ?: ""
+                        val extDB   = doc.fechaVencExtintor?.take(7) ?: ""
+                        // LICENCIA no se sincroniza aquí: viene del perfil del conductor en la pantalla de inspección
+
                         val docsToCache = listOf(
-                            DocumentoVehiculoEntity(placa = vehiculo.placa, tipoDocumento = "SOAT",     vigencia = soatDB, imagenUrl = doc.urlImagenSoat,     kilometrajeActual = vehiculo.kilometrajeActual),
-                            DocumentoVehiculoEntity(placa = vehiculo.placa, tipoDocumento = "TECNO",    vigencia = tecnoDB, imagenUrl = doc.urlImagenTecno,   kilometrajeActual = vehiculo.kilometrajeActual),
-                            DocumentoVehiculoEntity(placa = vehiculo.placa, tipoDocumento = "LICENCIA", vigencia = licDB, imagenUrl = doc.urlImagenLicencia,    kilometrajeActual = vehiculo.kilometrajeActual),
-                            DocumentoVehiculoEntity(placa = vehiculo.placa, tipoDocumento = "EXTINTOR", vigencia = extDB, imagenUrl = doc.urlImagenExtintor,   kilometrajeActual = vehiculo.kilometrajeActual)
+                            DocumentoVehiculoEntity(placa = vehiculo.placa, tipoDocumento = "SOAT",     vigencia = soatDB,  imagenUrl = doc.urlImagenSoat,     kilometrajeActual = vehiculo.kilometrajeActual),
+                            DocumentoVehiculoEntity(placa = vehiculo.placa, tipoDocumento = "TECNO",    vigencia = tecnoDB, imagenUrl = doc.urlImagenTecno,    kilometrajeActual = vehiculo.kilometrajeActual),
+                            DocumentoVehiculoEntity(placa = vehiculo.placa, tipoDocumento = "EXTINTOR", vigencia = extDB,   imagenUrl = doc.urlImagenExtintor, kilometrajeActual = vehiculo.kilometrajeActual)
                         )
                         documentoVehiculoDao.refreshForPlaca(vehiculo.placa, docsToCache)
                         Log.d(TAG, "✅ Documents cached for vehicle: ${vehiculo.placa}")

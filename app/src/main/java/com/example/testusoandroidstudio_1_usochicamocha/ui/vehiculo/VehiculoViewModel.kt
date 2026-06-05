@@ -73,6 +73,7 @@ data class VehiculoUiState(
     val urlImagenTecno: String? = null,
     val urlImagenLicencia: String? = null,
     val urlImagenExtintor: String? = null,
+    val licenciaCategoria: String = "",
     val isLoadingDocs: Boolean = false,
     // Elementos (Si / No)
     val tieneBotiquin: String = "",
@@ -176,44 +177,60 @@ class VehiculoViewModel @Inject constructor(
                         _uiState.update { it.copy(isLoadingDocs = false) }
                         return@launch
                     }
-                    val soatDB  = doc.fechaVencSoat     ?: ""
-                    val tecnoDB = doc.fechaVencTecno    ?: ""
-                    val licDB   = doc.fechaVencLicencia ?: ""
-                    val extDB   = doc.fechaVencExtintor ?: ""
+                    val soatDB = doc.fechaVencSoat  ?: ""
+                    val tecnoDB = doc.fechaVencTecno ?: ""
+                    val extDB  = doc.fechaVencExtintor ?: ""
 
-                    val (estSoat, diasSoat)   = calcularEstadoPorDias(soatDB)
-                    val (estTecno, diasTecno) = calcularEstadoPorDias(tecnoDB)
-                    val (estLic, diasLic)     = calcularEstadoPorDias(licDB)
-                    val (estExt, diasExt)     = calcularEstadoPorDias(extDB)
+                    // Licencia del conductor — viene del perfil del usuario, no del vehículo
+                    var licDB = ""
+                    var urlImagenLicencia: String? = null
+                    var licenciaCategoria = ""
+                    try {
+                        val userResp = apiService.getUsuarioActual()
+                        if (userResp.isSuccessful) {
+                            val user = userResp.body()
+                            licDB             = user?.licenseExpiry      ?: ""
+                            urlImagenLicencia = user?.licenseDocumentUrl
+                            licenciaCategoria = user?.licenseCategory    ?: ""
+                        }
+                    } catch (e: Exception) {
+                        Log.w("VehiculoVM", "No se pudo cargar licencia del usuario: ${e.message}")
+                    }
+
+                    val (estSoat, diasSoat)    = calcularEstadoPorDias(soatDB)
+                    val (estTecno, diasTecno)  = calcularEstadoPorDias(tecnoDB)
+                    val (estLic, diasLic)      = calcularEstadoPorDias(licDB)
+                    val (estExt, diasExt)      = calcularEstadoPorDias(extDB)
 
                     _uiState.update { s ->
                         s.copy(
-                            fechaVencSoatDB      = soatDB,
-                            fechaVencTecnoDB     = tecnoDB,
-                            fechaVencLicencioDB  = licDB,
-                            vigenciaExtintorDB   = extDB,
-                            estadoSoat           = estSoat,
-                            estadoTecno          = estTecno,
-                            estadoLicencia       = estLic,
-                            estadoExtintor       = estExt,
-                            diasRestantesSoat    = diasSoat,
-                            diasRestantesTecno   = diasTecno,
+                            fechaVencSoatDB       = soatDB,
+                            fechaVencTecnoDB      = tecnoDB,
+                            fechaVencLicencioDB   = licDB,
+                            vigenciaExtintorDB    = extDB,
+                            estadoSoat            = estSoat,
+                            estadoTecno           = estTecno,
+                            estadoLicencia        = estLic,
+                            estadoExtintor        = estExt,
+                            diasRestantesSoat     = diasSoat,
+                            diasRestantesTecno    = diasTecno,
                             diasRestantesLicencia = diasLic,
                             diasRestantesExtintor = diasExt,
-                            urlImagenSoat        = doc.urlImagenSoat,
-                            urlImagenTecno       = doc.urlImagenTecno,
-                            urlImagenLicencia    = doc.urlImagenLicencia,
-                            urlImagenExtintor    = doc.urlImagenExtintor,
-                            isLoadingDocs        = false
+                            urlImagenSoat         = doc.urlImagenSoat,
+                            urlImagenTecno        = doc.urlImagenTecno,
+                            urlImagenLicencia     = urlImagenLicencia,
+                            urlImagenExtintor     = doc.urlImagenExtintor,
+                            licenciaCategoria     = licenciaCategoria,
+                            isLoadingDocs         = false
                         )
                     }
 
                     // 3. ACTUALIZAR CACHE CON LO DEL API
                     try {
                         val docsToCache = listOf(
-                            DocumentoVehiculoEntity(placa = placa, tipoDocumento = "SOAT",     vigencia = soatDB,  imagenUrl = doc.urlImagenSoat,     kilometrajeActual = 0),
-                            DocumentoVehiculoEntity(placa = placa, tipoDocumento = "TECNO",    vigencia = tecnoDB, imagenUrl = doc.urlImagenTecno,    kilometrajeActual = 0),
-                            DocumentoVehiculoEntity(placa = placa, tipoDocumento = "LICENCIA", vigencia = licDB,   imagenUrl = doc.urlImagenLicencia, kilometrajeActual = 0),
+                            DocumentoVehiculoEntity(placa = placa, tipoDocumento = "SOAT",     vigencia = soatDB,  imagenUrl = doc.urlImagenSoat,    kilometrajeActual = 0),
+                            DocumentoVehiculoEntity(placa = placa, tipoDocumento = "TECNO",    vigencia = tecnoDB, imagenUrl = doc.urlImagenTecno,   kilometrajeActual = 0),
+                            DocumentoVehiculoEntity(placa = placa, tipoDocumento = "LICENCIA", vigencia = licDB,   imagenUrl = urlImagenLicencia,    kilometrajeActual = 0),
                             DocumentoVehiculoEntity(placa = placa, tipoDocumento = "EXTINTOR", vigencia = extDB,   imagenUrl = doc.urlImagenExtintor, kilometrajeActual = 0)
                         )
                         repository.refreshCachedDocuments(placa, docsToCache)

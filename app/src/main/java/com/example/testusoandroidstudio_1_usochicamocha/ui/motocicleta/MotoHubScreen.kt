@@ -34,10 +34,12 @@ fun MotoHubScreen(
     onNavigateBack: () -> Unit,
     onNavigateToForm: () -> Unit,
     onNavigateToCombustible: () -> Unit = {},
+    onNavigateToCambioAceite: () -> Unit = {},
     viewModel: MotocicletaViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
+    val isOperario = uiState.userRole == "OPERARIO"
     LaunchedEffect(uiState.syncMessage) {
         uiState.syncMessage?.let {
             Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
@@ -97,6 +99,17 @@ fun MotoHubScreen(
                         Icon(Icons.Default.TwoWheeler, contentDescription = null)
                         Spacer(Modifier.width(8.dp))
                         Text("Inspección Motocicleta", fontSize = 18.sp)
+                    }
+                    if (!isOperario) {
+                        OutlinedButton(
+                            onClick = onNavigateToCambioAceite,
+                            modifier = Modifier.fillMaxWidth().height(56.dp),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(Icons.Default.LocalGasStation, contentDescription = null)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Cambio de Aceite", fontSize = 18.sp)
+                        }
                     }
 
                 }

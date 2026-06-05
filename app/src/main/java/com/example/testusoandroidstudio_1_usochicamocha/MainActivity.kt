@@ -30,6 +30,7 @@ import com.example.testusoandroidstudio_1_usochicamocha.ui.main.MainScreen
 import com.example.testusoandroidstudio_1_usochicamocha.ui.mantenimiento.MantenimientoScreen
 import com.example.testusoandroidstudio_1_usochicamocha.ui.motocicleta.MotocicletaScreen
 import com.example.testusoandroidstudio_1_usochicamocha.ui.motocicleta.MotoHubScreen
+import com.example.testusoandroidstudio_1_usochicamocha.ui.motocicleta.MotoCambioAceiteScreen
 
 import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.ConnectionStatusTopBar
 import com.example.testusoandroidstudio_1_usochicamocha.ui.splash.SplashScreen
@@ -172,12 +173,22 @@ class MainActivity : ComponentActivity() {
                             },
                             onNavigateToCombustible = {
                                 navController.navigate("combustible")
+                            },
+                            onNavigateToCambioAceite = {
+                                navController.navigate("motocicleta_cambio_aceite")
                             }
                         )
                     }
                     composable("motocicleta_form") {
                         MotocicletaScreen(
                             networkStatus = networkStatus,
+                            onNavigateBack = {
+                                navController.popBackStack()
+                            }
+                        )
+                    }
+                    composable("motocicleta_cambio_aceite") {
+                        MotoCambioAceiteScreen(
                             onNavigateBack = {
                                 navController.popBackStack()
                             }

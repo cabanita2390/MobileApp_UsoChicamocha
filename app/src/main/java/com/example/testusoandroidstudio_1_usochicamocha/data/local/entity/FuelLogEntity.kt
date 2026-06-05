@@ -23,7 +23,6 @@ data class FuelLogEntity(
     val totalCostMismatch: Boolean = false,
     val fuelType: String,               // GASOLINA_CORRIENTE / GASOLINA_EXTRA / DIESEL / ACPM / GAS_NATURAL
     val serviceStation: String? = null,
-    val isFullTank: Boolean = true,
     val discountAmount: Double? = null,
     val invoicePhotoPath: String? = null, // ruta local antes de upload
     val invoicePhotoUrl: String? = null,  // URL en servidor tras sync

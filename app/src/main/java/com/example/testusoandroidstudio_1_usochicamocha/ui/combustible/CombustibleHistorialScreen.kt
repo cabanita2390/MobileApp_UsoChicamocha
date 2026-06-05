@@ -133,13 +133,8 @@ private fun FuelLogCard(log: FuelLogEntity) {
                 fontWeight = FontWeight.Bold
             )
 
-            if (log.totalCostMismatch) {
-                Text(
-                    "⚠️ Discrepancia en costo — pendiente revisión",
-                    fontSize = 11.sp,
-                    color = MaterialTheme.colorScheme.error
-                )
-            }
+            // Discrepancia silenciosa: se registra en el backend para revisión del admin
+            // No se muestra al usuario para evitar alarmar
 
             if (log.efficiencyValue != null && log.efficiencyUnit != null) {
                 val effLabel = when (log.efficiencyUnit) {
@@ -159,9 +154,6 @@ private fun FuelLogCard(log: FuelLogEntity) {
             if (!log.serviceStation.isNullOrBlank()) {
                 Text("Estación: ${log.serviceStation}", fontSize = 11.sp)
             }
-
-            val tankStatus = if (log.isFullTank) "Llenado completo" else "Llenado parcial"
-            Text(tankStatus, fontSize = 11.sp, color = MaterialTheme.colorScheme.secondary)
         }
     }
 }

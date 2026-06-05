@@ -12,9 +12,7 @@ data class DocumentoVehiculoResponse(
     val fechaVencTecno: String?,
     val estadoTecno: String?,
     val urlImagenTecno: String?,
-    val fechaVencLicencia: String?,
-    val estadoLicencia: String?,
-    val urlImagenLicencia: String?,
+    val urlImagenTarjetaPropiedad: String?,
     val fechaVencExtintor: String?,
     val estadoExtintor: String?,
     val urlImagenExtintor: String?

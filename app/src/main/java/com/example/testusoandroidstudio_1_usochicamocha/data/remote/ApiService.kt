@@ -10,6 +10,7 @@ import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.Inspecci
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.DocumentoExistenteDto
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.LoginRequest
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.LoginResponse
+import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.UserDto
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.MachineDto
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.MotoPlacaDto
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.NewAccessTokenResponse
@@ -84,6 +85,10 @@ interface ApiService {
     @POST("v1/vehicle/oil-change")
     suspend fun registerVehicleOilChange(@Body request: VehicleOilChangeRequest): Response<Unit>
 
+    /** Obtiene el perfil del usuario autenticado (incluye categoría, vencimiento y URL de licencia) */
+    @GET("v1/user/me")
+    suspend fun getUsuarioActual(): Response<UserDto>
+
     /** Consulta el estado actual de los documentos de un vehículo por ID */
     @GET("v1/vehicle-inspection/documentos/{idVehiculo}")
     suspend fun getDocumentosVehiculo(
@@ -109,4 +114,10 @@ interface ApiService {
 
     @GET("v1/fuel/stations")
     suspend fun getFuelStations(): Response<List<Map<String, Any>>>
+
+    @Multipart
+    @POST("v1/fuel/invoice/upload")
+    suspend fun uploadFuelInvoice(
+        @Part file: MultipartBody.Part
+    ): Response<FuelLogResponse>
 }

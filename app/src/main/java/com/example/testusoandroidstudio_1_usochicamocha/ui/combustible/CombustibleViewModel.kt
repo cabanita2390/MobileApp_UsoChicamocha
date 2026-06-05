@@ -46,7 +46,6 @@ data class CombustibleUiState(
     val totalCostMismatch: Boolean = false,
     val fuelType: String = "DIESEL",
     val serviceStation: String = "",
-    val isFullTank: Boolean = false,
     val discountAmount: String = "",
     val voucherNumber: String = "",
     val notes: String = "",
@@ -121,7 +120,6 @@ class CombustibleViewModel @Inject constructor(
         it.copy(fuelType = value, quantityUnit = unit)
     }
     fun setServiceStation(value: String) = _uiState.update { it.copy(serviceStation = value) }
-    fun setIsFullTank(value: Boolean) = _uiState.update { it.copy(isFullTank = value) }
     fun setDiscountAmount(value: String) = _uiState.update { it.copy(discountAmount = value) }
     fun setVoucherNumber(value: String) = _uiState.update { it.copy(voucherNumber = value) }
     fun setNotes(value: String) = _uiState.update { it.copy(notes = value) }
@@ -211,6 +209,18 @@ class CombustibleViewModel @Inject constructor(
             _uiState.update { it.copy(error = "El odómetro (km) es obligatorio para vehículos y motos") }
             return
         }
+        if (state.fuelType.isBlank()) {
+            _uiState.update { it.copy(error = "El tipo de combustible es obligatorio") }
+            return
+        }
+        if (state.serviceStation.isBlank()) {
+            _uiState.update { it.copy(error = "La estación de servicio es obligatoria") }
+            return
+        }
+        if (state.invoicePhotoPath.isNullOrBlank()) {
+            _uiState.update { it.copy(error = "La factura es obligatoria") }
+            return
+        }
 
         val litersPerGallon = 3.785411784
         val quantityLiters = if (state.quantityUnit == "GALLONS") qty * litersPerGallon else qty
@@ -240,7 +250,6 @@ class CombustibleViewModel @Inject constructor(
                     totalCostMismatch = mismatch,
                     fuelType = state.fuelType,
                     serviceStation = state.serviceStation.ifBlank { null },
-                    isFullTank = state.isFullTank,
                     discountAmount = state.discountAmount.toDoubleOrNull(),
                     voucherNumber = state.voucherNumber.ifBlank { null },
                     notes = state.notes.ifBlank { null },

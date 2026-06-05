@@ -15,6 +15,7 @@ data class VehiculoOilChangeEntity(
     val kmAtChange: Int,
     val intervalKm: Int,
     val airFilterChanged: Boolean = false,
+    val assetType: String = "VEHICLE",
     val isSynced: Boolean = false,
     val isSyncing: Boolean = false
 )

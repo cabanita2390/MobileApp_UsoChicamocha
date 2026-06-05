@@ -17,6 +17,7 @@ import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.machine.S
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.maintenance.GetPendingMaintenanceFormsUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.maintenance.SyncMaintenanceFormsUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.oil.SyncOilsUseCase
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.TokenManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -35,8 +36,8 @@ data class MainUiState(
     val syncMaintenanceMessage: String? = null,
     val isSyncingOils: Boolean = false,
     val syncOilsMessage: String? = null,
-    // AÑADIDO: Estado para controlar el nuevo botón de sincronización de imágenes
-    val syncImagesMessage: String? = null
+    val syncImagesMessage: String? = null,
+    val userRole: String = "OPERARIO"
 )
 
 @HiltViewModel
@@ -44,8 +45,9 @@ class MainViewModel @Inject constructor(
     private val logoutUseCase: LogoutUseCase,
     private val getPendingFormsWithStatusUseCase: GetPendingFormsWithStatusUseCase,
     private val getPendingMaintenanceFormsUseCase: GetPendingMaintenanceFormsUseCase,
-    private val localSyncCoordinator: LocalSyncCoordinator, // Inyectamos el coordinador
-    private val triggerImageSyncUseCase: TriggerImageSyncUseCase
+    private val localSyncCoordinator: LocalSyncCoordinator,
+    private val triggerImageSyncUseCase: TriggerImageSyncUseCase,
+    private val tokenManager: TokenManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MainUiState())
@@ -55,6 +57,13 @@ class MainViewModel @Inject constructor(
         observePendingForms()
         observePendingMaintenanceForms()
         observeSyncStatuses()
+        observeUserRole()
+    }
+
+    private fun observeUserRole() {
+        tokenManager.getRole().onEach { role ->
+            _uiState.update { it.copy(userRole = role ?: "OPERARIO") }
+        }.launchIn(viewModelScope)
     }
 
     private fun observePendingForms() {

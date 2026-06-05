@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.LocalSyncCoordinator
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.TokenManager
 
 data class VehiculoMainUiState(
     val pendingInspections: List<VehiculoInspectionEntity> = emptyList(),
@@ -23,14 +24,16 @@ data class VehiculoMainUiState(
     val isSyncingDocuments: Boolean = false,
     val syncMessage: String? = null,
     val logoutCompleted: Boolean = false,
-    val showLogoutDialog: Boolean = false
+    val showLogoutDialog: Boolean = false,
+    val userRole: String = "OPERARIO"
 )
 
 @HiltViewModel
 class VehiculoMainViewModel @Inject constructor(
     private val repository: VehiculoInspectionRepository,
     private val oilChangeRepository: VehiculoOilChangeRepository,
-    private val localSyncCoordinator: LocalSyncCoordinator
+    private val localSyncCoordinator: LocalSyncCoordinator,
+    private val tokenManager: TokenManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(VehiculoMainUiState())
@@ -41,6 +44,13 @@ class VehiculoMainViewModel @Inject constructor(
         observePendingOilChanges()
         observeVehiclesCatalog()
         observeSyncStatuses()
+        observeUserRole()
+    }
+
+    private fun observeUserRole() {
+        tokenManager.getRole().onEach { role ->
+            _uiState.update { it.copy(userRole = role ?: "OPERARIO") }
+        }.launchIn(viewModelScope)
     }
 
     private fun observePendingInspections() {
