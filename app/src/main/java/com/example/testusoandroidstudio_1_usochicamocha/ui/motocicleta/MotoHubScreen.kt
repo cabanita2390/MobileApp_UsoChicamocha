@@ -7,7 +7,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.LocalGasStation
+import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.TwoWheeler
 import androidx.compose.material3.*
@@ -106,7 +106,7 @@ fun MotoHubScreen(
                             modifier = Modifier.fillMaxWidth().height(56.dp),
                             shape = RoundedCornerShape(12.dp)
                         ) {
-                            Icon(Icons.Default.LocalGasStation, contentDescription = null)
+                            Icon(Icons.Default.Build, contentDescription = null)
                             Spacer(Modifier.width(8.dp))
                             Text("Cambio de Aceite", fontSize = 18.sp)
                         }
