@@ -50,6 +50,12 @@ class InspeccionMotoRepositoryImpl @Inject constructor(
             }
 
             Log.i(TAG, "🚀 [syncOne] Iniciando POST a la API para inspección: ${inspeccion.uuid}")
+            Log.d(TAG, "📋 [syncOne] Detalles de inspección:")
+            Log.d(TAG, "   - idVehiculo: ${inspeccion.idVehiculo}")
+            Log.d(TAG, "   - placa: ${inspeccion.placaVehiculo}")
+            Log.d(TAG, "   - idUbicacion: ${inspeccion.idUbicacion}")
+            Log.d(TAG, "   - estadoVehiculo: ${inspeccion.estadoVehiculo}")
+            Log.d(TAG, "   - kilometraje: ${inspeccion.kilometrajeReportado}")
 
             // 3. Construir el request y llamar a la API
             val request = InspeccionMotoRequest(
@@ -67,6 +73,7 @@ class InspeccionMotoRepositoryImpl @Inject constructor(
                 idUbicacion = inspeccion.idUbicacion,
             )
 
+            Log.d(TAG, "📤 [syncOne] Enviando request a v1/moto/inspeccion")
             val response = apiService.saveInspeccionMoto(request)
 
             if (response.isSuccessful) {
@@ -78,20 +85,31 @@ class InspeccionMotoRepositoryImpl @Inject constructor(
                 dao.releaseLock(inspeccion.uuid)
                 val errorCode = response.code()
                 val errorBody = response.errorBody()?.string()
-                Log.e(TAG, "❌ [syncOne] ERROR API: ${inspeccion.uuid} - Code: $errorCode - Body: $errorBody")
-                
+                Log.e(TAG, "❌ [syncOne] ERROR API: ${inspeccion.uuid} - Code: $errorCode")
+                Log.e(TAG, "   - Request idVehiculo: ${inspeccion.idVehiculo}")
+                Log.e(TAG, "   - Response body: $errorBody")
+
                 // Log específico para problemas comunes
                 when (errorCode) {
-                    401 -> Log.e(TAG, "🔑 [syncOne] Error de autenticación: Token expirado o inválido")
-                    403 -> Log.e(TAG, "🚫 [syncOne] Error de autorización: Usuario no tiene permisos (MECANIC/ADMIN)")
-                    404 -> Log.e(TAG, "📍 [syncOne] Error 404: Endpoint no encontrado")
+                    400 -> {
+                        Log.e(TAG, "⚠️ [syncOne] Error 400: Solicitud inválida (campos requeridos faltantes o inválidos)")
+                        Log.e(TAG, "   Verifica que: idVehiculo=${inspeccion.idVehiculo} existe en el servidor, idUbicacion=${inspeccion.idUbicacion} existe")
+                    }
+                    401 -> Log.e(TAG, "🔑 [syncOne] Error 401: Token expirado o inválido")
+                    403 -> Log.e(TAG, "🚫 [syncOne] Error 403: Usuario no tiene permisos (requiere rol MECANIC/ADMIN)")
+                    404 -> {
+                        Log.e(TAG, "📍 [syncOne] Error 404: Vehículo no encontrado en servidor")
+                        Log.e(TAG, "   El idVehiculo=${inspeccion.idVehiculo} no existe, pero la moto se sincronizó como ${inspeccion.placaVehiculo}")
+                        Log.e(TAG, "   Esto indica que el ID del servidor no se guardó correctamente en la BD local")
+                    }
                 }
-                
+
                 Result.failure(Exception("Error servidor ($errorCode): $errorBody"))
             }
         } catch (e: Exception) {
             dao.releaseLock(inspeccion.uuid)
             Log.e(TAG, "❌ [syncOne] EXCEPCIÓN: ${inspeccion.uuid}", e)
+            e.printStackTrace()
             Result.failure(e)
         }
     }

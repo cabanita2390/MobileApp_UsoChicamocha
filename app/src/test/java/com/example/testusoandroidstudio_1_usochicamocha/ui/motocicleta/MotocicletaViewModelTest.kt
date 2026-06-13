@@ -75,7 +75,6 @@ class MotocicletaViewModelTest {
 
     private fun createViewModel() {
         viewModel = MotocicletaViewModel(
-            context,
             tokenManager,
             apiService,
             getLocalMotosUseCase,

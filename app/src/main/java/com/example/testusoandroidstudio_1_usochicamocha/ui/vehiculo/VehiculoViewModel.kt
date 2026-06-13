@@ -363,19 +363,19 @@ class VehiculoViewModel @Inject constructor(
             // ROJO: menor al último registrado
             diff < 0 -> _uiState.update { it.copy(
                 showKmAlert = true,
-                kmAlertMessage = "El kilometraje ingresado es menor al último kilometraje registrado. Por favor, verifíquelo."
+                kmAlertMessage = "El kilometraje ingresado es incorrecto. Verifique el valor."
             )}
             // ROJO: exceso extremo >=800 km
             diff >= KM_RED_THRESHOLD -> _uiState.update { it.copy(
                 showKmAlert = true,
-                kmAlertMessage = "El incremento de kilometraje es muy elevado. Verifique que el valor sea correcto."
+                kmAlertMessage = "El valor del kilometraje no es válido. Verifique el valor."
             )}
             // AMARILLO: incremento superior a 200km y menor a 1000km
             diff > KM_YELLOW_THRESHOLD -> {
                 _uiState.update { it.copy(
                     showKmYellowAlert = true,
                     kmYellowConfirmed = false,
-                    kmAlertMessage = "Detectamos un incremento inusual en el kilometraje. ¿Está seguro de que es correcto?"
+                    kmAlertMessage = "El kilómetraje parece inusual. ¿Está seguro de que es correcto?"
                 )}
             }
             // VERDE: 0 <= diff <= 200 → sin alerta, rango normal
@@ -569,7 +569,7 @@ class VehiculoViewModel @Inject constructor(
         if (km > 0 && diff < 0) {
             _uiState.update { it.copy(
                 showKmAlert = true,
-                kmAlertMessage = "El kilometraje ingresado es menor al último kilometraje registrado. Por favor, verifíquelo."
+                kmAlertMessage = "El kilometraje ingresado es incorrecto. Verifique el valor."
             ) }
             return
         }
@@ -578,7 +578,7 @@ class VehiculoViewModel @Inject constructor(
         if (km > 0 && diff >= KM_RED_THRESHOLD) {
             _uiState.update { it.copy(
                 showKmAlert = true,
-                kmAlertMessage = "El incremento de kilometraje es muy elevado (+$diff km respecto al último registrado: $kmMin km). Verifique que el valor sea correcto."
+                kmAlertMessage = "El valor del kilometraje no es válido. Verifique el valor."
             ) }
             return
         }
@@ -587,7 +587,7 @@ class VehiculoViewModel @Inject constructor(
         if (km > 0 && !s.kmYellowConfirmed && diff in (KM_YELLOW_THRESHOLD + 1) until KM_RED_THRESHOLD) {
             _uiState.update { it.copy(
                 showKmYellowAlert = true,
-                kmAlertMessage = "Detectamos un incremento inusual (+$diff km respecto al último registrado: $kmMin km). ¿Está seguro de que es correcto?"
+                kmAlertMessage = "El kilómetraje parece inusual. ¿Está seguro de que es correcto?"
             ) }
             return
         }

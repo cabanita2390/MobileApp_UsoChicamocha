@@ -25,10 +25,14 @@ class MotoRepositoryImpl @Inject constructor(
 
     override suspend fun syncMotos(): Result<Unit> {
         return try {
+            android.util.Log.d("MotoRepo", "🔄 Iniciando sincronización de motos desde v1/moto/placas")
             val response = apiService.getMotocicletas()
             if (response.isSuccessful && response.body() != null) {
                 val motos = response.body()!!
+                android.util.Log.d("MotoRepo", "📡 Servidor devolvió ${motos.size} motos")
+
                 if (motos.isEmpty()) {
+                    android.util.Log.w("MotoRepo", "⚠️ Lista de motos vacía del servidor")
                     // No sobreescribir la BD local si el servidor devuelve vacío
                     // (puede ser error del servidor o tipo sin configurar)
                     return if (motoDao.count() == 0)
@@ -36,13 +40,32 @@ class MotoRepositoryImpl @Inject constructor(
                     else
                         Result.success(Unit)
                 }
-                val entities = motos.map { MotoEntity(id = it.id, placa = it.placa, marca = it.marca, idUbicacionBase = it.idUbicacionBase ?: 0, ubicacionBase = it.ubicacionBase ?: "") }
+
+                val entities = motos.map { moto ->
+                    android.util.Log.d("MotoRepo", "   Moto recibida: ID=${moto.id}, Placa=${moto.placa}, Marca=${moto.marca}")
+                    if (moto.id == null || moto.id == 0) {
+                        android.util.Log.e("MotoRepo", "   ❌ ERROR: Moto ${moto.placa} tiene ID=${moto.id} (nulo o cero)")
+                    }
+                    MotoEntity(id = moto.id ?: 0, placa = moto.placa, marca = moto.marca, idUbicacionBase = moto.idUbicacionBase ?: 0, ubicacionBase = moto.ubicacionBase ?: "")
+                }
+
                 motoDao.clearAndInsert(entities)
+                android.util.Log.d("MotoRepo", "✅ ${entities.size} motos guardadas en BD local")
+
+                entities.forEach { entity ->
+                    if (entity.id == 0) {
+                        android.util.Log.e("MotoRepo", "   ⚠️ Moto guardada con ID=0: ${entity.placa}")
+                    }
+                }
+
                 Result.success(Unit)
             } else {
-                Result.failure(Exception("Error al obtener motos del servidor: ${response.code()}"))
+                val code = response.code()
+                android.util.Log.e("MotoRepo", "❌ Error sincronizando motos: HTTP $code")
+                Result.failure(Exception("Error al obtener motos del servidor: $code"))
             }
         } catch (e: Exception) {
+            android.util.Log.e("MotoRepo", "❌ Excepción sincronizando motos: ${e.message}", e)
             Result.failure(e)
         }
     }
