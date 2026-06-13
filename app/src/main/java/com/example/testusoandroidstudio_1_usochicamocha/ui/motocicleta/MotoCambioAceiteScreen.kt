@@ -59,21 +59,49 @@ fun MotoCambioAceiteScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Cambio de aceite — Motocicleta") },
+                title = {
+                    Column {
+                        Text("Registrar cambio de aceite", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                        Text("Motocicleta", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Atrás")
                     }
                 }
             )
+        },
+        bottomBar = {
+            if (uiState.isRoleAllowed) {
+                Button(
+                    onClick = { viewModel.submit() },
+                    enabled = !uiState.isLoading && uiState.isRoleAllowed,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp)
+                        .height(48.dp),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    if (uiState.isLoading) {
+                        CircularProgressIndicator(modifier = Modifier.size(18.dp), color = MaterialTheme.colorScheme.onPrimary, strokeWidth = 2.dp)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Guardando...", fontSize = 14.sp)
+                    } else {
+                        Text("✓ Guardar cambio", fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
         }
     ) { paddingValues ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(horizontal = 12.dp)
+                .padding(bottom = 70.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(vertical = 12.dp)
         ) {
             if (!uiState.isRoleAllowed) {
                 item {
@@ -172,21 +200,7 @@ fun MotoCambioAceiteScreen(
                 }
             }
 
-            item {
-                Button(
-                    onClick = { viewModel.submit() },
-                    enabled = !uiState.isLoading && uiState.isRoleAllowed,
-                    modifier = Modifier.fillMaxWidth().height(52.dp),
-                    shape = RoundedCornerShape(12.dp)
-                ) {
-                    if (uiState.isLoading) {
-                        CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
-                    } else {
-                        Text("Guardar cambio de aceite", fontSize = 16.sp)
-                    }
-                }
-                Spacer(Modifier.height(32.dp))
-            }
+            item { Spacer(Modifier.height(8.dp)) }
         }
     }
 }

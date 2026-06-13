@@ -67,7 +67,15 @@ class VehiculoCambioAceiteViewModel @Inject constructor(
     private fun loadVehicles() {
         vehiculoInspectionRepository.getLocalVehiclesFlow()
             .onEach { list ->
-                val items = list.map { VehiculoItem(it.idVehiculo, it.placa, it.marca, it.tipoVehiculo, it.kilometrajeActual) }
+                // Excluir MOTOCICLETA (que tiene su propia sección)
+                // Incluye todos los otros tipos de vehículos (AUTOMOVIL, CAMION, BUS, etc)
+                val items = list
+                    .filter { !it.tipoVehiculo.equals("MOTOCICLETA", ignoreCase = true) }
+                    .map { VehiculoItem(it.idVehiculo, it.placa, it.marca, it.tipoVehiculo, it.kilometrajeActual) }
+                Log.d("VehiculoCambioAceiteVM", "📋 Vehículos cargados: ${items.size} (excluyendo MOTOCICLETA)")
+                items.forEach { item ->
+                    Log.d("VehiculoCambioAceiteVM", "   - ${item.placa} (${item.tipoVehiculo})")
+                }
                 _uiState.update { it.copy(vehicles = items) }
             }
             .launchIn(viewModelScope)

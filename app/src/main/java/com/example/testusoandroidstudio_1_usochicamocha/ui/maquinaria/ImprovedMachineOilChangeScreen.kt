@@ -1,4 +1,4 @@
-package com.example.testusoandroidstudio_1_usochicamocha.ui.vehiculo
+package com.example.testusoandroidstudio_1_usochicamocha.ui.maquinaria
 
 import android.widget.Toast
 import androidx.compose.foundation.clickable
@@ -31,15 +31,17 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.Oil
+import com.example.testusoandroidstudio_1_usochicamocha.ui.vehiculo.OilTypeSelector
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun VehiculoCambioAceiteScreen(
-    viewModel: VehiculoCambioAceiteViewModel = hiltViewModel(),
+fun ImprovedMachineOilChangeScreen(
+    viewModel: ImprovedMachineOilChangeViewModel = hiltViewModel(),
     onNavigateBack: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
+    var selectedOilType by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(uiState.submissionSuccess) {
         if (uiState.submissionSuccess) {
@@ -62,7 +64,7 @@ fun VehiculoCambioAceiteScreen(
                 title = {
                     Column {
                         Text("Registrar cambio de aceite", fontSize = 16.sp, fontWeight = FontWeight.Bold)
-                        Text("Vehículo", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Maquinaria", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 },
                 navigationIcon = {
@@ -75,7 +77,7 @@ fun VehiculoCambioAceiteScreen(
         bottomBar = {
             if (uiState.isRoleAllowed) {
                 Button(
-                    onClick = { viewModel.submit() },
+                    onClick = { viewModel.submitMachineOilChange() },
                     enabled = !uiState.isLoading && uiState.isRoleAllowed,
                     modifier = Modifier
                         .fillMaxWidth()
@@ -122,25 +124,36 @@ fun VehiculoCambioAceiteScreen(
                 }
             }
 
-            // ── Selector de vehículo ──────────────────────────────────────────
+            // ── Selector de máquina ───────────────────────────────────────────
             item {
-                VehiculoDropdownField(
-                    vehicles = uiState.vehicles,
-                    selectedVehicle = uiState.selectedVehicle,
+                MachineDropdownField(
+                    machines = uiState.machines,
+                    selectedMachine = uiState.selectedMachine,
                     enabled = uiState.isRoleAllowed,
-                    onVehicleSelected = { viewModel.onVehicleSelected(it) }
+                    onMachineSelected = { viewModel.onMachineSelected(it) }
+                )
+            }
+
+            // 🆕 SELECTOR TIPO DE ACEITE (NUEVO)
+            item {
+                OilTypeSelector(
+                    selectedType = selectedOilType,
+                    assetType = "MACHINERY",
+                    onTypeSelected = { oilType ->
+                        selectedOilType = oilType.code
+                    }
                 )
             }
 
             // ── Marca de aceite ───────────────────────────────────────────────
             item {
-                VehicleOilBrandDropdown(
-                    oils = uiState.vehicleOilBrands,
+                MachineOilBrandDropdown(
+                    oils = uiState.oils,
                     selectedOil = uiState.selectedOil,
-                    enabled = uiState.vehicleOilBrands.isNotEmpty() && uiState.isRoleAllowed,
+                    enabled = uiState.oils.isNotEmpty() && uiState.isRoleAllowed,
                     onOilSelected = { viewModel.onOilSelected(it) }
                 )
-                if (uiState.vehicleOilBrands.isEmpty()) {
+                if (uiState.oils.isEmpty()) {
                     Text(
                         "Sincronice los aceites desde el menú principal para elegir marca.",
                         style = MaterialTheme.typography.bodySmall,
@@ -150,12 +163,12 @@ fun VehiculoCambioAceiteScreen(
                 }
             }
 
-            // ── Kilometraje actual ────────────────────────────────────────────
+            // ── Horometro actual ──────────────────────────────────────────────
             item {
                 OutlinedTextField(
-                    value = uiState.kmAtChange,
-                    onValueChange = { viewModel.onKmAtChangeChange(it) },
-                    label = { Text("Kilometraje actual (*)", fontWeight = FontWeight.Bold) },
+                    value = uiState.hourStamp,
+                    onValueChange = { viewModel.onHourStampChanged(it) },
+                    label = { Text("Horometro actual (hrs) (*)", fontWeight = FontWeight.Bold) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     enabled = uiState.isRoleAllowed,
                     modifier = Modifier.fillMaxWidth(),
@@ -163,24 +176,11 @@ fun VehiculoCambioAceiteScreen(
                 )
             }
 
-            // ── Intervalo próximo cambio ──────────────────────────────────────
-            item {
-                OutlinedTextField(
-                    value = uiState.intervalKm,
-                    onValueChange = { viewModel.onIntervalKmChange(it) },
-                    label = { Text("Intervalo próximo cambio (km) (*)", fontWeight = FontWeight.Bold) },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                    enabled = uiState.isRoleAllowed,
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-            }
-
-            // ── Cantidad de aceite (opcional) ─────────────────────────────────
+            // ── Cantidad de aceite ────────────────────────────────────────────
             item {
                 OutlinedTextField(
                     value = uiState.quantity,
-                    onValueChange = { viewModel.onQuantityChange(it) },
+                    onValueChange = { viewModel.onQuantityChanged(it) },
                     label = { Text("Cantidad (L) — opcional") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     enabled = uiState.isRoleAllowed,
@@ -189,42 +189,59 @@ fun VehiculoCambioAceiteScreen(
                 )
             }
 
-            // ── Filtro de aire ────────────────────────────────────────────────
+            // ── Aceite motor ──────────────────────────────────────────────────
             item {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Switch(
-                        checked = uiState.airFilterChanged,
+                        checked = uiState.motorOil,
                         enabled = uiState.isRoleAllowed,
-                        onCheckedChange = { viewModel.onAirFilterChanged(it) }
+                        onCheckedChange = { viewModel.onMotorOilChanged(it) }
                     )
                     Spacer(Modifier.width(8.dp))
-                    Text("¿Se cambió el filtro de aire?", style = MaterialTheme.typography.bodyMedium)
+                    Text("¿Cambio de aceite motor?", style = MaterialTheme.typography.bodyMedium)
                 }
             }
 
+            // ── Aceite hidráulico ─────────────────────────────────────────────
+            item {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Switch(
+                        checked = uiState.hydraulicOil,
+                        enabled = uiState.isRoleAllowed,
+                        onCheckedChange = { viewModel.onHydraulicOilChanged(it) }
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text("¿Cambio de aceite hidráulico?", style = MaterialTheme.typography.bodyMedium)
+                }
+            }
+
+            // ── Botón guardar ─────────────────────────────────────────────────
             item { Spacer(Modifier.height(8.dp)) }
         }
     }
 }
 
 @Composable
-private fun VehiculoDropdownField(
-    vehicles: List<VehiculoItem>,
-    selectedVehicle: VehiculoItem?,
+private fun MachineDropdownField(
+    machines: List<MachineItem>,
+    selectedMachine: MachineItem?,
     enabled: Boolean,
-    onVehicleSelected: (VehiculoItem) -> Unit
+    onMachineSelected: (MachineItem) -> Unit
 ) {
     var showDialog by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
-    val displayText = selectedVehicle?.let { "${it.placa} — ${it.marca}" } ?: ""
-    val filteredVehicles = remember(vehicles, searchQuery) {
-        if (searchQuery.isBlank()) vehicles
-        else vehicles.filter {
-            it.placa.contains(searchQuery, ignoreCase = true) ||
-            it.marca.contains(searchQuery, ignoreCase = true)
+    val displayText = selectedMachine?.let { "${it.codigo} — ${it.nombre}" } ?: ""
+    val filteredMachines = remember(machines, searchQuery) {
+        if (searchQuery.isBlank()) machines
+        else machines.filter {
+            it.codigo.contains(searchQuery, ignoreCase = true) ||
+            it.nombre.contains(searchQuery, ignoreCase = true)
         }
     }
 
@@ -234,7 +251,7 @@ private fun VehiculoDropdownField(
             onValueChange = {},
             readOnly = true,
             enabled = enabled,
-            label = { Text("Vehículo (*)", fontWeight = FontWeight.Bold) },
+            label = { Text("Máquina (*)", fontWeight = FontWeight.Bold) },
             trailingIcon = { Icon(Icons.Default.ArrowDropDown, contentDescription = null) },
             singleLine = true,
             modifier = Modifier.fillMaxWidth()
@@ -265,12 +282,12 @@ private fun VehiculoDropdownField(
                 tonalElevation = 4.dp
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
-                    Text("Seleccionar vehículo", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text("Seleccionar máquina", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(12.dp))
                     OutlinedTextField(
                         value = searchQuery,
                         onValueChange = { searchQuery = it },
-                        placeholder = { Text("Buscar placa, marca...") },
+                        placeholder = { Text("Buscar código, nombre...") },
                         leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(20.dp)) },
                         trailingIcon = if (searchQuery.isNotEmpty()) {{
                             IconButton(onClick = { searchQuery = "" }) {
@@ -282,21 +299,21 @@ private fun VehiculoDropdownField(
                     )
                     Spacer(Modifier.height(8.dp))
                     LazyColumn(modifier = Modifier.heightIn(max = 320.dp)) {
-                        if (vehicles.isEmpty()) {
-                            item { Text("Sin vehículos. Sincronice el catálogo.", color = MaterialTheme.colorScheme.error,
+                        if (machines.isEmpty()) {
+                            item { Text("Sin máquinas. Sincronice el catálogo.", color = MaterialTheme.colorScheme.error,
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 12.dp)) }
-                        } else if (filteredVehicles.isEmpty()) {
+                        } else if (filteredMachines.isEmpty()) {
                             item { Text("Sin resultados", color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.padding(horizontal = 8.dp, vertical = 12.dp)) }
                         } else {
-                            items(filteredVehicles) { vehicle ->
+                            items(filteredMachines) { machine ->
                                 Column {
                                     Text(
-                                        text = "${vehicle.placa} — ${vehicle.marca} (${vehicle.kilometrajeActual} km)",
+                                        text = "${machine.codigo} — ${machine.nombre} (${machine.horasOperacion} hrs)",
                                         fontSize = 13.sp,
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .clickable { onVehicleSelected(vehicle); showDialog = false; searchQuery = "" }
+                                            .clickable { onMachineSelected(machine); showDialog = false; searchQuery = "" }
                                             .padding(horizontal = 8.dp, vertical = 10.dp)
                                     )
                                     HorizontalDivider()
@@ -315,9 +332,8 @@ private fun VehiculoDropdownField(
     }
 }
 
-
 @Composable
-private fun VehicleOilBrandDropdown(
+private fun MachineOilBrandDropdown(
     oils: List<Oil>,
     selectedOil: Oil?,
     enabled: Boolean,

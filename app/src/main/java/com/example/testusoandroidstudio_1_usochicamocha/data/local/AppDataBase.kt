@@ -2,8 +2,10 @@ package com.example.testusoandroidstudio_1_usochicamocha.data.local
 
 import androidx.room.Database
 import androidx.room.RoomDatabase
+import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.converter.DateTimeConverters
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.FormDao
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.ImageDao
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.LogDao
@@ -36,7 +38,16 @@ import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.Vehicu
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.VehiculoInspectionEntity
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.DocumentoVehiculoEntity
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.VehiculoOilChangeEntity
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.VehicleOilChangeImprovedEntity
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.MachineOilChangeImprovedEntity
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.OilAnalysisSosEntity
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.VehicleOilChangeImprovedDao
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.MachineOilChangeImprovedDao
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.OilAnalysisSosDao
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.MotoOilChangeDao
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.MotoOilChangeEntity
 
+@TypeConverters(DateTimeConverters::class)
 @Database(
     entities = [
         com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.FormEntity::class,
@@ -53,10 +64,14 @@ import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.Vehicu
         com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.VehiculoEntity::class,
         com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.DocumentoVehiculoEntity::class,
         com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.VehiculoOilChangeEntity::class,
+        com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.MotoOilChangeEntity::class,
         com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.FuelLogEntity::class,
-        FuelStationEntity::class
+        FuelStationEntity::class,
+        VehicleOilChangeImprovedEntity::class,
+        MachineOilChangeImprovedEntity::class,
+        OilAnalysisSosEntity::class
     ],
-    version = 34,
+    version = 36,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -282,6 +297,81 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        val MIGRATION_34_35 = object : Migration(34, 35) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                // Crear tabla vehicle_oil_changes_improved
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `vehicle_oil_changes_improved` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `placa` TEXT NOT NULL,
+                        `oil_type` TEXT NOT NULL,
+                        `brand_name` TEXT,
+                        `quantity` REAL NOT NULL,
+                        `km_at_change` INTEGER NOT NULL,
+                        `next_change_km` INTEGER NOT NULL,
+                        `percentage_used` INTEGER NOT NULL DEFAULT 0,
+                        `air_filter_changed` INTEGER NOT NULL DEFAULT 0,
+                        `date_stamp` TEXT NOT NULL,
+                        `oil_durability` TEXT NOT NULL,
+                        `requirement_id` INTEGER NOT NULL,
+                        `created_at` INTEGER NOT NULL,
+                        `is_synced` INTEGER NOT NULL DEFAULT 0,
+                        `sync_error` TEXT
+                    )
+                """.trimIndent())
+
+                // Crear tabla machine_oil_changes_improved
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `machine_oil_changes_improved` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `machine_id` INTEGER NOT NULL,
+                        `oil_type` TEXT NOT NULL,
+                        `brand_name` TEXT,
+                        `quantity` REAL NOT NULL,
+                        `hour_stamp` INTEGER NOT NULL,
+                        `next_change_hours` INTEGER NOT NULL,
+                        `percentage_used` INTEGER NOT NULL DEFAULT 0,
+                        `motor_oil` INTEGER NOT NULL DEFAULT 1,
+                        `hydraulic_oil` INTEGER NOT NULL DEFAULT 0,
+                        `date_stamp` TEXT NOT NULL,
+                        `oil_durability` TEXT NOT NULL,
+                        `requirement_id` INTEGER NOT NULL,
+                        `created_at` INTEGER NOT NULL,
+                        `is_synced` INTEGER NOT NULL DEFAULT 0,
+                        `sync_error` TEXT
+                    )
+                """.trimIndent())
+
+                // Crear tabla oil_analysis_sos
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `oil_analysis_sos` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `machine_id` INTEGER NOT NULL,
+                        `machine_name` TEXT NOT NULL,
+                        `analysis_date` TEXT NOT NULL,
+                        `oil_type` TEXT NOT NULL,
+                        `hours_at_analysis` INTEGER NOT NULL,
+                        `next_change_hours` INTEGER NOT NULL,
+                        `sos_report_url` TEXT NOT NULL,
+                        `approved_by_mechanic` TEXT NOT NULL,
+                        `observations` TEXT,
+                        `is_approved` INTEGER NOT NULL DEFAULT 0,
+                        `extended_hours` INTEGER NOT NULL DEFAULT 0,
+                        `authorizes_extension` INTEGER NOT NULL DEFAULT 0,
+                        `created_at` TEXT NOT NULL,
+                        `local_created_at` INTEGER NOT NULL,
+                        `is_synced` INTEGER NOT NULL DEFAULT 0,
+                        `sync_error` TEXT
+                    )
+                """.trimIndent())
+
+                // Crear índices
+                database.execSQL("CREATE INDEX IF NOT EXISTS idx_vehicle_oil_changes_improved_placa ON vehicle_oil_changes_improved(placa)")
+                database.execSQL("CREATE INDEX IF NOT EXISTS idx_machine_oil_changes_improved_machine_id ON machine_oil_changes_improved(machine_id)")
+                database.execSQL("CREATE INDEX IF NOT EXISTS idx_oil_analysis_sos_machine_id ON oil_analysis_sos(machine_id)")
+            }
+        }
+
         val MIGRATION_26_27 = object : Migration(26, 27) {
             override fun migrate(database: SupportSQLiteDatabase) {
                 database.execSQL("ALTER TABLE vehiculo_inspections ADD COLUMN urlImagenSoat TEXT NOT NULL DEFAULT ''")
@@ -294,6 +384,27 @@ abstract class AppDatabase : RoomDatabase() {
                 database.execSQL("ALTER TABLE vehiculo_inspections ADD COLUMN oilIntervalKm INTEGER")
                 database.execSQL("ALTER TABLE vehiculo_inspections ADD COLUMN oilQuantity REAL")
                 database.execSQL("ALTER TABLE vehiculo_inspections ADD COLUMN oilAirFilterChanged INTEGER NOT NULL DEFAULT 0")
+            }
+        }
+
+        val MIGRATION_35_36 = object : Migration(35, 36) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `moto_oil_changes` (
+                        `localId` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `placa` TEXT NOT NULL,
+                        `timestamp` INTEGER NOT NULL,
+                        `oilType` TEXT NOT NULL,
+                        `oilBrandId` INTEGER NOT NULL,
+                        `oilBrandName` TEXT NOT NULL,
+                        `quantity` REAL,
+                        `kmAtChange` INTEGER NOT NULL,
+                        `intervalKm` INTEGER NOT NULL,
+                        `airFilterChanged` INTEGER NOT NULL DEFAULT 0,
+                        `isSynced` INTEGER NOT NULL DEFAULT 0,
+                        `isSyncing` INTEGER NOT NULL DEFAULT 0
+                    )
+                """.trimIndent())
             }
         }
     }
@@ -311,6 +422,10 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun vehiculoDao(): VehiculoDao
     abstract fun documentoVehiculoDao(): DocumentoVehiculoDao
     abstract fun vehiculoOilChangeDao(): VehiculoOilChangeDao
+    abstract fun motoOilChangeDao(): MotoOilChangeDao
     abstract fun fuelLogDao(): FuelLogDao
     abstract fun fuelStationDao(): FuelStationDao
+    abstract fun vehicleOilChangeImprovedDao(): VehicleOilChangeImprovedDao
+    abstract fun machineOilChangeImprovedDao(): MachineOilChangeImprovedDao
+    abstract fun oilAnalysisSosDao(): OilAnalysisSosDao
 }

@@ -4,10 +4,10 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.TokenManager
-import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.VehiculoOilChangeEntity
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.MotoOilChangeEntity
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.Oil
 import com.example.testusoandroidstudio_1_usochicamocha.domain.repository.MotoRepository
-import com.example.testusoandroidstudio_1_usochicamocha.domain.repository.VehiculoOilChangeRepository
+import com.example.testusoandroidstudio_1_usochicamocha.domain.repository.MotoOilChangeRepository
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.oil.GetLocalOilsUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.oil.SyncOilsUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.moto.SyncMotosUseCase
@@ -41,7 +41,7 @@ data class MotoCambioAceiteUiState(
 @HiltViewModel
 class MotoCambioAceiteViewModel @Inject constructor(
     private val motoRepository: MotoRepository,
-    private val oilChangeRepository: VehiculoOilChangeRepository,
+    private val oilChangeRepository: MotoOilChangeRepository,
     private val getLocalOilsUseCase: GetLocalOilsUseCase,
     private val syncMotosUseCase: SyncMotosUseCase,
     private val syncOilsUseCase: SyncOilsUseCase,
@@ -184,7 +184,7 @@ class MotoCambioAceiteViewModel @Inject constructor(
             // Proceder con el guardado
             _uiState.update { it.copy(isLoading = true) }
             try {
-                val entity = VehiculoOilChangeEntity(
+                val entity = MotoOilChangeEntity(
                     placa = state.selectedMoto!!.placa,
                     timestamp = System.currentTimeMillis(),
                     oilType = state.oilType.ifBlank { "motor" },
@@ -193,8 +193,7 @@ class MotoCambioAceiteViewModel @Inject constructor(
                     quantity = state.quantity.toDoubleOrNull(),
                     kmAtChange = km,
                     intervalKm = interval,
-                    airFilterChanged = state.airFilterChanged,
-                    assetType = "MOTO"
+                    airFilterChanged = state.airFilterChanged
                 )
                 oilChangeRepository.saveLocally(entity)
                 oilChangeRepository.syncPending()
