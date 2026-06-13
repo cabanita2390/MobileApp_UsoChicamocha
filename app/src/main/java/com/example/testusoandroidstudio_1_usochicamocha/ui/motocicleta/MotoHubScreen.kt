@@ -122,6 +122,13 @@ fun MotoHubScreen(
                 onSyncClicked = { viewModel.onSyncPendingClicked() }
             )
 
+            // Sección 2.5: Cambios de Aceite Pendientes
+            PendingOilChangesCard(
+                pendingOilChanges = uiState.pendingOilChanges,
+                isSyncing = uiState.isSyncingOilChanges,
+                onSyncClicked = { viewModel.onSyncOilChangesClicked() }
+            )
+
             // Sección 3: Sincronización de Datos (2 botones)
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -240,6 +247,80 @@ fun PendingInspeccionItem(inspeccion: InspeccionMotoPendiente) {
                 fontWeight = FontWeight.Bold,
                 style = MaterialTheme.typography.bodySmall
             )
+        }
+    }
+}
+
+@Composable
+fun PendingOilChangesCard(
+    pendingOilChanges: List<com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.MotoOilChangeEntity>,
+    isSyncing: Boolean,
+    onSyncClicked: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "Cambio Aceite Pendientes",
+                    style = MaterialTheme.typography.titleLarge,
+                    modifier = Modifier.weight(1f)
+                )
+                IconButton(onClick = onSyncClicked, enabled = !isSyncing) {
+                    if (isSyncing) {
+                        CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                    } else {
+                        Icon(Icons.Default.Sync, contentDescription = "Sincronizar cambios de aceite")
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            if (pendingOilChanges.isEmpty()) {
+                Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
+                    Text(
+                        "No hay cambios de aceite pendientes.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.Gray
+                    )
+                }
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    pendingOilChanges.forEach { oilChange ->
+                        PendingOilChangeItem(oilChange)
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outlineVariant)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun PendingOilChangeItem(oilChange: com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.MotoOilChangeEntity) {
+    val sdf = SimpleDateFormat("HH:mm - dd/MM/yyyy", Locale.getDefault())
+    val formattedDate = sdf.format(Date(oilChange.timestamp))
+
+    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text("Placa: ${oilChange.placa}", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            Text(formattedDate, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+        }
+        Text("Marca: ${oilChange.oilBrandName}", style = MaterialTheme.typography.bodyMedium)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("Estado: ", style = MaterialTheme.typography.bodySmall)
+            Text("Pendiente 🔄", color = Color(0xFFFFA000), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodySmall)
         }
     }
 }

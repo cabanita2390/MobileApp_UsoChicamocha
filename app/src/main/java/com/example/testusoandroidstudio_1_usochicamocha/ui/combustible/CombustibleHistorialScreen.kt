@@ -5,6 +5,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -14,7 +15,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.FuelLogEntity
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -28,12 +32,29 @@ fun CombustibleHistorialScreen(
     viewModel: CombustibleViewModel = hiltViewModel()
 ) {
     val allLogs by viewModel.fuelLogs.collectAsState()
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    var isSyncing by remember { mutableStateOf(false) }
 
     val logs = remember(allLogs, assetType, assetId) {
         if (assetId > 0) {
             allLogs.filter { it.assetType == assetType && it.assetId == assetId }
         } else {
             allLogs
+        }
+    }
+
+    fun syncFuelLogs() {
+        isSyncing = true
+        scope.launch {
+            try {
+                viewModel.syncFuelLogsManually()
+                Toast.makeText(context, "✅ Sincronización completada", Toast.LENGTH_SHORT).show()
+            } catch (e: Exception) {
+                Toast.makeText(context, "❌ Error sincronizando: ${e.message}", Toast.LENGTH_SHORT).show()
+            } finally {
+                isSyncing = false
+            }
         }
     }
 
@@ -44,6 +65,15 @@ fun CombustibleHistorialScreen(
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Regresar")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { syncFuelLogs() }, enabled = !isSyncing) {
+                        if (isSyncing) {
+                            CircularProgressIndicator(modifier = Modifier.size(24.dp), strokeWidth = 2.dp)
+                        } else {
+                            Icon(Icons.Default.CloudUpload, contentDescription = "Sincronizar")
+                        }
                     }
                 }
             )

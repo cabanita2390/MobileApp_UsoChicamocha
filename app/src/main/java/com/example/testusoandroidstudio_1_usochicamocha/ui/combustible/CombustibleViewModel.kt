@@ -272,4 +272,16 @@ class CombustibleViewModel @Inject constructor(
             }
         }
     }
+
+    fun syncFuelLogsManually() {
+        viewModelScope.launch {
+            try {
+                syncFuelLogsUseCase()
+                Log.d("CombustibleViewModel", "✅ Manual fuel sync completed")
+            } catch (e: Exception) {
+                Log.e("CombustibleViewModel", "❌ Manual fuel sync failed", e)
+                throw e
+            }
+        }
+    }
 }

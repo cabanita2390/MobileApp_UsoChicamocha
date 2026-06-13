@@ -17,6 +17,7 @@ import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.moto.GetL
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.inspeccionmoto.SaveInspeccionMotoLocalUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.inspeccionmoto.SyncInspeccionMotoUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.LocalSyncCoordinator
+import com.example.testusoandroidstudio_1_usochicamocha.domain.repository.MotoOilChangeRepository
 // import com.example.testusoandroidstudio_1_usochicamocha.util.Constants // Removido por solicitud del usuario
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -24,6 +25,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.update
@@ -92,10 +94,12 @@ data class MotocicletaUiState(
 
     // Hub features
     val pendingInspecciones: List<InspeccionMotoPendiente> = emptyList(),
+    val pendingOilChanges: List<com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.MotoOilChangeEntity> = emptyList(),
     val isSyncingMotos: Boolean = false,
     val isSyncingUbicaciones: Boolean = false,
     val isSyncingDocumentos: Boolean = false,
     val isSyncingPending: Boolean = false,
+    val isSyncingOilChanges: Boolean = false,
     val syncMessage: String? = null,
     val userRole: String? = null
 )
@@ -110,7 +114,8 @@ class MotocicletaViewModel @Inject constructor(
     private val syncInspeccionMotoUseCase: SyncInspeccionMotoUseCase,
     private val getPendingInspeccionesMotoUseCase: com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.inspeccionmoto.GetPendingInspeccionesMotoUseCase,
     private val documentoMotoDao: DocumentoMotoDao,
-    private val localSyncCoordinator: LocalSyncCoordinator
+    private val localSyncCoordinator: LocalSyncCoordinator,
+    private val motoOilChangeRepository: MotoOilChangeRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MotocicletaUiState())
@@ -126,6 +131,7 @@ class MotocicletaViewModel @Inject constructor(
             }
         }
         observePending()
+        observePendingOilChanges()
         observeSyncStatuses()
     }
 
@@ -139,6 +145,13 @@ class MotocicletaViewModel @Inject constructor(
     private fun observePending() {
         getPendingInspeccionesMotoUseCase().onEach { list ->
             _uiState.update { it.copy(pendingInspecciones = list) }
+        }.launchIn(viewModelScope)
+    }
+
+    private fun observePendingOilChanges() {
+        motoOilChangeRepository.getAllFlow().onEach { list ->
+            val pending = list.filter { !it.isSynced }
+            _uiState.update { it.copy(pendingOilChanges = pending) }
         }.launchIn(viewModelScope)
     }
 
@@ -209,13 +222,26 @@ class MotocicletaViewModel @Inject constructor(
     }
 
     fun onSyncPendingClicked() {
+        syncPendingInspections()
+    }
+
+    fun onSyncOilChangesClicked() {
         viewModelScope.launch {
-            if (_uiState.value.pendingInspecciones.isEmpty()) {
-                _uiState.update { it.copy(syncMessage = "No hay inspecciones pendientes") }
-                return@launch
+            _uiState.update { it.copy(isSyncingOilChanges = true, syncMessage = "Sincronizando cambios de aceite...") }
+            try {
+                val result = motoOilChangeRepository.syncPending()
+                if (result.isSuccess) {
+                    Log.d("MotocicletaVM", "✅ Cambios de aceite sincronizados correctamente")
+                    _uiState.update { it.copy(isSyncingOilChanges = false, syncMessage = "✅ Sincronización completada") }
+                } else {
+                    val error = result.exceptionOrNull()?.message ?: "Error desconocido"
+                    Log.e("MotocicletaVM", "❌ Error sincronizando cambios de aceite: $error")
+                    _uiState.update { it.copy(isSyncingOilChanges = false, syncMessage = "❌ Error: $error") }
+                }
+            } catch (e: Exception) {
+                Log.e("MotocicletaVM", "❌ Excepción sincronizando cambios de aceite", e)
+                _uiState.update { it.copy(isSyncingOilChanges = false, syncMessage = "❌ Error: ${e.message}") }
             }
-            localSyncCoordinator.coordinateSync(LocalSyncCoordinator.SyncTrigger.FormSaved("Motocicleta"))
-            _uiState.update { it.copy(syncMessage = "Sincronizando pendientes...") }
         }
     }
 
@@ -228,9 +254,18 @@ class MotocicletaViewModel @Inject constructor(
             _uiState.update { it.copy(isLoadingData = true) }
             getLocalMotosUseCase().collect { motos ->
                 _uiState.update { it.copy(motocicletas = motos, isLoadingData = false) }
+
                 if (motos.isEmpty()) {
-                    android.util.Log.d("MotocicletaVM", "Empty motos list, triggering MASTER_DATA sync")
+                    Log.d("MotocicletaVM", "⚠️ Lista de motos vacía, disparando MASTER_DATA sync")
                     localSyncCoordinator.coordinateSync(LocalSyncCoordinator.SyncTrigger.ManualSync(LocalSyncCoordinator.SyncType.MASTER_DATA))
+                } else {
+                    Log.d("MotocicletaVM", "✅ Motos sincronizadas: ${motos.size}")
+                    motos.forEach { moto ->
+                        Log.d("MotocicletaVM", "   - ID=${moto.id}, Placa=${moto.placa}, Marca=${moto.marca}")
+                        if (moto.id == 0) {
+                            Log.w("MotocicletaVM", "⚠️ ⚠️ ALERTA: Moto con ID=0 no podrá sincronizar inspecciones: ${moto.placa}")
+                        }
+                    }
                 }
             }
         }
@@ -249,9 +284,21 @@ class MotocicletaViewModel @Inject constructor(
     }
 
     fun onMotoSelected(moto: Moto) {
+        Log.d("MotocicletaVM", "📌 Moto seleccionada: ${moto.placa}")
+        Log.d("MotocicletaVM", "   - ID: ${moto.id}")
+        Log.d("MotocicletaVM", "   - Marca: ${moto.marca}")
+        Log.d("MotocicletaVM", "   - idUbicacionBase: ${moto.idUbicacionBase}")
+
         val autoUbicacion = if (moto.idUbicacionBase > 0)
             _uiState.value.ubicaciones.firstOrNull { it.id == moto.idUbicacionBase }
         else null
+
+        if (autoUbicacion != null) {
+            Log.d("MotocicletaVM", "   - Ubicación base auto-seleccionada: ${autoUbicacion.id}")
+        } else {
+            Log.w("MotocicletaVM", "   - ⚠️ Sin ubicación base (idUbicacionBase=${moto.idUbicacionBase})")
+        }
+
         _uiState.update { it.copy(
             selectedMoto = moto,
             selectedUbicacion = autoUbicacion ?: it.selectedUbicacion
@@ -315,19 +362,19 @@ class MotocicletaViewModel @Inject constructor(
             // ROJO: menor al último registrado
             diff < 0 -> _uiState.update { it.copy(
                 showKmAlert = true,
-                kmAlertMessage = "El kilometraje ingresado es menor al último kilometraje registrado. Por favor, verifíquelo."
+                kmAlertMessage = "El kilometraje ingresado es incorrecto. Verifique el valor."
             )}
             // ROJO: exceso extremo >=800 km
             diff >= KM_RED_THRESHOLD -> _uiState.update { it.copy(
                 showKmAlert = true,
-                kmAlertMessage = "El incremento de kilometraje es muy elevado. Verifique que el valor sea correcto."
+                kmAlertMessage = "El valor del kilometraje no es válido. Verifique el valor."
             )}
             // AMARILLO: incremento superior a 200km y menor a 1000km
             diff > KM_YELLOW_THRESHOLD -> {
                 _uiState.update { it.copy(
                     showKmYellowAlert = true,
                     kmYellowConfirmed = false,
-                    kmAlertMessage = "Detectamos un incremento inusual en el kilometraje. ¿Está seguro de que es correcto?"
+                    kmAlertMessage = "El kilómetraje parece inusual. ¿Está seguro de que es correcto?"
                 )}
             }
             // VERDE: 0 <= diff <= 200 → sin alerta, rango normal
@@ -649,7 +696,7 @@ class MotocicletaViewModel @Inject constructor(
         if (km > 0 && diff < 0) {
             _uiState.update { it.copy(
                 showKmAlert = true,
-                kmAlertMessage = "El kilometraje ingresado es menor al último kilometraje registrado. Por favor, verifíquelo."
+                kmAlertMessage = "El kilometraje ingresado es incorrecto. Verifique el valor."
             ) }
             return
         }
@@ -658,7 +705,7 @@ class MotocicletaViewModel @Inject constructor(
         if (km > 0 && diff >= KM_RED_THRESHOLD) {
             _uiState.update { it.copy(
                 showKmAlert = true,
-                kmAlertMessage = "El incremento de kilometraje es muy elevado. Verifique que el valor sea correcto."
+                kmAlertMessage = "El valor del kilometraje no es válido. Verifique el valor."
             ) }
             return
         }
@@ -667,7 +714,7 @@ class MotocicletaViewModel @Inject constructor(
         if (km > 0 && !s.kmYellowConfirmed && diff in (KM_YELLOW_THRESHOLD + 1) until KM_RED_THRESHOLD) {
             _uiState.update { it.copy(
                 showKmYellowAlert = true,
-                kmAlertMessage = "Detectamos un incremento inusual en el kilometraje. ¿Está seguro de que es correcto?"
+                kmAlertMessage = "El kilómetraje parece inusual. ¿Está seguro de que es correcto?"
             ) }
             return
         }
@@ -676,6 +723,19 @@ class MotocicletaViewModel @Inject constructor(
             _uiState.update { it.copy(isSaving = true) }
             try {
                 val s = _uiState.value
+
+                Log.d("MotocicletaVM", "🔍 Validación pre-guardado:")
+                Log.d("MotocicletaVM", "   - selectedMoto: ${s.selectedMoto?.placa} (ID=${s.selectedMoto?.id})")
+                Log.d("MotocicletaVM", "   - selectedUbicacion: ${s.selectedUbicacion?.nombreUbicacion} (ID=${s.selectedUbicacion?.id})")
+                Log.d("MotocicletaVM", "   - kilometraje: ${s.kilometraje}")
+                Log.d("MotocicletaVM", "   - estadoVehiculo: ${s.estadoVehiculo}")
+
+                if (s.selectedMoto!!.id == 0) {
+                    Log.e("MotocicletaVM", "❌ ERROR: Moto con ID=0 no puede sincronizarse!")
+                }
+                if (s.selectedUbicacion!!.id == 0) {
+                    Log.e("MotocicletaVM", "❌ ERROR: Ubicación con ID=0 no puede sincronizarse!")
+                }
 
                 val inspeccion = InspeccionMotoPendiente(
                     uuid = UUID.randomUUID().toString(),
@@ -710,7 +770,8 @@ class MotocicletaViewModel @Inject constructor(
                 )
 
                 saveInspeccionMotoLocalUseCase(inspeccion)
-                
+                Log.d("MotocicletaVM", "✅ Inspección guardada localmente: uuid=${inspeccion.uuid}, idVehiculo=${inspeccion.idVehiculo}")
+
                 // --- ACTUALIZAR CACHÉ LOCAL ---
                 try {
                     val listaDocs = listOf(
@@ -722,7 +783,32 @@ class MotocicletaViewModel @Inject constructor(
                 } catch (e: Exception) {
                     android.util.Log.e("DocsMoto", "⚠️ No se pudo actualizar el cache local: ${e.message}")
                 }
-                
+
+                // --- AUTO-SYNC INMEDIATO ---
+                Log.d("MotocicletaVM", "🔄 Iniciando sincronización automática inmediata...")
+                _uiState.update { it.copy(isSyncingPending = true, syncMessage = "Sincronizando con servidor...") }
+
+                delay(500) // Pequeño delay para garantizar que se guarde en BD
+
+                try {
+                    val pending = getPendingInspeccionesMotoUseCase().first()
+                    if (pending.isNotEmpty()) {
+                        val lastInspeccion = pending.last() // La más reciente
+                        val result = syncInspeccionMotoUseCase(lastInspeccion)
+                        if (result.isSuccess) {
+                            Log.d("MotocicletaVM", "✅ Sincronización inmediata exitosa")
+                            _uiState.update { it.copy(isSyncingPending = false, syncMessage = "✅ Sincronizado con el servidor") }
+                        } else {
+                            Log.w("MotocicletaVM", "⚠️ Sync inmediato falló, se reintentará automáticamente")
+                            _uiState.update { it.copy(isSyncingPending = false, syncMessage = "⚠️ Se sincronizará cuando haya conexión") }
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.w("MotocicletaVM", "⚠️ Error en auto-sync: ${e.message}, se reintentará automáticamente")
+                    _uiState.update { it.copy(isSyncingPending = false, syncMessage = "⚠️ Se sincronizará cuando haya conexión") }
+                }
+
+                // Coordinador de sync como respaldo
                 localSyncCoordinator.coordinateSync(
                     LocalSyncCoordinator.SyncTrigger.FormSaved("Motocicleta")
                 )
@@ -738,4 +824,64 @@ class MotocicletaViewModel @Inject constructor(
 
     fun onNavigationDone() { _uiState.update { it.copy(saveCompleted = false) } }
     fun onErrorDismissed() { _uiState.update { it.copy(errorMessage = null) } }
+
+    // ─── SINCRONIZACIÓN MANUAL ────────────────────────────────────────────────
+    fun syncPendingInspections() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isSyncingPending = true, syncMessage = "Sincronizando inspecciones...") }
+            try {
+                val pending = getPendingInspeccionesMotoUseCase().first()
+                Log.d("MotocicletaVM", "🔄 Sincronizando ${pending.size} inspecciones pendientes")
+
+                var syncedCount = 0
+                var errorCount = 0
+
+                pending.forEach { inspeccion ->
+                    try {
+                        Log.d("MotocicletaVM", "📤 Sincronizando inspección: ${inspeccion.uuid} (Placa: ${inspeccion.placaVehiculo})")
+                        val result = syncInspeccionMotoUseCase(inspeccion)
+                        if (result.isSuccess) {
+                            syncedCount++
+                            Log.d("MotocicletaVM", "✅ Inspección sincronizada: ${inspeccion.uuid}")
+                        } else {
+                            errorCount++
+                            val errorMsg = result.exceptionOrNull()?.message ?: "Error desconocido"
+                            Log.e("MotocicletaVM", "❌ Error sincronizando ${inspeccion.uuid}: $errorMsg")
+                            result.exceptionOrNull()?.printStackTrace()
+                        }
+                    } catch (e: Exception) {
+                        errorCount++
+                        Log.e("MotocicletaVM", "💥 Excepción en sync de ${inspeccion.uuid}: ${e.message}")
+                        e.printStackTrace()
+                    }
+                }
+
+                val message = when {
+                    errorCount == 0 && syncedCount > 0 -> "✅ $syncedCount inspecciones sincronizadas"
+                    syncedCount > 0 && errorCount > 0 -> "⚠️ $syncedCount sincronizadas, $errorCount errores"
+                    errorCount > 0 -> "❌ Error al sincronizar ($errorCount fallos)"
+                    else -> "✅ Sin inspecciones pendientes"
+                }
+
+                _uiState.update {
+                    it.copy(
+                        isSyncingPending = false,
+                        syncMessage = message
+                    )
+                }
+
+                // Limpiar mensaje después de 3 segundos
+                delay(3000)
+                _uiState.update { it.copy(syncMessage = null) }
+            } catch (e: Exception) {
+                _uiState.update {
+                    it.copy(
+                        isSyncingPending = false,
+                        syncMessage = "❌ Error: ${e.localizedMessage}"
+                    )
+                }
+                Log.e("MotocicletaVM", "Error en syncPendingInspections", e)
+            }
+        }
+    }
 }
