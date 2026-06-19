@@ -410,7 +410,94 @@ fun VehiculoScreen(
                 }
             }
 
-            // ── 3. DOCUMENTACIÓN ─────────────────────────────────────────────
+            // ── 3. ELEMENTOS ─────────────────────────────────────────────────
+            item {
+                SectionCard("Existencia de Elementos") {
+                    Text(
+                        "Indique si el vehículo cuenta con los siguientes elementos:",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    val elemItems = listOf(
+                        "Botiquin"         to ("Botiquín de Primeros Auxilios (*)" to uiState.tieneBotiquin),
+                        "Señalizacion"     to ("Señalización (CONOS) (*)"          to uiState.tieneSeñalizacion),
+                        "LineasEmergencia" to ("Líneas de Emergencia (*)"           to uiState.tieneLineasEmergencia),
+                        "LlantaRepuesto"   to ("Llanta de REPUESTO (*)"            to uiState.tieneLlantaRepuesto),
+                        "GatoHidraulico"   to ("Gato Hidráulico / Cruceta (*)"     to uiState.tieneGatoHidraulico)
+                    )
+                    elemItems.forEachIndexed { i, (key, pair) ->
+                        YesNoSelector(pair.first, pair.second) { viewModel.onElementoChange(key, it) }
+                        if (i < elemItems.lastIndex) Divider(Modifier.padding(vertical = 10.dp))
+                    }
+                }
+            }
+
+            // ── 4. SALUD CONDUCTOR ────────────────────────────────────────────
+            item {
+                SectionCard("Condiciones de Salud del Conductor") {
+                    Text(
+                        "Cumplimiento de condiciones de salud para conducción:",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    val saludItems = listOf(
+                        "SaludFisica"           to ("Salud FÍSICA (Sin Enfermedad o Fatiga) (*)"                                      to uiState.saludFisica),
+                        "SaludMental"           to ("Salud MENTAL (Sin Preocupaciones o Altercados) (*)"                               to uiState.saludMental),
+                        "Sobrio"                to ("SOBRIO (Sin Efectos de Alcohol o Enguayabado) (*)"                                to uiState.sobrio),
+                        "Medicamentos"          to ("MEDICAMENTOS (¿Consume algún tipo que afecte los sentidos?) (*)"                  to uiState.medicamentos),
+                        "CondicionParaConducir" to ("¿Se siente en CONDICIONES para Conducir? (*)"                                    to uiState.condicionParaConducir)
+                    )
+                    saludItems.forEachIndexed { i, (key, pair) ->
+                        YesNoSelector(pair.first, pair.second) { viewModel.onSaludChange(key, it) }
+                        if (i < saludItems.lastIndex) Divider(Modifier.padding(vertical = 10.dp))
+                    }
+                }
+            }
+
+            // ── 5. CIERRE ────────────────────────────────────────────────────
+            item {
+                SectionCard("Cierre de Inspección") {
+                    YesNoSelector(
+                        label = "¿Estoy CONSCIENTE de la RESPONSABILIDAD de operar este vehículo sin poner en riesgo mi integridad y la de los demás? (*)",
+                        selectedOption = uiState.conscienteResponsabilidad,
+                        onOptionSelected = { viewModel.onConscienteChange(it) }
+                    )
+                    HorizontalDivider(Modifier.padding(vertical = 10.dp))
+                    YesNoSelector(
+                        label = "¿Considera usted que el vehículo es APROBADO para salir a ruta? (*)",
+                        selectedOption = uiState.aprobadoRuta,
+                        onOptionSelected = { viewModel.onAprobadoRutaChange(it) }
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = uiState.observaciones,
+                        onValueChange = { viewModel.onObservacionesChange(it) },
+                        label = { Text("Observaciones y/o Aspectos a Revisar", fontWeight = FontWeight.Bold, fontSize = 17.sp) },
+                        placeholder = { Text("Describa brevemente la novedad encontrada...") },
+                        modifier = Modifier.fillMaxWidth(), minLines = 4
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    OutlinedTextField(
+                        value = uiState.responsableInspeccion,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("RESPONSABLE de la Inspección", fontWeight = FontWeight.Bold, fontSize = 17.sp) },
+                        placeholder = { Text("Cargando usuario...") },
+                        trailingIcon = {
+                            Icon(
+                                Icons.Default.Lock,
+                                contentDescription = "Campo de solo lectura",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        },
+                        modifier = Modifier.fillMaxWidth(), singleLine = true
+                    )
+                }
+            }
+
+            // ── 6. DOCUMENTACIÓN (AL FINAL) ─────────────────────────────────────────────────
             item {
                 SectionCard("Vigencia Documentación y Elementos") {
                     val hayVehiculo = uiState.selectedVehicle != null
@@ -495,93 +582,6 @@ fun VehiculoScreen(
                     EstadoDocumentoChip(uiState.estadoExtintor, uiState.diasRestantesExtintor)
                     Spacer(Modifier.height(8.dp))
                     DocumentImage(url = uiState.urlImagenExtintor, label = "Imagen Extintor")
-                }
-            }
-
-            // ── 4. ELEMENTOS ─────────────────────────────────────────────────
-            item {
-                SectionCard("Existencia de Elementos") {
-                    Text(
-                        "Indique si el vehículo cuenta con los siguientes elementos:",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(Modifier.height(12.dp))
-                    val elemItems = listOf(
-                        "Botiquin"         to ("Botiquín de Primeros Auxilios (*)" to uiState.tieneBotiquin),
-                        "Señalizacion"     to ("Señalización (CONOS) (*)"          to uiState.tieneSeñalizacion),
-                        "LineasEmergencia" to ("Líneas de Emergencia (*)"           to uiState.tieneLineasEmergencia),
-                        "LlantaRepuesto"   to ("Llanta de REPUESTO (*)"            to uiState.tieneLlantaRepuesto),
-                        "GatoHidraulico"   to ("Gato Hidráulico / Cruceta (*)"     to uiState.tieneGatoHidraulico)
-                    )
-                    elemItems.forEachIndexed { i, (key, pair) ->
-                        YesNoSelector(pair.first, pair.second) { viewModel.onElementoChange(key, it) }
-                        if (i < elemItems.lastIndex) Divider(Modifier.padding(vertical = 10.dp))
-                    }
-                }
-            }
-
-            // ── 5. SALUD CONDUCTOR ────────────────────────────────────────────
-            item {
-                SectionCard("Condiciones de Salud del Conductor") {
-                    Text(
-                        "Cumplimiento de condiciones de salud para conducción:",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(Modifier.height(12.dp))
-                    val saludItems = listOf(
-                        "SaludFisica"           to ("Salud FÍSICA (Sin Enfermedad o Fatiga) (*)"                                      to uiState.saludFisica),
-                        "SaludMental"           to ("Salud MENTAL (Sin Preocupaciones o Altercados) (*)"                               to uiState.saludMental),
-                        "Sobrio"                to ("SOBRIO (Sin Efectos de Alcohol o Enguayabado) (*)"                                to uiState.sobrio),
-                        "Medicamentos"          to ("MEDICAMENTOS (¿Consume algún tipo que afecte los sentidos?) (*)"                  to uiState.medicamentos),
-                        "CondicionParaConducir" to ("¿Se siente en CONDICIONES para Conducir? (*)"                                    to uiState.condicionParaConducir)
-                    )
-                    saludItems.forEachIndexed { i, (key, pair) ->
-                        YesNoSelector(pair.first, pair.second) { viewModel.onSaludChange(key, it) }
-                        if (i < saludItems.lastIndex) Divider(Modifier.padding(vertical = 10.dp))
-                    }
-                }
-            }
-
-            // ── 6. CIERRE ────────────────────────────────────────────────────
-            item {
-                SectionCard("Cierre de Inspección") {
-                    YesNoSelector(
-                        label = "¿Estoy CONSCIENTE de la RESPONSABILIDAD de operar este vehículo sin poner en riesgo mi integridad y la de los demás? (*)",
-                        selectedOption = uiState.conscienteResponsabilidad,
-                        onOptionSelected = { viewModel.onConscienteChange(it) }
-                    )
-                    HorizontalDivider(Modifier.padding(vertical = 10.dp))
-                    YesNoSelector(
-                        label = "¿Considera usted que el vehículo es APROBADO para salir a ruta? (*)",
-                        selectedOption = uiState.aprobadoRuta,
-                        onOptionSelected = { viewModel.onAprobadoRutaChange(it) }
-                    )
-                    Spacer(Modifier.height(12.dp))
-                    OutlinedTextField(
-                        value = uiState.observaciones,
-                        onValueChange = { viewModel.onObservacionesChange(it) },
-                        label = { Text("Observaciones y/o Aspectos a Revisar", fontWeight = FontWeight.Bold, fontSize = 17.sp) },
-                        placeholder = { Text("Describa brevemente la novedad encontrada...") },
-                        modifier = Modifier.fillMaxWidth(), minLines = 4
-                    )
-                    Spacer(Modifier.height(12.dp))
-                    OutlinedTextField(
-                        value = uiState.responsableInspeccion,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("RESPONSABLE de la Inspección", fontWeight = FontWeight.Bold, fontSize = 17.sp) },
-                        placeholder = { Text("Cargando usuario...") },
-                        trailingIcon = {
-                            Icon(
-                                Icons.Default.Lock,
-                                contentDescription = "Campo de solo lectura",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        },
-                        modifier = Modifier.fillMaxWidth(), singleLine = true
-                    )
                 }
             }
 
