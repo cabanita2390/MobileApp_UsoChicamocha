@@ -22,3 +22,6 @@ replay_pid*.log
 build_log*.txt
 unmerged*.txt
 test_report.txt
+
+# Kotlin error logs
+.kotlin/errors/*.log
