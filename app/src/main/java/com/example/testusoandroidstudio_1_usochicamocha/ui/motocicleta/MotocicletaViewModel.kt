@@ -124,21 +124,16 @@ class MotocicletaViewModel @Inject constructor(
     init {
         loadMotos()
         loadUbicaciones()
-        loadUserRole()
-        viewModelScope.launch {
-            tokenManager.getInspectorInfo().first()?.let { info ->
-                _uiState.update { it.copy(responsable = info) }
-            }
-        }
+        loadUsername()
         observePending()
         observePendingOilChanges()
         observeSyncStatuses()
     }
 
-    private fun loadUserRole() {
+    private fun loadUsername() {
         viewModelScope.launch {
-            val role = tokenManager.getRole().firstOrNull()
-            _uiState.update { it.copy(userRole = role) }
+            val username = tokenManager.getUsername().first() ?: ""
+            _uiState.update { it.copy(responsable = username) }
         }
     }
 

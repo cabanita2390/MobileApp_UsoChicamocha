@@ -228,84 +228,7 @@ fun MotocicletaScreen(
                 }
             }
 
-            // ─── 4. DOCUMENTACIÓN ───────────────────────────────────────────
-            item {
-                SectionCard("Vigencia DOCUMENTACION", modifier = Modifier.testTag("section_vigencia")) {
-                    if (uiState.isLoadingDocumentos) {
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
-                            CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.dp)
-                            Spacer(Modifier.width(8.dp))
-                            Text("Consultando documentos...", style = MaterialTheme.typography.bodySmall)
-                        }
-                        Spacer(Modifier.height(8.dp))
-                    }
-
-                    if (uiState.selectedMoto == null) {
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = MaterialTheme.colorScheme.surfaceVariant,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(
-                                Modifier.padding(12.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Info,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(18.dp),
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                Text(
-                                    "Seleccione una motocicleta para cargar los documentos registrados.",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                    } else {
-                        // Sin documento registrado
-                    }
-                    Spacer(Modifier.height(12.dp))
-
-                    // SOAT
-                    DocLabelRow(label = "SOAT (Seguro Obligatorio)", icon = Icons.Default.Shield)
-                    Spacer(Modifier.height(4.dp))
-                    EstadoDocumentoChip(uiState.soat.estadoDoc, uiState.soat.diasRestantes)
-                    Spacer(Modifier.height(8.dp))
-                    DocumentImage(
-                        url = uiState.soat.imagenUrl,
-                        label = "Imagen SOAT"
-                    )
-
-                    HorizontalDivider(Modifier.padding(vertical = 10.dp))
-
-                    // TECNO
-                    DocLabelRow(label = "Revisión TECNICOMECÁNICA", icon = Icons.Default.Build)
-                    Spacer(Modifier.height(4.dp))
-                    EstadoDocumentoChip(uiState.revisionTecno.estadoDoc, uiState.revisionTecno.diasRestantes)
-                    Spacer(Modifier.height(8.dp))
-                    DocumentImage(
-                        url = uiState.revisionTecno.imagenUrl,
-                        label = "Imagen Tecnomecánica"
-                    )
-
-                    HorizontalDivider(Modifier.padding(vertical = 10.dp))
-
-                    // LICENCIA
-                    DocLabelRow(label = "Licencia de Conducción", icon = Icons.Default.AccountBox)
-                    Spacer(Modifier.height(4.dp))
-                    EstadoDocumentoChip(uiState.licencia.estadoDoc, uiState.licencia.diasRestantes)
-                    Spacer(Modifier.height(8.dp))
-                    DocumentImage(
-                        url = uiState.licencia.imagenUrl,
-                        label = "Imagen Licencia"
-                    )
-                }
-            }
-
-            // 6. INSPECCIÓN MECÁNICA (NUEVO)
+            // 4. INSPECCIÓN MECÁNICA
             item {
                 SectionCard("Inspección Mecánica", modifier = Modifier.testTag("section_mecanica")) {
                     Text(
@@ -384,6 +307,83 @@ fun MotocicletaScreen(
                                 tint = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
+                    )
+                }
+            }
+
+            // ─── 10. DOCUMENTACIÓN (AL FINAL) ───────────────────────────────────────────
+            item {
+                SectionCard("Vigencia DOCUMENTACION", modifier = Modifier.testTag("section_vigencia")) {
+                    if (uiState.isLoadingDocumentos) {
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+                            CircularProgressIndicator(Modifier.size(24.dp), strokeWidth = 2.dp)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Consultando documentos...", style = MaterialTheme.typography.bodySmall)
+                        }
+                        Spacer(Modifier.height(8.dp))
+                    }
+
+                    if (uiState.selectedMoto == null) {
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                Modifier.padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Info,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Text(
+                                    "Seleccione una motocicleta para cargar los documentos registrados.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    } else {
+                        // Sin documento registrado
+                    }
+                    Spacer(Modifier.height(12.dp))
+
+                    // SOAT
+                    DocLabelRow(label = "SOAT (Seguro Obligatorio)", icon = Icons.Default.Shield)
+                    Spacer(Modifier.height(4.dp))
+                    EstadoDocumentoChip(uiState.soat.estadoDoc, uiState.soat.diasRestantes)
+                    Spacer(Modifier.height(8.dp))
+                    DocumentImage(
+                        url = uiState.soat.imagenUrl,
+                        label = "Imagen SOAT"
+                    )
+
+                    HorizontalDivider(Modifier.padding(vertical = 10.dp))
+
+                    // TECNO
+                    DocLabelRow(label = "Revisión TECNICOMECÁNICA", icon = Icons.Default.Build)
+                    Spacer(Modifier.height(4.dp))
+                    EstadoDocumentoChip(uiState.revisionTecno.estadoDoc, uiState.revisionTecno.diasRestantes)
+                    Spacer(Modifier.height(8.dp))
+                    DocumentImage(
+                        url = uiState.revisionTecno.imagenUrl,
+                        label = "Imagen Tecnomecánica"
+                    )
+
+                    HorizontalDivider(Modifier.padding(vertical = 10.dp))
+
+                    // LICENCIA
+                    DocLabelRow(label = "Licencia de Conducción", icon = Icons.Default.AccountBox)
+                    Spacer(Modifier.height(4.dp))
+                    EstadoDocumentoChip(uiState.licencia.estadoDoc, uiState.licencia.diasRestantes)
+                    Spacer(Modifier.height(8.dp))
+                    DocumentImage(
+                        url = uiState.licencia.imagenUrl,
+                        label = "Imagen Licencia"
                     )
                 }
             }
