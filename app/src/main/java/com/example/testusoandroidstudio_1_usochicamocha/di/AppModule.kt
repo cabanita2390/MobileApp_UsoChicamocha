@@ -47,6 +47,7 @@ import com.example.testusoandroidstudio_1_usochicamocha.data.repository.MotoOilC
 import com.example.testusoandroidstudio_1_usochicamocha.domain.repository.MotoOilChangeRepository
 import com.example.testusoandroidstudio_1_usochicamocha.util.AppLogger
 import com.example.testusoandroidstudio_1_usochicamocha.util.NetworkMonitor
+import com.example.testusoandroidstudio_1_usochicamocha.util.TokenRefreshMonitor
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -245,7 +246,7 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideLogoutUseCase(repo: AuthRepository): LogoutUseCase = LogoutUseCase(repo)
+    fun provideLogoutUseCase(repo: AuthRepository, monitor: TokenRefreshMonitor): LogoutUseCase = LogoutUseCase(repo, monitor)
 
     @Provides
     @Singleton
@@ -389,4 +390,12 @@ object AppModule {
     @Provides
     @Singleton
     fun provideOilAnalysisSosDao(db: AppDatabase): OilAnalysisSosDao = db.oilAnalysisSosDao()
+
+    @Provides
+    @Singleton
+    fun provideTokenRefreshMonitor(
+        tokenManager: TokenManager,
+        authRepository: AuthRepository,
+        appLogger: AppLogger
+    ): TokenRefreshMonitor = TokenRefreshMonitor(tokenManager, authRepository, appLogger)
 }

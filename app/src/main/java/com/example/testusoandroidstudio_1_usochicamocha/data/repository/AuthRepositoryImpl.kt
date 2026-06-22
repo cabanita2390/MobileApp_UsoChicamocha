@@ -1,5 +1,6 @@
 package com.example.testusoandroidstudio_1_usochicamocha.data.repository
 
+import android.util.Log
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.TokenManager
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.ApiService
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.LoginRequest
@@ -7,6 +8,7 @@ import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.RefreshT
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.UserSession
 import com.example.testusoandroidstudio_1_usochicamocha.domain.repository.AuthRepository
 import com.example.testusoandroidstudio_1_usochicamocha.util.JwtUtils
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 
@@ -59,19 +61,52 @@ class AuthRepositoryImpl @Inject constructor(
             logout()
             return Result.failure(Exception("Sesión expirada."))
         }
-        return try {
-            val request = RefreshTokenRequest(refreshToken = refreshToken)
-            val response = apiService.refreshToken(request)
-            if (response.isSuccessful && response.body() != null) {
-                val newAccessToken = response.body()!!.accessToken
-                tokenManager.saveTokens(accessToken = newAccessToken, refreshToken = refreshToken)
-                Result.success(newAccessToken)
-            } else {
-                logout()
-                Result.failure(Exception("Refresh token inválido."))
+        return refreshTokenWithRetry(refreshToken, maxAttempts = 2, initialDelayMs = 500)
+    }
+
+    private suspend fun refreshTokenWithRetry(
+        refreshToken: String,
+        maxAttempts: Int = 2,
+        initialDelayMs: Long = 500
+    ): Result<String> {
+        var lastException: Throwable? = null
+        var retryDelay = initialDelayMs
+
+        for (attempt in 1..maxAttempts) {
+            try {
+                Log.d("AuthRepository", "🔄 Intento $attempt/$maxAttempts de refresco")
+                val request = RefreshTokenRequest(refreshToken = refreshToken)
+                val response = apiService.refreshToken(request)
+
+                if (response.isSuccessful && response.body() != null) {
+                    val newAccessToken = response.body()!!.accessToken
+                    tokenManager.saveTokens(accessToken = newAccessToken, refreshToken = refreshToken)
+                    Log.d("AuthRepository", "✅ Refresco exitoso en intento $attempt")
+                    return Result.success(newAccessToken)
+                } else {
+                    lastException = Exception("Refresh token inválido: ${response.code()}")
+                    Log.w("AuthRepository", "⚠️ Respuesta fallida en intento $attempt: ${response.code()}")
+
+                    if (attempt < maxAttempts) {
+                        Log.d("AuthRepository", "⏳ Esperando ${retryDelay}ms antes de reintentar...")
+                        delay(retryDelay)
+                        retryDelay *= 2
+                    }
+                }
+            } catch (e: Exception) {
+                lastException = e
+                Log.e("AuthRepository", "❌ Excepción en intento $attempt", e)
+
+                if (attempt < maxAttempts) {
+                    Log.d("AuthRepository", "⏳ Esperando ${retryDelay}ms antes de reintentar...")
+                    delay(retryDelay)
+                    retryDelay *= 2
+                }
             }
-        } catch (e: Exception) {
-            Result.failure(Exception("Error de red al refrescar token: ${e.message}"))
         }
+
+        Log.e("AuthRepository", "❌ Todos los $maxAttempts intentos fallaron")
+        logout()
+        return Result.failure(lastException ?: Exception("Error de red al refrescar token después de $maxAttempts intentos"))
     }
 }
