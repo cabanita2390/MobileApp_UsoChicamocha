@@ -25,3 +25,4 @@ test_report.txt
 
 # Kotlin error logs
 .kotlin/errors/*.log
+.idea/deploymentTargetSelector.xml
