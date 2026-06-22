@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.auth.LoginUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.machine.SyncMachinesUseCase
+import com.example.testusoandroidstudio_1_usochicamocha.util.TokenRefreshMonitor
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,13 +19,15 @@ data class LoginUiState(
     val password:  String = "",
     val isLoading: Boolean = false,
     val error: String? = null,
-    val loginSuccess: Boolean = false
+    val loginSuccess: Boolean = false,
+    val isPasswordVisible: Boolean = false
 )
 
 @HiltViewModel
 class LoginViewModel @Inject constructor(
     private val loginUseCase: LoginUseCase,
-    private val syncMachinesUseCase: SyncMachinesUseCase
+    private val syncMachinesUseCase: SyncMachinesUseCase,
+    private val tokenRefreshMonitor: TokenRefreshMonitor
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(LoginUiState())
@@ -44,8 +47,8 @@ class LoginViewModel @Inject constructor(
             val loginResult = loginUseCase(uiState.value.username, uiState.value.password)
 
             loginResult.onSuccess {
-                // Si el login es exitoso, procedemos inmediatamente
-                _uiState.update { it.copy(isLoading = false, loginSuccess = true) }
+                // Start proactive token refresh monitoring
+                tokenRefreshMonitor.startMonitoring()
 
                 // Intentamos sincronizar máquinas en segundo plano (no bloquea el login)
                 viewModelScope.launch {
@@ -54,6 +57,9 @@ class LoginViewModel @Inject constructor(
                         // Log error but don't show to user since login was successful
                     }
                 }
+
+                // Si el login es exitoso, procedemos inmediatamente
+                _uiState.update { it.copy(isLoading = false, loginSuccess = true) }
             }.onFailure { loginException ->
                 _uiState.update { it.copy(isLoading = false, error = loginException.message) }
             }
@@ -66,6 +72,10 @@ class LoginViewModel @Inject constructor(
 
     fun resetLoginSuccess() {
         _uiState.update { it.copy(loginSuccess = false) }
+    }
+
+    fun togglePasswordVisibility() {
+        _uiState.update { it.copy(isPasswordVisible = !it.isPasswordVisible) }
     }
 
 }
