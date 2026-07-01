@@ -109,6 +109,7 @@ fun MantenimientoScreen(
                 MaintenanceDetailsCard(
                     uiState = uiState,
                     onFormEvent = viewModel::onFormEvent, // Pasamos la referencia a la función
+                    onRetrySyncOils = { viewModel.syncOils() },
                     isEnabled = !uiState.isLoading
                 )
             }
@@ -293,6 +294,7 @@ fun MaintenanceTypeSelector(
 fun MaintenanceDetailsCard(
     uiState: MantenimientoUiState,
     onFormEvent: (MantenimientoFormEvent) -> Unit,
+    onRetrySyncOils: () -> Unit,
     isEnabled: Boolean
 ) {
     Card(
@@ -330,7 +332,10 @@ fun MaintenanceDetailsCard(
                     onOilSelected = { oil -> // <-- RECIBE EL OBJETO "oil"
                         onFormEvent(MantenimientoFormEvent.OilSelected(oil)) // <-- ENVÍA EL NUEVO EVENTO
                     },
-                    isEnabled = isEnabled && uiState.maintenanceType != null
+                    isEnabled = isEnabled && uiState.maintenanceType != null,
+                    allOilsEmpty = uiState.allOils.isEmpty(),
+                    isSyncingOils = uiState.isSyncingOils,
+                    onRetrySyncOils = onRetrySyncOils
                 )
 
 
@@ -369,7 +374,10 @@ fun OilSelector(
     oils: List<Oil>,
     selectedOil: Oil?,
     onOilSelected: (Oil) -> Unit,
-    isEnabled: Boolean
+    isEnabled: Boolean,
+    allOilsEmpty: Boolean = false,
+    isSyncingOils: Boolean = false,
+    onRetrySyncOils: () -> Unit = {}
 ) {
     var showDialog by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
@@ -395,6 +403,38 @@ fun OilSelector(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null
             ) { showDialog = true })
+        }
+    }
+
+    if (allOilsEmpty) {
+        if (isSyncingOils) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(top = 4.dp)
+            ) {
+                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    "Sincronizando marcas de aceite...",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        } else {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(top = 4.dp)
+            ) {
+                Text(
+                    "No hay marcas de aceite sincronizadas.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.weight(1f)
+                )
+                TextButton(onClick = onRetrySyncOils) {
+                    Text("Reintentar")
+                }
+            }
         }
     }
 

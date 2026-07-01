@@ -9,6 +9,7 @@ import com.example.testusoandroidstudio_1_usochicamocha.domain.model.Oil
 import com.example.testusoandroidstudio_1_usochicamocha.domain.repository.VehiculoInspectionRepository
 import com.example.testusoandroidstudio_1_usochicamocha.domain.repository.VehiculoOilChangeRepository
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.oil.GetLocalOilsUseCase
+import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.oil.SyncOilsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -25,6 +26,7 @@ data class VehiculoCambioAceiteUiState(
     val quantity: String = "",
     val airFilterChanged: Boolean = false,
     val isLoading: Boolean = false,
+    val isSyncingOils: Boolean = false,
     val submissionSuccess: Boolean = false,
     val error: String? = null,
     val isRoleAllowed: Boolean = true
@@ -35,6 +37,7 @@ class VehiculoCambioAceiteViewModel @Inject constructor(
     private val vehiculoInspectionRepository: VehiculoInspectionRepository,
     private val oilChangeRepository: VehiculoOilChangeRepository,
     private val getLocalOilsUseCase: GetLocalOilsUseCase,
+    private val syncOilsUseCase: SyncOilsUseCase,
     private val tokenManager: TokenManager
 ) : ViewModel() {
 
@@ -49,6 +52,7 @@ class VehiculoCambioAceiteViewModel @Inject constructor(
         validateRoleAccess()
         loadVehicles()
         loadOils()
+        syncOilsIfNeeded()
     }
 
     private fun validateRoleAccess() {
@@ -91,6 +95,33 @@ class VehiculoCambioAceiteViewModel @Inject constructor(
                         t.equals("motor", ignoreCase = true)
                 }
                 _uiState.update { it.copy(vehicleOilBrands = forVehicle) }
+            }
+        }
+    }
+
+    /** Si al abrir la pantalla todavía no hay aceites en local (p.ej. el sync de fondo del
+     * arranque de la app no ha terminado), dispara un sync propio en vez de dejar al usuario
+     * atrapado mirando el dropdown vacío hasta que el ciclo automático de 15 min lo resuelva. */
+    private fun syncOilsIfNeeded() {
+        viewModelScope.launch {
+            val currentOils = getLocalOilsUseCase().first()
+            if (currentOils.isEmpty()) {
+                syncOils()
+            }
+        }
+    }
+
+    /** Sincronización manual/automática de aceites. Expuesta también para el botón de
+     * "Reintentar" en la pantalla, por si el sync automático falla. */
+    fun syncOils() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isSyncingOils = true) }
+            try {
+                syncOilsUseCase()
+            } catch (e: Exception) {
+                Log.e("VehiculoCambioAceiteVM", "Error al sincronizar aceites", e)
+            } finally {
+                _uiState.update { it.copy(isSyncingOils = false) }
             }
         }
     }

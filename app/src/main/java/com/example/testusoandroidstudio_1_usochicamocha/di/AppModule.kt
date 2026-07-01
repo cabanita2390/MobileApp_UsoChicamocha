@@ -67,8 +67,8 @@ object AppModule {
 
     //private const val BASE_URL = "http://localhost:8080/"+"api/" // DevTunnel (cualquier red)
     //private const val BASE_URL = "https://server.usochicamocha.co/"+"api/"
-    private const val BASE_URL = "http://10.0.2.2:8080/api/"
-    //private const val BASE_URL = "https://back-test.usochicamocha.co/api/" // Test
+    //private const val BASE_URL = "http://10.0.2.2:8080/api/"
+    private const val BASE_URL = "https://back-test.usochicamocha.co/api/" // Test
     @Provides
     @Singleton
     fun provideWorkManager(@ApplicationContext context: Context): WorkManager {

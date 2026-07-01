@@ -11,11 +11,13 @@ import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.machine.G
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.maintenance.GetPendingMaintenanceFormsUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.maintenance.SaveMaintenanceFormUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.oil.GetLocalOilsUseCase
+import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.oil.SyncOilsUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.util.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.Date
@@ -26,6 +28,7 @@ class MantenimientoViewModel @Inject constructor(
     private val saveMaintenanceFormUseCase: SaveMaintenanceFormUseCase,
     private val getLocalMachinesUseCase: GetLocalMachinesUseCase,
     private val getLocalOilsUseCase: GetLocalOilsUseCase,
+    private val syncOilsUseCase: SyncOilsUseCase,
     private val getPendingMaintenanceFormsUseCase: GetPendingMaintenanceFormsUseCase,
     private val getMaintenanceByIdUseCase: com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.maintenance.GetMaintenanceByIdUseCase,
     private val localSyncCoordinator: com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.LocalSyncCoordinator,
@@ -39,6 +42,7 @@ class MantenimientoViewModel @Inject constructor(
     init {
         loadMachines()
         loadOils()
+        syncOilsIfNeeded()
         loadPendingForms()
         checkIfEditing()
     }
@@ -108,6 +112,33 @@ class MantenimientoViewModel @Inject constructor(
             }
         }
     }
+    /** Si al abrir la pantalla todavía no hay aceites en local (p.ej. el sync de fondo del
+     * arranque de la app no ha terminado), dispara un sync propio en vez de dejar al usuario
+     * atrapado mirando la lista de aceites vacía. */
+    private fun syncOilsIfNeeded() {
+        viewModelScope.launch {
+            val currentOils = getLocalOilsUseCase().first()
+            if (currentOils.isEmpty()) {
+                syncOils()
+            }
+        }
+    }
+
+    /** Sincronización manual/automática de aceites. Expuesta también para el botón de
+     * "Reintentar" en la pantalla, por si el sync automático falla. */
+    fun syncOils() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isSyncingOils = true) }
+            try {
+                syncOilsUseCase()
+            } catch (e: Exception) {
+                Log.e("MantenimientoVM", "Error al sincronizar aceites", e)
+            } finally {
+                _uiState.update { it.copy(isSyncingOils = false) }
+            }
+        }
+    }
+
     private fun loadMachines() {
         viewModelScope.launch {
             getLocalMachinesUseCase().collect { resource -> // El flow emite un Resource
@@ -259,6 +290,7 @@ data class MantenimientoUiState(
     val averageHoursChange: String = "",
     val maintenanceType: String? = null,
     val isLoading: Boolean = false,
+    val isSyncingOils: Boolean = false,
     val error: String? = null,
     val submissionSuccess: Boolean = false,
     val motorOils: List<Oil> = emptyList(),

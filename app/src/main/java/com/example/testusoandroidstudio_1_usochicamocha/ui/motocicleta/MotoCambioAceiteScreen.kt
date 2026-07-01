@@ -139,12 +139,35 @@ fun MotoCambioAceiteScreen(
                     onOilSelected = { viewModel.onOilSelected(it) }
                 )
                 if (uiState.motoOilBrands.isEmpty()) {
-                    Text(
-                        "Sincronice los aceites desde el menú principal para elegir marca.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
+                    if (uiState.isSyncingOils) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(top = 4.dp)
+                        ) {
+                            CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                "Sincronizando marcas de aceite...",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    } else {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(top = 4.dp)
+                        ) {
+                            Text(
+                                "No hay marcas de aceite sincronizadas.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.weight(1f)
+                            )
+                            TextButton(onClick = { viewModel.syncOils() }) {
+                                Text("Reintentar")
+                            }
+                        }
+                    }
                 }
             }
 

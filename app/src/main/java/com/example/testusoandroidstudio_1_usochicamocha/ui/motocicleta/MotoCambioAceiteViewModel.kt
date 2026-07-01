@@ -33,6 +33,7 @@ data class MotoCambioAceiteUiState(
     val quantity: String = "",
     val airFilterChanged: Boolean = false,
     val isLoading: Boolean = false,
+    val isSyncingOils: Boolean = false,
     val submissionSuccess: Boolean = false,
     val error: String? = null,
     val isRoleAllowed: Boolean = true
@@ -57,9 +58,10 @@ class MotoCambioAceiteViewModel @Inject constructor(
 
     init {
         validateRoleAccess()
-        syncMotosAndOils()
+        syncMotos()
         loadMotos()
         loadOils()
+        syncOilsIfNeeded()
     }
 
     private fun validateRoleAccess() {
@@ -75,13 +77,39 @@ class MotoCambioAceiteViewModel @Inject constructor(
         }
     }
 
-    private fun syncMotosAndOils() {
+    private fun syncMotos() {
         viewModelScope.launch {
             try {
                 syncMotosUseCase()
+            } catch (e: Exception) {
+                Log.e("MotoCambioAcVM", "Error syncing motos: ${e.message}")
+            }
+        }
+    }
+
+    /** Si al abrir la pantalla todavía no hay aceites en local (p.ej. el sync de fondo del
+     * arranque de la app no ha terminado), dispara un sync propio en vez de dejar al usuario
+     * atrapado mirando el dropdown vacío. */
+    private fun syncOilsIfNeeded() {
+        viewModelScope.launch {
+            val currentOils = getLocalOilsUseCase().first()
+            if (currentOils.isEmpty()) {
+                syncOils()
+            }
+        }
+    }
+
+    /** Sincronización manual/automática de aceites. Expuesta también para el botón de
+     * "Reintentar" en la pantalla, por si el sync automático falla. */
+    fun syncOils() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isSyncingOils = true) }
+            try {
                 syncOilsUseCase()
             } catch (e: Exception) {
-                Log.e("MotoCambioAcVM", "Error syncing data: ${e.message}")
+                Log.e("MotoCambioAcVM", "Error al sincronizar aceites", e)
+            } finally {
+                _uiState.update { it.copy(isSyncingOils = false) }
             }
         }
     }
