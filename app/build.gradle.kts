@@ -40,6 +40,7 @@ android {
     buildTypes {
         debug {
             signingConfig = signingConfigs.getByName("debugFixed")
+            buildConfigField("String", "BASE_URL", "\"https://back-test.usochicamocha.co/api/\"")
         }
         release {
             isMinifyEnabled = false
@@ -47,6 +48,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+            buildConfigField("String", "BASE_URL", "\"https://server.usochicamocha.co/api/\"")
         }
     }
     compileOptions {
@@ -58,6 +60,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
     packaging {
         resources {

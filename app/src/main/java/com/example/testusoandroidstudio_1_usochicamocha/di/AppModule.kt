@@ -5,6 +5,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.room.Room
 import androidx.work.WorkManager
+import com.example.testusoandroidstudio_1_usochicamocha.BuildConfig
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.AppDatabase
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.TokenManager
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.*
@@ -65,10 +66,6 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object AppModule {
 
-    //private const val BASE_URL = "http://localhost:8080/"+"api/" // DevTunnel (cualquier red)
-    //private const val BASE_URL = "https://server.usochicamocha.co/"+"api/"
-    //private const val BASE_URL = "http://10.0.2.2:8080/api/"
-    private const val BASE_URL = "https://back-test.usochicamocha.co/api/" // Test
     @Provides
     @Singleton
     fun provideWorkManager(@ApplicationContext context: Context): WorkManager {
@@ -88,7 +85,7 @@ object AppModule {
             .authenticator(tokenAuthenticator)
             .build()
         return Retrofit.Builder()
-            .baseUrl(BASE_URL)
+            .baseUrl(BuildConfig.BASE_URL)
             .client(client)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
