@@ -3,8 +3,6 @@ package com.example.testusoandroidstudio_1_usochicamocha.ui.motocicleta
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.layout.*
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.lazy.LazyColumn
@@ -18,21 +16,15 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
-import kotlinx.coroutines.delay
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.SubcomposeAsyncImage
 import coil.request.ImageRequest
@@ -45,6 +37,8 @@ import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.inspection.Sec
 import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.inspection.InspectionSavedDialog
 import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.inspection.KmBlockingAlertDialog
 import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.inspection.KmWarningAlertDialog
+import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.inspection.SearchableSelectorField
+import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.inspection.SegmentedOptionSelector
 import android.content.Intent
 import android.net.Uri
 
@@ -111,7 +105,7 @@ fun MotocicletaScreen(
                             Text("Cargando placas...", style = MaterialTheme.typography.bodyMedium)
                         }
                     } else {
-                        DropdownField(
+                        SearchableSelectorField(
                             label = "Placa (*)",
                             displayValue = uiState.selectedMoto?.let {
                                 if (it.ubicacionBase.isNotBlank()) "${it.placa}  •  ${it.ubicacionBase}" else it.placa
@@ -178,7 +172,7 @@ fun MotocicletaScreen(
                             Text("Cargando unidades...", style = MaterialTheme.typography.bodyMedium)
                         }
                     } else {
-                        DropdownField(
+                        SearchableSelectorField(
                             label = "Unidad (*)",
                             displayValue = uiState.selectedUbicacion?.nombreUbicacion ?: "Seleccione una unidad",
                             items = uiState.ubicaciones,
@@ -445,126 +439,6 @@ fun MotocicletaScreen(
 
 
 @Composable
-fun CheckDropdown(
-    label: String,
-    value: String,
-    onSelect: (String) -> Unit,
-    items: List<String> = listOf("Bueno", "Regular", "Malo"),
-    dropdownTag: String = "dropdown_option"
-) {
-    DropdownField(
-        label = label,
-        displayValue = value.ifBlank { "Seleccione Una Opción" },
-        items = items,
-        itemLabel = { it },
-        onItemSelected = onSelect,
-        dropdownTag = dropdownTag
-    )
-}
-
-@Composable
-fun <T> DropdownField(
-    label: String,
-    displayValue: String,
-    items: List<T>,
-    itemLabel: (T) -> String,
-    onItemSelected: (T) -> Unit,
-    dropdownTag: String = "dropdown_option",
-    modifier: Modifier = Modifier
-) {
-    var showDialog by remember { mutableStateOf(false) }
-    var searchQuery by remember { mutableStateOf("") }
-    val filteredItems = remember(items, searchQuery) {
-        if (searchQuery.isBlank()) items
-        else items.filter { itemLabel(it).contains(searchQuery, ignoreCase = true) }
-    }
-
-    Box(modifier = modifier.fillMaxWidth()) {
-        OutlinedTextField(
-            value = displayValue,
-            onValueChange = {},
-            readOnly = true,
-            label = { Text(label, fontWeight = FontWeight.Bold, fontSize = 17.sp) },
-            trailingIcon = { Icon(Icons.Default.ArrowDropDown, contentDescription = null) },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth()
-        )
-        Spacer(modifier = Modifier.matchParentSize().clickable(
-            interactionSource = remember { MutableInteractionSource() },
-            indication = null
-        ) { showDialog = true })
-    }
-
-    if (showDialog) {
-        val focusRequester = remember { FocusRequester() }
-        val keyboardController = LocalSoftwareKeyboardController.current
-        LaunchedEffect(Unit) {
-            delay(50)
-            try { focusRequester.requestFocus() } catch (e: Exception) { }
-            keyboardController?.show()
-        }
-        Dialog(
-            onDismissRequest = { showDialog = false; searchQuery = "" },
-            properties = DialogProperties(usePlatformDefaultWidth = false)
-        ) {
-            Surface(
-                modifier = Modifier.fillMaxWidth(0.92f),
-                shape = RoundedCornerShape(16.dp),
-                tonalElevation = 4.dp
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(label, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    Spacer(Modifier.height(12.dp))
-                    OutlinedTextField(
-                        value = searchQuery,
-                        onValueChange = { searchQuery = it },
-                        placeholder = { Text("Buscar...") },
-                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(20.dp)) },
-                        trailingIcon = if (searchQuery.isNotEmpty()) {{
-                            IconButton(onClick = { searchQuery = "" }) {
-                                Icon(Icons.Default.Clear, contentDescription = "Limpiar", modifier = Modifier.size(18.dp))
-                            }
-                        }} else null,
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth().focusRequester(focusRequester)
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    LazyColumn(modifier = Modifier.heightIn(max = 320.dp)) {
-                        if (items.isEmpty()) {
-                            item { Text("No hay opciones disponibles", color = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 12.dp)) }
-                        } else if (filteredItems.isEmpty()) {
-                            item { Text("Sin resultados", color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 12.dp)) }
-                        } else {
-                            items(filteredItems) { listItem ->
-                                Column {
-                                    Text(
-                                        text = itemLabel(listItem),
-                                        fontSize = 13.sp,
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .clickable { onItemSelected(listItem); showDialog = false; searchQuery = "" }
-                                            .padding(horizontal = 8.dp, vertical = 10.dp)
-                                            .testTag(dropdownTag)
-                                    )
-                                    HorizontalDivider()
-                                }
-                            }
-                        }
-                    }
-                    Spacer(Modifier.height(8.dp))
-                    TextButton(
-                        onClick = { showDialog = false; searchQuery = "" },
-                        modifier = Modifier.align(Alignment.End)
-                    ) { Text("Cancelar") }
-                }
-            }
-        }
-    }
-}
-
-@Composable
 fun MotoStatusSelector(
     label: String,
     selectedOption: String,
@@ -572,43 +446,20 @@ fun MotoStatusSelector(
     tagPrefix: String = "status",
     options: List<String> = listOf("Óptimo", "Regular", "Malo")
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(label, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, fontSize = 17.sp)
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            options.forEach { option ->
-                val isSelected = option == selectedOption
-                val backgroundColor = when (option) {
-                    "Óptimo", "Bueno" -> Color(0xFF4CAF50)
-                    "Regular" -> Color(0xFFFFA000)
-                    else -> Color(0xFFD32F2F)
-                }
-                val textColor = if (isSelected) Color.White else Color.Black
-
-                Surface(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(48.dp)
-                        .testTag("${tagPrefix}_$option")
-                        .border(2.dp, if (isSelected) backgroundColor else Color.LightGray, RoundedCornerShape(8.dp))
-                        .clickable { onOptionSelected(option) },
-                    shape = RoundedCornerShape(8.dp),
-                    color = if (isSelected) backgroundColor else backgroundColor.copy(alpha = 0.15f)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Text(
-                            text = option,
-                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                            color = textColor,
-                            fontSize = 14.sp
-                        )
-                    }
-                }
-            }
+    val coloredOptions = options.map { option ->
+        option to when (option) {
+            "Óptimo", "Bueno" -> Color(0xFF4CAF50)
+            "Regular" -> Color(0xFFFFA000)
+            else -> Color(0xFFD32F2F)
         }
     }
+    SegmentedOptionSelector(
+        label = label,
+        selectedOption = selectedOption,
+        onOptionSelected = onOptionSelected,
+        options = coloredOptions,
+        tagPrefix = tagPrefix
+    )
 }
 
 

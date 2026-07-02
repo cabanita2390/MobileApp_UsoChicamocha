@@ -4,8 +4,6 @@ import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -16,8 +14,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -32,13 +28,10 @@ import coil.compose.SubcomposeAsyncImage
 import coil.request.ImageRequest
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.draw.clip
 import kotlinx.coroutines.delay
 import android.content.Intent
 import android.net.Uri
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.inspection.DocLabelRow
 import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.inspection.DocumentImage
 import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.inspection.EstadoDocumentoChip
@@ -46,6 +39,8 @@ import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.inspection.Sec
 import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.inspection.InspectionSavedDialog
 import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.inspection.KmBlockingAlertDialog
 import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.inspection.KmWarningAlertDialog
+import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.inspection.SearchableSelectorField
+import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.inspection.SegmentedOptionSelector
 
 // ─── COLORES COMPARTIDOS ─────────────────────────────────────────────────────
 private val ColorBueno   = Color(0xFF4CAF50)
@@ -539,7 +534,6 @@ fun VehiculoScreen(
 
 // ─── COMPOSABLES REUTILIZABLES ───────────────────────────────────────────────
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VehicleSelector(
     vehicles: List<VehiculoItem>,
@@ -547,150 +541,37 @@ fun VehicleSelector(
     onVehicleSelected: (VehiculoItem) -> Unit,
     syncError: String? = null
 ) {
-    var showDialog by remember { mutableStateOf(false) }
-    var searchQuery by remember { mutableStateOf("") }
-    val displayText = selectedVehicle?.let { "${it.placa}  •  ${it.marca}" } ?: "Seleccione un vehículo (*)"
-    val filteredVehicles = remember(vehicles, searchQuery) {
-        if (searchQuery.isBlank()) vehicles
-        else vehicles.filter {
-            it.placa.contains(searchQuery, ignoreCase = true) ||
-            it.marca.contains(searchQuery, ignoreCase = true) ||
-            it.tipoVehiculo.contains(searchQuery, ignoreCase = true)
-        }
-    }
-
-    Box(modifier = Modifier.fillMaxWidth()) {
-        OutlinedTextField(
-            value = displayText,
-            onValueChange = {},
-            readOnly = true,
-            label = { Text("Vehículo (*)", fontWeight = FontWeight.Bold, fontSize = 17.sp) },
-            trailingIcon = { Icon(Icons.Default.ArrowDropDown, contentDescription = null) },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth()
-        )
-        Spacer(modifier = Modifier.matchParentSize().clickable(
-            interactionSource = remember { MutableInteractionSource() },
-            indication = null
-        ) { showDialog = true })
-    }
-
-    if (showDialog) {
-        val focusRequester = remember { FocusRequester() }
-        val keyboardController = LocalSoftwareKeyboardController.current
-        LaunchedEffect(Unit) {
-            delay(50)
-            try { focusRequester.requestFocus() } catch (e: Exception) { }
-            keyboardController?.show()
-        }
-        Dialog(
-            onDismissRequest = { showDialog = false; searchQuery = "" },
-            properties = DialogProperties(usePlatformDefaultWidth = false)
-        ) {
-            Surface(
-                modifier = Modifier.fillMaxWidth(0.92f),
-                shape = RoundedCornerShape(16.dp),
-                tonalElevation = 4.dp
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text("Seleccionar vehículo", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                    Spacer(Modifier.height(12.dp))
-                    OutlinedTextField(
-                        value = searchQuery,
-                        onValueChange = { searchQuery = it },
-                        placeholder = { Text("Buscar placa, marca...") },
-                        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(20.dp)) },
-                        trailingIcon = if (searchQuery.isNotEmpty()) {{
-                            IconButton(onClick = { searchQuery = "" }) {
-                                Icon(Icons.Default.Clear, contentDescription = "Limpiar", modifier = Modifier.size(18.dp))
-                            }
-                        }} else null,
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth().focusRequester(focusRequester)
-                    )
-                    Spacer(Modifier.height(8.dp))
-                    LazyColumn(modifier = Modifier.heightIn(max = 320.dp)) {
-                        if (vehicles.isEmpty()) {
-                            item { Text(
-                                syncError ?: "No hay vehículos. Verifica la sincronización.",
-                                color = MaterialTheme.colorScheme.error,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 12.dp)
-                            ) }
-                        } else if (filteredVehicles.isEmpty()) {
-                            item { Text("Sin resultados", color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 12.dp)) }
-                        } else {
-                            items(filteredVehicles) { v ->
-                                Column {
-                                    Text(
-                                        text = "${v.placa}  •  ${v.marca}  •  ${v.tipoVehiculo}",
-                                        fontSize = 13.sp,
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .clickable { onVehicleSelected(v); showDialog = false; searchQuery = "" }
-                                            .padding(horizontal = 8.dp, vertical = 10.dp)
-                                    )
-                                    HorizontalDivider()
-                                }
-                            }
-                        }
-                    }
-                    Spacer(Modifier.height(8.dp))
-                    TextButton(
-                        onClick = { showDialog = false; searchQuery = "" },
-                        modifier = Modifier.align(Alignment.End)
-                    ) { Text("Cancelar") }
-                }
-            }
-        }
-    }
+    SearchableSelectorField(
+        label = "Vehículo (*)",
+        displayValue = selectedVehicle?.let { "${it.placa}  •  ${it.marca}" } ?: "Seleccione un vehículo (*)",
+        items = vehicles,
+        itemLabel = { "${it.placa}  •  ${it.marca}  •  ${it.tipoVehiculo}" },
+        onItemSelected = onVehicleSelected,
+        dialogTitle = "Seleccionar vehículo",
+        emptyMessage = syncError ?: "No hay vehículos. Verifica la sincronización.",
+        searchPlaceholder = "Buscar placa, marca..."
+    )
 }
 
 @Composable
 fun VehicleStatusSelector(label: String, selectedOption: String, onOptionSelected: (String) -> Unit) {
-    val options = listOf("Bueno" to ColorBueno, "Regular" to ColorRegular, "Malo" to ColorMalo)
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(label, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, fontSize = 17.sp)
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            options.forEach { (option, bgColor) ->
-                val isSelected = option == selectedOption
-                Surface(
-                    modifier = Modifier.weight(1f).height(48.dp)
-                        .border(2.dp, if (isSelected) bgColor else Color.LightGray, RoundedCornerShape(8.dp))
-                        .clickable { onOptionSelected(option) },
-                    shape = RoundedCornerShape(8.dp),
-                    color = if (isSelected) bgColor else bgColor.copy(alpha = 0.15f)
-                ) {
-                    Box(Modifier.background(Color.Transparent), contentAlignment = Alignment.Center) {
-                        Text(option, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal, color = if (isSelected) Color.White else Color.Black, fontSize = 14.sp)
-                    }
-                }
-            }
-        }
-    }
+    SegmentedOptionSelector(
+        label = label,
+        selectedOption = selectedOption,
+        onOptionSelected = onOptionSelected,
+        options = listOf("Bueno" to ColorBueno, "Regular" to ColorRegular, "Malo" to ColorMalo)
+    )
 }
 
 @Composable
 fun YesNoSelector(label: String, selectedOption: String, onOptionSelected: (String) -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(label, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Bold, fontSize = 17.sp)
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf("Si" to ColorBueno, "No" to ColorMalo).forEach { (option, bgColor) ->
-                val isSelected = option == selectedOption
-                Surface(
-                    modifier = Modifier.weight(1f).height(48.dp)
-                        .border(2.dp, if (isSelected) bgColor else Color.LightGray, RoundedCornerShape(8.dp))
-                        .clickable { onOptionSelected(option) },
-                    shape = RoundedCornerShape(8.dp),
-                    color = if (isSelected) bgColor else bgColor.copy(alpha = 0.15f)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Text(option, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal, color = if (isSelected) Color.White else Color.Black, fontSize = 16.sp)
-                    }
-                }
-            }
-        }
-    }
+    SegmentedOptionSelector(
+        label = label,
+        selectedOption = selectedOption,
+        onOptionSelected = onOptionSelected,
+        options = listOf("Si" to ColorBueno, "No" to ColorMalo),
+        optionFontSize = 16.sp
+    )
 }
 
 
