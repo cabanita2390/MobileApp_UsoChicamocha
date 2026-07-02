@@ -70,11 +70,11 @@ android {
 
     testOptions {
         unitTests.all {
-            it.jvmArgs("-XX:+AddOpens=java.base/java.lang=ALL-UNNAMED")
-            it.jvmArgs("-XX:+AddOpens=java.base/java.util=ALL-UNNAMED")
-            it.jvmArgs("-XX:+AddOpens=java.base/java.lang.reflect=ALL-UNNAMED")
-            it.jvmArgs("-XX:+AddOpens=java.base/java.text=ALL-UNNAMED")
-            it.jvmArgs("-XX:+AddOpens=java.desktop/java.awt.font=ALL-UNNAMED")
+            it.jvmArgs("--add-opens=java.base/java.lang=ALL-UNNAMED")
+            it.jvmArgs("--add-opens=java.base/java.util=ALL-UNNAMED")
+            it.jvmArgs("--add-opens=java.base/java.lang.reflect=ALL-UNNAMED")
+            it.jvmArgs("--add-opens=java.base/java.text=ALL-UNNAMED")
+            it.jvmArgs("--add-opens=java.desktop/java.awt.font=ALL-UNNAMED")
         }
     }
 }

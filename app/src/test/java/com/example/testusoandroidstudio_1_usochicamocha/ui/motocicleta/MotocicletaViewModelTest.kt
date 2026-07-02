@@ -13,6 +13,7 @@ import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.inspeccio
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.inspeccionmoto.SyncInspeccionMotoUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.inspeccionmoto.GetPendingInspeccionesMotoUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.LocalSyncCoordinator
+import com.example.testusoandroidstudio_1_usochicamocha.domain.repository.MotoOilChangeRepository
 import io.mockk.*
 import io.mockk.impl.annotations.MockK
 import kotlinx.coroutines.Dispatchers
@@ -49,6 +50,8 @@ class MotocicletaViewModelTest {
     lateinit var documentoMotoDao: DocumentoMotoDao
     @MockK
     lateinit var localSyncCoordinator: LocalSyncCoordinator
+    @MockK
+    lateinit var motoOilChangeRepository: MotoOilChangeRepository
 
     private lateinit var viewModel: MotocicletaViewModel
 
@@ -61,16 +64,20 @@ class MotocicletaViewModelTest {
         every { Log.d(any(), any()) } returns 0
         every { Log.e(any(), any()) } returns 0
         every { Log.e(any(), any(), any()) } returns 0
+        every { Log.w(any(), any<String>()) } returns 0
 
         // Default mock behaviors
         every { getLocalMotosUseCase() } returns flowOf(emptyList())
         every { getLocalUbicacionesUseCase() } returns flowOf(emptyList())
         every { getPendingInspeccionesMotoUseCase() } returns flowOf(emptyList())
         every { tokenManager.getInspectorInfo() } returns flowOf("Test Inspector")
+        every { tokenManager.getUsername() } returns flowOf("Test Inspector")
         
         // Mock Coordinator observations
         every { localSyncCoordinator.observeSyncTrigger(any()) } returns flowOf(false)
         coEvery { localSyncCoordinator.coordinateSync(any()) } returns Result.success(Unit)
+
+        every { motoOilChangeRepository.getAllFlow() } returns flowOf(emptyList())
     }
 
     private fun createViewModel() {
@@ -83,7 +90,8 @@ class MotocicletaViewModelTest {
             syncInspeccionMotoUseCase,
             getPendingInspeccionesMotoUseCase,
             documentoMotoDao,
-            localSyncCoordinator
+            localSyncCoordinator,
+            motoOilChangeRepository
         )
     }
 
