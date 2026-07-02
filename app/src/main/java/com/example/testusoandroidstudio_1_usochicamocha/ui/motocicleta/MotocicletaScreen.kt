@@ -42,6 +42,9 @@ import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.inspection.Doc
 import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.inspection.DocumentImage
 import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.inspection.EstadoDocumentoChip
 import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.inspection.SectionCard
+import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.inspection.InspectionSavedDialog
+import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.inspection.KmBlockingAlertDialog
+import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.inspection.KmWarningAlertDialog
 import android.content.Intent
 import android.net.Uri
 
@@ -411,112 +414,29 @@ fun MotocicletaScreen(
         }
 
         if (uiState.saveCompleted) {
-            AlertDialog(
+            InspectionSavedDialog(
+                assetLabel = "motocicleta",
                 onDismissRequest = { /* No hacer nada para forzar click en Aceptar */ },
-                icon = {
-                    Icon(
-                        Icons.Default.CheckCircle,
-                        contentDescription = null,
-                        tint = Color(0xFF4CAF50),
-                        modifier = Modifier.size(40.dp)
-                    )
-                },
-                title = { Text("¡Inspección Guardada!", fontWeight = FontWeight.Bold) },
-                text = {
-                    Text(
-                        "La inspección de la motocicleta fue registrada correctamente en el sistema.",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                },
-                confirmButton = {
-                    Button(
-                        onClick = { onNavigateBack(); viewModel.onNavigationDone() },
-                        modifier = Modifier.testTag("btn_done_audit")
-                    ) {
-                        Icon(Icons.Default.CheckCircle, null, Modifier.size(18.dp))
-                        Spacer(Modifier.size(ButtonDefaults.IconSpacing))
-                        Text("Aceptar")
-                    }
-                }
+                onConfirm = { onNavigateBack(); viewModel.onNavigationDone() },
+                confirmButtonModifier = Modifier.testTag("btn_done_audit")
             )
         }
 
         // ─ Alerta: Kilometraje menor al registrado (BLOQUEANTE) ─
         if (uiState.showKmAlert) {
-            AlertDialog(
-                onDismissRequest = { viewModel.onCancelRedKmHighlight() },
-                icon = {
-                    Icon(
-                        Icons.Default.Error,
-                        contentDescription = null,
-                        tint = ColorMalo,
-                        modifier = Modifier.size(40.dp)
-                    )
-                },
-                title = {
-                    Text(
-                        "Kilometraje Incorrecto",
-                        fontWeight = FontWeight.Bold,
-                        color = ColorMalo
-                    )
-                },
-                text = {
-                    Text(
-                        uiState.kmAlertMessage +
-                                "\n\nDebe corregir el valor antes de poder guardar la inspección.",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                },
-                confirmButton = {
-                    Button(
-                        onClick = { viewModel.onCancelRedKmHighlight() },
-                        colors = ButtonDefaults.buttonColors(containerColor = ColorMalo)
-                    ) {
-                        Text("Corregir")
-                    }
-                }
+            KmBlockingAlertDialog(
+                message = uiState.kmAlertMessage,
+                onDismiss = { viewModel.onCancelRedKmHighlight() }
             )
         }
 
         // ─ Alerta: Kilometraje con incremento alto o igual (No bloqueante) ────
         if (uiState.showKmYellowAlert) {
-            AlertDialog(
+            KmWarningAlertDialog(
+                message = uiState.kmAlertMessage,
                 onDismissRequest = { viewModel.onCancelKmHighlight() },
-                icon = {
-                    Icon(
-                        Icons.Default.Info,
-                        contentDescription = null,
-                        tint = ColorRegular,
-                        modifier = Modifier.size(40.dp)
-                    )
-                },
-                title = {
-                    Text(
-                        "Verificación de Kilometraje",
-                        fontWeight = FontWeight.Bold,
-                        color = ColorRegular
-                    )
-                },
-                text = {
-                    Text(
-                        uiState.kmAlertMessage +
-                                "\n\nPor favor, verifica si el número es correcto o corrígelo.",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                },
-                confirmButton = {
-                    Button(
-                        onClick = { viewModel.onConfirmKmException() },
-                        colors = ButtonDefaults.buttonColors(containerColor = ColorRegular)
-                    ) {
-                        Text("Confirmar Excepción")
-                    }
-                },
-                dismissButton = {
-                    OutlinedButton(onClick = { viewModel.onCancelKmHighlight() }) {
-                        Text("Corregir")
-                    }
-                }
+                onConfirmException = { viewModel.onConfirmKmException() },
+                onCorrect = { viewModel.onCancelKmHighlight() }
             )
         }
 
