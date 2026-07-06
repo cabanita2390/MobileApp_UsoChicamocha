@@ -26,6 +26,10 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.ConnectionStatusTopBar
 
+// Módulo de combustible aún en desarrollo: oculto temporalmente para la demo.
+// Volver a poner en `true` cuando esté listo para salir a producción.
+private const val SHOW_FUEL_FEATURE = false
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
@@ -111,7 +115,7 @@ fun HomeScreen(
                         icon = Icons.Filled.DirectionsBike,
                         onClick = onNavigateToMotos
                     )
-                    FuelCategoryCard(onClick = onNavigateToCombustible)
+                    if (SHOW_FUEL_FEATURE) FuelCategoryCard(onClick = onNavigateToCombustible)
                 }
                 isAdmin -> {
                     // ADMIN: acceso completo
@@ -133,7 +137,7 @@ fun HomeScreen(
                         icon = Icons.Filled.DirectionsBike,
                         onClick = onNavigateToMotos
                     )
-                    FuelCategoryCard(onClick = onNavigateToCombustible)
+                    if (SHOW_FUEL_FEATURE) FuelCategoryCard(onClick = onNavigateToCombustible)
                 }
                 else -> {
                     // OPERARIO: solo inspecciones pre-operativas + combustible (sin aceite)
@@ -155,7 +159,7 @@ fun HomeScreen(
                         icon = Icons.Filled.DirectionsBike,
                         onClick = onNavigateToMotos
                     )
-                    FuelCategoryCard(onClick = onNavigateToCombustible)
+                    if (SHOW_FUEL_FEATURE) FuelCategoryCard(onClick = onNavigateToCombustible)
                 }
             }
         }

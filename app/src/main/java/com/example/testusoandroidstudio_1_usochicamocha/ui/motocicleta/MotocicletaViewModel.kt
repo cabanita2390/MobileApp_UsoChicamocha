@@ -101,7 +101,7 @@ data class MotocicletaUiState(
     val isSyncingPending: Boolean = false,
     val isSyncingOilChanges: Boolean = false,
     val syncMessage: String? = null,
-    val userRole: String? = null
+    val userRole: String = "OPERARIO"
 )
 
 @HiltViewModel
@@ -125,6 +125,7 @@ class MotocicletaViewModel @Inject constructor(
         loadMotos()
         loadUbicaciones()
         loadUsername()
+        observeUserRole()
         observePending()
         observePendingOilChanges()
         observeSyncStatuses()
@@ -135,6 +136,12 @@ class MotocicletaViewModel @Inject constructor(
             val username = tokenManager.getUsername().first() ?: ""
             _uiState.update { it.copy(responsable = username) }
         }
+    }
+
+    private fun observeUserRole() {
+        tokenManager.getRole().onEach { role ->
+            _uiState.update { it.copy(userRole = role ?: "OPERARIO") }
+        }.launchIn(viewModelScope)
     }
 
     private fun observePending() {

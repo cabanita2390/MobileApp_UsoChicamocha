@@ -10,6 +10,8 @@ import com.example.testusoandroidstudio_1_usochicamocha.domain.repository.AuthRe
 import com.example.testusoandroidstudio_1_usochicamocha.util.JwtUtils
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import javax.inject.Inject
 
 class AuthRepositoryImpl @Inject constructor(
@@ -17,9 +19,14 @@ class AuthRepositoryImpl @Inject constructor(
     private val tokenManager: TokenManager
 ) : AuthRepository {
 
+    // Evita que múltiples workers/interceptores disparen refrescos de token en paralelo
+    // (cada uno saturaba las 5 conexiones concurrentes por host de OkHttp y se agotaba
+    // el timeout en cola antes de que la red respondiera).
+    private val refreshMutex = Mutex()
+
     override suspend fun login(user: String, pass: String): Result<UserSession> {
         return try {
-            val request = LoginRequest(username = user, password = pass)
+            val request = LoginRequest(username = user.trim(), password = pass)
             val response = apiService.login(request)
 
             if (response.isSuccessful && response.body() != null) {
@@ -55,13 +62,19 @@ class AuthRepositoryImpl @Inject constructor(
         tokenManager.clearSessionData()
     }
 
-    override suspend fun refreshTokenIfNecessary(): Result<String> {
+    override suspend fun refreshTokenIfNecessary(): Result<String> = refreshMutex.withLock {
+        // Si otro caller ya refrescó mientras esperábamos el lock, no repetimos la llamada de red.
+        val currentAccessToken = tokenManager.getAccessToken().first()
+        if (currentAccessToken != null && !JwtUtils.isTokenExpired(currentAccessToken, "Access Token")) {
+            return@withLock Result.success(currentAccessToken)
+        }
+
         val refreshToken = tokenManager.getRefreshToken().first()
         if (refreshToken == null || JwtUtils.isTokenExpired(refreshToken, "Refresh Token")) {
             logout()
-            return Result.failure(Exception("Sesión expirada."))
+            return@withLock Result.failure(Exception("Sesión expirada."))
         }
-        return refreshTokenWithRetry(refreshToken, maxAttempts = 2, initialDelayMs = 500)
+        refreshTokenWithRetry(refreshToken, maxAttempts = 2, initialDelayMs = 500)
     }
 
     private suspend fun refreshTokenWithRetry(
