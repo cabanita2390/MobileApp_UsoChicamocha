@@ -1,10 +1,14 @@
 package com.example.testusoandroidstudio_1_usochicamocha.ui.form
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.net.Uri
 import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 // AÑADIDO: Importaciones necesarias para WorkManager
@@ -53,8 +57,17 @@ data class FormUiState(
     val greasingStatus: String = "",
     val greasingAction: String = "",
     val greasingObservations: String = "",
-    val isSaveButtonEnabled: Boolean = false
+    val isSaveButtonEnabled: Boolean = false,
+    // Bloqueo de inspección por documentos vencidos / próximos a vencer
+    val documentosVencidos: List<String> = emptyList(),
+    val documentosPorVencer: List<String> = emptyList(),
+    val showDocumentoVencidoDialog: Boolean = false,
+    val showDocumentoPorVencerDialog: Boolean = false
 )
+
+/** Días antes del vencimiento para marcar "Próximo a Vencer" — alineado con el umbral
+ * AMARILLO del backend (DocumentAlertCalculator.java) para no desincronizar la app. */
+private const val UMBRAL_DIAS_POR_VENCER = 45
 
 
 @HiltViewModel
@@ -113,14 +126,78 @@ class FormViewModel @Inject constructor(
                 state.observaciones.isNotBlank() &&
                 state.greasingStatus.isNotBlank() &&
                 (state.greasingStatus == "No" || (state.greasingStatus == "Sí" && state.greasingAction.isNotBlank())) &&
-                state.vigenciaExtintor.isNotBlank() // AÑADIDO: Validar que la fecha del extintor esté seleccionada
+                state.vigenciaExtintor.isNotBlank() && // AÑADIDO: Validar que la fecha del extintor esté seleccionada
+                state.documentosVencidos.isEmpty()
 
         _uiState.update { it.copy(isSaveButtonEnabled = isFormValid) }
     }
 
     fun onMachineSelected(machine: Machine) {
         _uiState.update { it.copy(selectedMachine = machine) }
+        evaluarBloqueoDocumentos(machine)
         validateForm()
+    }
+
+    /** Calcula estado SOAT / Seguro Todo Riesgo de la máquina seleccionada y decide si
+     * la inspección debe bloquearse (documento vencido) o solo advertirse (próximo a vencer). */
+    private fun evaluarBloqueoDocumentos(machine: Machine) {
+        val (estSoat, _) = calcularEstadoPorDias(machine.soatExpirationDate)
+        val (estSeguro, _) = calcularEstadoPorDias(machine.runtExpirationDate)
+
+        val vencidos = buildList {
+            if (estSoat == "Vencido") add("SOAT de la máquina")
+            if (estSeguro == "Vencido") add("Seguro Todo Riesgo de la máquina")
+        }
+        val porVencer = buildList {
+            if (estSoat == "Próximo a Vencer") add("SOAT de la máquina")
+            if (estSeguro == "Próximo a Vencer") add("Seguro Todo Riesgo de la máquina")
+        }
+        _uiState.update {
+            it.copy(
+                documentosVencidos = vencidos,
+                documentosPorVencer = porVencer,
+                showDocumentoVencidoDialog = vencidos.isNotEmpty(),
+                showDocumentoPorVencerDialog = vencidos.isEmpty() && porVencer.isNotEmpty()
+            )
+        }
+    }
+
+    fun onDocumentoVencidoDialogDismiss() {
+        _uiState.update { it.copy(showDocumentoVencidoDialog = false) }
+    }
+
+    fun onDocumentoPorVencerDialogDismiss() {
+        _uiState.update { it.copy(showDocumentoPorVencerDialog = false) }
+    }
+
+    /** Calcula el estado de vigencia basado en la fecha del backend (mismo criterio
+     * usado en VehiculoViewModel/MotocicletaViewModel para vehículos y motos). */
+    @SuppressLint("NewApi")
+    private fun calcularEstadoPorDias(fechaDB: String?): Pair<String, Long> {
+        if (fechaDB.isNullOrBlank()) return Pair("", 0L)
+        return try {
+            val hoy = LocalDate.now()
+            val normalizada = when {
+                fechaDB.length == 10 && fechaDB.contains("-") && fechaDB.indexOf("-") == 4 -> fechaDB
+                fechaDB.length == 7 && fechaDB.contains("-") && fechaDB.indexOf("-") == 4 -> "$fechaDB-01"
+                fechaDB.length == 10 && fechaDB.contains("-") && fechaDB.indexOf("-") == 2 -> {
+                    val p = fechaDB.split("-")
+                    if (p.size == 3) "${p[2]}-${p[1]}-${p[0]}" else fechaDB
+                }
+                else -> fechaDB
+            }
+            val fechaVenc = LocalDate.parse(normalizada, DateTimeFormatter.ISO_LOCAL_DATE)
+            val dias = ChronoUnit.DAYS.between(hoy, fechaVenc)
+            val estado = when {
+                dias < 0 -> "Vencido"
+                dias <= UMBRAL_DIAS_POR_VENCER -> "Próximo a Vencer"
+                else -> "Vigente"
+            }
+            Pair(estado, dias)
+        } catch (e: Exception) {
+            Log.e("VencLogic", "Error parseando fecha máquina: $fechaDB", e)
+            Pair("", 0L)
+        }
     }
 
     fun onHorometroChange(value: String) {

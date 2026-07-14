@@ -51,6 +51,8 @@ import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.Machine
+import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.inspection.DocumentoVencidoBlockingDialog
+import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.inspection.DocumentoPorVencerWarningDialog
 import java.io.File
 import java.util.Calendar
 
@@ -238,6 +240,22 @@ MachineSelector(
             uri = uiState.previewingImageUri!!,
             onDismiss = { viewModel.onDismissPreview() },
             onDelete = { viewModel.onImageRemoved(uiState.previewingImageUri!!) }
+        )
+    }
+
+    // ─ Alerta: Documento(s) vencido(s) (BLOQUEANTE) ─
+    if (uiState.showDocumentoVencidoDialog) {
+        DocumentoVencidoBlockingDialog(
+            documentos = uiState.documentosVencidos,
+            onDismiss = { viewModel.onDocumentoVencidoDialogDismiss() }
+        )
+    }
+
+    // ─ Alerta: Documento(s) próximo(s) a vencer (No bloqueante) ─
+    if (uiState.showDocumentoPorVencerDialog) {
+        DocumentoPorVencerWarningDialog(
+            documentos = uiState.documentosPorVencer,
+            onDismiss = { viewModel.onDocumentoPorVencerDialogDismiss() }
         )
     }
 }

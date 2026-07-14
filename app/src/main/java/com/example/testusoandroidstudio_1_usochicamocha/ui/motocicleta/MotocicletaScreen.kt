@@ -37,6 +37,8 @@ import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.inspection.Sec
 import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.inspection.InspectionSavedDialog
 import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.inspection.KmBlockingAlertDialog
 import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.inspection.KmWarningAlertDialog
+import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.inspection.DocumentoVencidoBlockingDialog
+import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.inspection.DocumentoPorVencerWarningDialog
 import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.inspection.SearchableSelectorField
 import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.inspection.SegmentedOptionSelector
 import android.content.Intent
@@ -431,6 +433,22 @@ fun MotocicletaScreen(
                 onDismissRequest = { viewModel.onCancelKmHighlight() },
                 onConfirmException = { viewModel.onConfirmKmException() },
                 onCorrect = { viewModel.onCancelKmHighlight() }
+            )
+        }
+
+        // ─ Alerta: Documento(s) vencido(s) (BLOQUEANTE) ─
+        if (uiState.showDocumentoVencidoDialog) {
+            DocumentoVencidoBlockingDialog(
+                documentos = uiState.documentosVencidos,
+                onDismiss = { viewModel.onDocumentoVencidoDialogDismiss() }
+            )
+        }
+
+        // ─ Alerta: Documento(s) próximo(s) a vencer (No bloqueante) ─
+        if (uiState.showDocumentoPorVencerDialog) {
+            DocumentoPorVencerWarningDialog(
+                documentos = uiState.documentosPorVencer,
+                onDismiss = { viewModel.onDocumentoPorVencerDialogDismiss() }
             )
         }
 

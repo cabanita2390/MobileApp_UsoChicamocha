@@ -6,6 +6,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -119,6 +120,78 @@ fun KmWarningAlertDialog(
         },
         dismissButton = {
             OutlinedButton(onClick = onCorrect) { Text("Corregir") }
+        }
+    )
+}
+
+/** Documento(s) vencido(s) — bloquea la inspección preoperativa. Compartido entre
+ * Vehículo, Moto y Maquinaria: cada pantalla decide qué documentos entran en la lista
+ * y deshabilita su botón Guardar mientras esta condición sea verdadera.
+ * Los ítems ya vienen rotulados con su dueño real (ej. "Licencia de Conducción del
+ * Conductor" no es un documento del vehículo/moto/máquina, sino del usuario logueado). */
+@Composable
+fun DocumentoVencidoBlockingDialog(
+    documentos: List<String>,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = {
+            Icon(
+                Icons.Default.Error,
+                contentDescription = null,
+                tint = ColorMalo,
+                modifier = Modifier.size(40.dp)
+            )
+        },
+        title = { Text("Documentación Vencida", fontWeight = FontWeight.Bold, color = ColorMalo) },
+        text = {
+            val plural = documentos.size > 1
+            Text(
+                "Se ${if (plural) "encontraron los siguientes documentos vencidos" else "encontró el siguiente documento vencido"}:\n\n" +
+                    documentos.joinToString("\n") { "• $it" } +
+                    "\n\nNo es posible realizar la inspección preoperativa. Comuníquese con la persona encargada para resolver esta situación.",
+                style = MaterialTheme.typography.bodyMedium
+            )
+        },
+        confirmButton = {
+            Button(onClick = onDismiss, colors = ButtonDefaults.buttonColors(containerColor = ColorMalo)) {
+                Text("Entendido")
+            }
+        }
+    )
+}
+
+/** Documento(s) próximo(s) a vencer — informativo, no bloquea el guardado. */
+@Composable
+fun DocumentoPorVencerWarningDialog(
+    documentos: List<String>,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = {
+            Icon(
+                Icons.Default.Warning,
+                contentDescription = null,
+                tint = ColorRegular,
+                modifier = Modifier.size(40.dp)
+            )
+        },
+        title = { Text("Documentación Próxima a Vencer", fontWeight = FontWeight.Bold, color = ColorRegular) },
+        text = {
+            val plural = documentos.size > 1
+            Text(
+                "Se ${if (plural) "encontraron los siguientes documentos próximos a vencer" else "encontró el siguiente documento próximo a vencer"}:\n\n" +
+                    documentos.joinToString("\n") { "• $it" } +
+                    "\n\nPor favor comuníquese con la persona encargada para gestionar su renovación a tiempo.",
+                style = MaterialTheme.typography.bodyMedium
+            )
+        },
+        confirmButton = {
+            Button(onClick = onDismiss, colors = ButtonDefaults.buttonColors(containerColor = ColorRegular)) {
+                Text("Entendido")
+            }
         }
     )
 }

@@ -28,6 +28,9 @@ import kotlinx.coroutines.launch
 private const val KM_YELLOW_THRESHOLD = 200
 /** Diferencia mínima para mostrar alerta ROJA por exceso (incremento extremo, en km) */
 private const val KM_RED_THRESHOLD = 1000
+/** Días antes del vencimiento para marcar "Próximo a Vencer" — alineado con el umbral
+ * AMARILLO del backend (DocumentAlertCalculator.java) para no desincronizar la app. */
+private const val UMBRAL_DIAS_POR_VENCER = 45
 
 // ─── VEHICLE CATALOG ITEM ───────────────────────────────────────────────────
 // Representa un vehículo del catálogo de la BD (tabla: vehiculos)
@@ -75,6 +78,11 @@ data class VehiculoUiState(
     val urlImagenExtintor: String? = null,
     val licenciaCategoria: String = "",
     val isLoadingDocs: Boolean = false,
+    // Bloqueo de inspección por documentos vencidos / próximos a vencer
+    val documentosVencidos: List<String> = emptyList(),
+    val documentosPorVencer: List<String> = emptyList(),
+    val showDocumentoVencidoDialog: Boolean = false,
+    val showDocumentoPorVencerDialog: Boolean = false,
     // Elementos (Si / No)
     val tieneBotiquin: String = "",
     val tieneSeñalizacion: String = "",
@@ -175,6 +183,7 @@ class VehiculoViewModel @Inject constructor(
                 if (response.isSuccessful) {
                     val doc = response.body() ?: run {
                         _uiState.update { it.copy(isLoadingDocs = false) }
+                        _uiState.update { evaluarBloqueoDocumentos(it) }
                         return@launch
                     }
                     val soatDB = doc.fechaVencSoat  ?: ""
@@ -224,6 +233,7 @@ class VehiculoViewModel @Inject constructor(
                             isLoadingDocs         = false
                         )
                     }
+                    _uiState.update { evaluarBloqueoDocumentos(it) }
 
                     // 3. ACTUALIZAR CACHE CON LO DEL API
                     try {
@@ -242,10 +252,12 @@ class VehiculoViewModel @Inject constructor(
                 } else {
                     Log.w("VehiculoVM", "Sin documentos para id=$idVehiculo (${response.code()})")
                     _uiState.update { it.copy(isLoadingDocs = false) }
+                    _uiState.update { evaluarBloqueoDocumentos(it) }
                 }
             } catch (e: Exception) {
                 Log.e("VehiculoVM", "Error cargando documentos del vehículo", e)
                 _uiState.update { it.copy(isLoadingDocs = false) }
+                _uiState.update { evaluarBloqueoDocumentos(it) }
             }
         }
     }
@@ -282,9 +294,46 @@ class VehiculoViewModel @Inject constructor(
                 isLoadingDocs        = false
             )
         }
+        // Nota: el modal de bloqueo/advertencia NO se dispara aquí — solo prepara los
+        // campos para que se vean de inmediato. Se evalúa una sola vez, con el dato más
+        // confiable disponible, al terminar el intento de refresco desde el API (ver
+        // loadDocumentosVehiculo). Si esto también evaluara, la caché podría abrir un
+        // modal (ej. ámbar) que el API sustituye un instante después por otro (ej. rojo),
+        // y el usuario ve "dos modales" parpadeando en sucesión.
     }
 
+    /** Evalúa los 4 estados de documento ya calculados y decide si la inspección
+     * debe bloquearse (documento vencido) o solo advertirse (próximo a vencer). */
+    private fun evaluarBloqueoDocumentos(s: VehiculoUiState): VehiculoUiState {
+        // La licencia es del conductor logueado (perfil de usuario), no un documento
+        // del vehículo — se rotula distinto para no inducir a confusión en el modal.
+        val vencidos = buildList {
+            if (s.estadoSoat == "Vencido") add("SOAT del vehículo")
+            if (s.estadoTecno == "Vencido") add("Tecnomecánica del vehículo")
+            if (s.estadoExtintor == "Vencido") add("Extintor del vehículo")
+            if (s.estadoLicencia == "Vencido") add("Licencia de Conducción del conductor")
+        }
+        val porVencer = buildList {
+            if (s.estadoSoat == "Próximo a Vencer") add("SOAT del vehículo")
+            if (s.estadoTecno == "Próximo a Vencer") add("Tecnomecánica del vehículo")
+            if (s.estadoExtintor == "Próximo a Vencer") add("Extintor del vehículo")
+            if (s.estadoLicencia == "Próximo a Vencer") add("Licencia de Conducción del conductor")
+        }
+        return s.copy(
+            documentosVencidos = vencidos,
+            documentosPorVencer = porVencer,
+            showDocumentoVencidoDialog = vencidos.isNotEmpty(),
+            showDocumentoPorVencerDialog = vencidos.isEmpty() && porVencer.isNotEmpty()
+        )
+    }
 
+    fun onDocumentoVencidoDialogDismiss() {
+        _uiState.update { it.copy(showDocumentoVencidoDialog = false) }
+    }
+
+    fun onDocumentoPorVencerDialogDismiss() {
+        _uiState.update { it.copy(showDocumentoPorVencerDialog = false) }
+    }
 
     // ── Previene que el diálogo se cierre accidentalmente ───────────────────
     fun onKmAlertDismiss() {
@@ -466,7 +515,7 @@ class VehiculoViewModel @Inject constructor(
             Log.d("VencLogic", "fechaDB=$fechaDB → venc=$fechaVenc, hoy=$hoy, dias=$dias")
             val estado = when {
                 dias < 0  -> "Vencido"
-                dias <= 30 -> "Próximo a Vencer"
+                dias <= UMBRAL_DIAS_POR_VENCER -> "Próximo a Vencer"
                 else       -> "Vigente"
             }
             Pair(estado, dias)
@@ -554,7 +603,8 @@ class VehiculoViewModel @Inject constructor(
                 s.condicionParaConducir.isNotBlank() &&
                 s.conscienteResponsabilidad.isNotBlank() &&
                 s.aprobadoRuta.isNotBlank() &&
-                s.responsableInspeccion.isNotBlank()
+                s.responsableInspeccion.isNotBlank() &&
+                s.documentosVencidos.isEmpty()
         _uiState.update { it.copy(isSaveButtonEnabled = valid) }
     }
 
