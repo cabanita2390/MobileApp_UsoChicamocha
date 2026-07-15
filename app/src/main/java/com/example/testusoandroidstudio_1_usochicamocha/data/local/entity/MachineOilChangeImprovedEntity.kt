@@ -2,10 +2,14 @@ package com.example.testusoandroidstudio_1_usochicamocha.data.local.entity
 
 import androidx.room.ColumnInfo
 import androidx.room.Entity
+import androidx.room.Index
 import androidx.room.PrimaryKey
 import java.time.LocalDateTime
 
-@Entity(tableName = "machine_oil_changes_improved")
+@Entity(
+    tableName = "machine_oil_changes_improved",
+    indices = [Index(value = ["machine_id"], name = "idx_machine_oil_changes_improved_machine_id")]
+)
 data class MachineOilChangeImprovedEntity(
     @PrimaryKey(autoGenerate = true)
     @ColumnInfo(name = "id")

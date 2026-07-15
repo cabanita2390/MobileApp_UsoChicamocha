@@ -1,8 +1,8 @@
 {
   "formatVersion": 1,
   "database": {
-    "version": 36,
-    "identityHash": "cfeeb278e9676f5c97bbadd91eba11ff",
+    "version": 39,
+    "identityHash": "e26078c13aa3c0f898d1bf37465a05c5",
     "entities": [
       {
         "tableName": "pending_forms",
@@ -1331,226 +1331,6 @@
         "foreignKeys": []
       },
       {
-        "tableName": "fuel_logs_local",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`localId` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `remoteId` INTEGER, `syncId` TEXT NOT NULL, `assetType` TEXT NOT NULL, `assetId` INTEGER NOT NULL, `assetPlate` TEXT, `fuelDateTime` TEXT NOT NULL, `odometerKm` REAL, `hourMeter` REAL, `quantity` REAL NOT NULL, `quantityUnit` TEXT NOT NULL, `quantityLiters` REAL NOT NULL, `pricePerUnit` REAL NOT NULL, `totalCostCalculated` REAL NOT NULL, `totalCostActual` REAL, `totalCostMismatch` INTEGER NOT NULL, `fuelType` TEXT NOT NULL, `serviceStation` TEXT, `discountAmount` REAL, `invoicePhotoPath` TEXT, `invoicePhotoUrl` TEXT, `invoiceStatus` TEXT NOT NULL, `voucherNumber` TEXT, `notes` TEXT, `efficiencyValue` REAL, `efficiencyUnit` TEXT, `isAnomaly` INTEGER NOT NULL, `isSynced` INTEGER NOT NULL, `isSyncing` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL)",
-        "fields": [
-          {
-            "fieldPath": "localId",
-            "columnName": "localId",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "remoteId",
-            "columnName": "remoteId",
-            "affinity": "INTEGER",
-            "notNull": false
-          },
-          {
-            "fieldPath": "syncId",
-            "columnName": "syncId",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "assetType",
-            "columnName": "assetType",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "assetId",
-            "columnName": "assetId",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "assetPlate",
-            "columnName": "assetPlate",
-            "affinity": "TEXT",
-            "notNull": false
-          },
-          {
-            "fieldPath": "fuelDateTime",
-            "columnName": "fuelDateTime",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "odometerKm",
-            "columnName": "odometerKm",
-            "affinity": "REAL",
-            "notNull": false
-          },
-          {
-            "fieldPath": "hourMeter",
-            "columnName": "hourMeter",
-            "affinity": "REAL",
-            "notNull": false
-          },
-          {
-            "fieldPath": "quantity",
-            "columnName": "quantity",
-            "affinity": "REAL",
-            "notNull": true
-          },
-          {
-            "fieldPath": "quantityUnit",
-            "columnName": "quantityUnit",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "quantityLiters",
-            "columnName": "quantityLiters",
-            "affinity": "REAL",
-            "notNull": true
-          },
-          {
-            "fieldPath": "pricePerUnit",
-            "columnName": "pricePerUnit",
-            "affinity": "REAL",
-            "notNull": true
-          },
-          {
-            "fieldPath": "totalCostCalculated",
-            "columnName": "totalCostCalculated",
-            "affinity": "REAL",
-            "notNull": true
-          },
-          {
-            "fieldPath": "totalCostActual",
-            "columnName": "totalCostActual",
-            "affinity": "REAL",
-            "notNull": false
-          },
-          {
-            "fieldPath": "totalCostMismatch",
-            "columnName": "totalCostMismatch",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "fuelType",
-            "columnName": "fuelType",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "serviceStation",
-            "columnName": "serviceStation",
-            "affinity": "TEXT",
-            "notNull": false
-          },
-          {
-            "fieldPath": "discountAmount",
-            "columnName": "discountAmount",
-            "affinity": "REAL",
-            "notNull": false
-          },
-          {
-            "fieldPath": "invoicePhotoPath",
-            "columnName": "invoicePhotoPath",
-            "affinity": "TEXT",
-            "notNull": false
-          },
-          {
-            "fieldPath": "invoicePhotoUrl",
-            "columnName": "invoicePhotoUrl",
-            "affinity": "TEXT",
-            "notNull": false
-          },
-          {
-            "fieldPath": "invoiceStatus",
-            "columnName": "invoiceStatus",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "voucherNumber",
-            "columnName": "voucherNumber",
-            "affinity": "TEXT",
-            "notNull": false
-          },
-          {
-            "fieldPath": "notes",
-            "columnName": "notes",
-            "affinity": "TEXT",
-            "notNull": false
-          },
-          {
-            "fieldPath": "efficiencyValue",
-            "columnName": "efficiencyValue",
-            "affinity": "REAL",
-            "notNull": false
-          },
-          {
-            "fieldPath": "efficiencyUnit",
-            "columnName": "efficiencyUnit",
-            "affinity": "TEXT",
-            "notNull": false
-          },
-          {
-            "fieldPath": "isAnomaly",
-            "columnName": "isAnomaly",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "isSynced",
-            "columnName": "isSynced",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "isSyncing",
-            "columnName": "isSyncing",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "createdAt",
-            "columnName": "createdAt",
-            "affinity": "INTEGER",
-            "notNull": true
-          }
-        ],
-        "primaryKey": {
-          "autoGenerate": true,
-          "columnNames": [
-            "localId"
-          ]
-        },
-        "indices": [],
-        "foreignKeys": []
-      },
-      {
-        "tableName": "fuel_stations_local",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `name` TEXT NOT NULL, PRIMARY KEY(`id`))",
-        "fields": [
-          {
-            "fieldPath": "id",
-            "columnName": "id",
-            "affinity": "INTEGER",
-            "notNull": true
-          },
-          {
-            "fieldPath": "name",
-            "columnName": "name",
-            "affinity": "TEXT",
-            "notNull": true
-          }
-        ],
-        "primaryKey": {
-          "autoGenerate": false,
-          "columnNames": [
-            "id"
-          ]
-        },
-        "indices": [],
-        "foreignKeys": []
-      },
-      {
         "tableName": "vehicle_oil_changes_improved",
         "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `placa` TEXT NOT NULL, `oil_type` TEXT NOT NULL, `brand_name` TEXT, `quantity` REAL NOT NULL, `km_at_change` INTEGER NOT NULL, `next_change_km` INTEGER NOT NULL, `percentage_used` INTEGER NOT NULL, `air_filter_changed` INTEGER NOT NULL, `date_stamp` TEXT NOT NULL, `oil_durability` TEXT NOT NULL, `requirement_id` INTEGER NOT NULL, `created_at` INTEGER NOT NULL, `is_synced` INTEGER NOT NULL, `sync_error` TEXT)",
         "fields": [
@@ -1651,7 +1431,17 @@
             "id"
           ]
         },
-        "indices": [],
+        "indices": [
+          {
+            "name": "idx_vehicle_oil_changes_improved_placa",
+            "unique": false,
+            "columnNames": [
+              "placa"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_vehicle_oil_changes_improved_placa` ON `${TABLE_NAME}` (`placa`)"
+          }
+        ],
         "foreignKeys": []
       },
       {
@@ -1761,7 +1551,17 @@
             "id"
           ]
         },
-        "indices": [],
+        "indices": [
+          {
+            "name": "idx_machine_oil_changes_improved_machine_id",
+            "unique": false,
+            "columnNames": [
+              "machine_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_machine_oil_changes_improved_machine_id` ON `${TABLE_NAME}` (`machine_id`)"
+          }
+        ],
         "foreignKeys": []
       },
       {
@@ -1877,14 +1677,24 @@
             "id"
           ]
         },
-        "indices": [],
+        "indices": [
+          {
+            "name": "idx_oil_analysis_sos_machine_id",
+            "unique": false,
+            "columnNames": [
+              "machine_id"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `idx_oil_analysis_sos_machine_id` ON `${TABLE_NAME}` (`machine_id`)"
+          }
+        ],
         "foreignKeys": []
       }
     ],
     "views": [],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'cfeeb278e9676f5c97bbadd91eba11ff')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'e26078c13aa3c0f898d1bf37465a05c5')"
     ]
   }
 }

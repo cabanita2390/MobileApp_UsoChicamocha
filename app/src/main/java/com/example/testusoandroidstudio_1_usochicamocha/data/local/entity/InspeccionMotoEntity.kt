@@ -1,5 +1,6 @@
 package com.example.testusoandroidstudio_1_usochicamocha.data.local.entity
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.InspeccionMotoPendiente
@@ -10,13 +11,13 @@ data class InspeccionMotoEntity(
     val serverId: Long? = null,
     val uuid: String,
     val timestamp: Long,
-    
+
     // Cabecera
     val idVehiculo: Int,
     val kilometrajeReportado: Int,
     val estadoVehiculo: String,
-    val conscienteResponsabilidad: String = "",
-    val aprobadoRuta: String = "",
+    @ColumnInfo(defaultValue = "") val conscienteResponsabilidad: String = "",
+    @ColumnInfo(defaultValue = "") val aprobadoRuta: String = "",
     val observacionesFinales: String,
 
     // Documentos
@@ -37,13 +38,13 @@ data class InspeccionMotoEntity(
     val fechaLicencia: String = "",
 
     // Inspección Mecánica Moto (Bueno / Regular / Malo) — default "" por retrocompatibilidad
-    val checkNivelAceite: String = "",
-    val checkEstadoLlantas: String = "",
-    val checkEstadoLuces: String = "",
+    @ColumnInfo(defaultValue = "") val checkNivelAceite: String = "",
+    @ColumnInfo(defaultValue = "") val checkEstadoLlantas: String = "",
+    @ColumnInfo(defaultValue = "") val checkEstadoLuces: String = "",
 
     // Para visualización en lista (Motos vs Vehículos)
-    val placaVehiculo: String = "",
-    val tipoVehiculo: String = ""
+    @ColumnInfo(defaultValue = "") val placaVehiculo: String = "",
+    @ColumnInfo(defaultValue = "") val tipoVehiculo: String = ""
 )
 
 fun InspeccionMotoEntity.toDomain() = InspeccionMotoPendiente(

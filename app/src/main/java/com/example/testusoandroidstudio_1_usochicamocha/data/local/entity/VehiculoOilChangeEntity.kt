@@ -1,5 +1,6 @@
 package com.example.testusoandroidstudio_1_usochicamocha.data.local.entity
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
@@ -15,7 +16,7 @@ data class VehiculoOilChangeEntity(
     val kmAtChange: Int,
     val intervalKm: Int,
     val airFilterChanged: Boolean = false,
-    val assetType: String = "VEHICLE",
+    @ColumnInfo(defaultValue = "VEHICLE") val assetType: String = "VEHICLE",
     val isSynced: Boolean = false,
     val isSyncing: Boolean = false
 )

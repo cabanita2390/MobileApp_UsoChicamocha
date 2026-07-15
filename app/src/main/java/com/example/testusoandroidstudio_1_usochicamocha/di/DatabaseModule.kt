@@ -19,6 +19,14 @@ object DatabaseModule {
     @Singleton
     fun provideAppDatabase(@ApplicationContext context: Context): AppDatabase {
         return Room.databaseBuilder(context, AppDatabase::class.java, "app_database")
+            // No existe una ruta de migración real entre la v2 y la v23 (nunca se
+            // escribieron Migration para ese rango; MIGRATION_1_2 migraba a una tabla
+            // sync_tracking que ya ni siquiera está registrada en @Database). Sin esto,
+            // cualquier instalación que haya quedado en esas versiones crashea en bucle
+            // al abrir la app en vez de simplemente recrear la base de datos.
+            .fallbackToDestructiveMigrationFrom(
+                1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22
+            )
             .addMigrations(
                 AppDatabase.MIGRATION_23_24,
                 AppDatabase.MIGRATION_24_25,
@@ -30,7 +38,12 @@ object DatabaseModule {
                 AppDatabase.MIGRATION_30_31,
                 AppDatabase.MIGRATION_31_32,
                 AppDatabase.MIGRATION_32_33,
-                AppDatabase.MIGRATION_33_34
+                AppDatabase.MIGRATION_33_34,
+                AppDatabase.MIGRATION_34_35,
+                AppDatabase.MIGRATION_35_36,
+                AppDatabase.MIGRATION_36_37,
+                AppDatabase.MIGRATION_37_38,
+                AppDatabase.MIGRATION_38_39
             )
             .build()
     }

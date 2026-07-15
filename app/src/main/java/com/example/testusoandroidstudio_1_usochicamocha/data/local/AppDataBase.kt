@@ -65,7 +65,7 @@ import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.MotoOi
         MachineOilChangeImprovedEntity::class,
         OilAnalysisSosEntity::class
     ],
-    version = 36,
+    version = 39,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -118,9 +118,9 @@ abstract class AppDatabase : RoomDatabase() {
                         `quantity` REAL,
                         `kmAtChange` INTEGER NOT NULL,
                         `intervalKm` INTEGER NOT NULL,
-                        `airFilterChanged` INTEGER NOT NULL DEFAULT 0,
-                        `isSynced` INTEGER NOT NULL DEFAULT 0,
-                        `isSyncing` INTEGER NOT NULL DEFAULT 0
+                        `airFilterChanged` INTEGER NOT NULL,
+                        `isSynced` INTEGER NOT NULL,
+                        `isSyncing` INTEGER NOT NULL
                     )
                 """.trimIndent())
             }
@@ -144,10 +144,10 @@ abstract class AppDatabase : RoomDatabase() {
                         `costPerLiter` REAL NOT NULL,
                         `fuelType` TEXT NOT NULL,
                         `serviceStation` TEXT,
-                        `isFullTank` INTEGER NOT NULL DEFAULT 1,
+                        `isFullTank` INTEGER NOT NULL,
                         `notes` TEXT,
-                        `isSynced` INTEGER NOT NULL DEFAULT 0,
-                        `isSyncing` INTEGER NOT NULL DEFAULT 0,
+                        `isSynced` INTEGER NOT NULL,
+                        `isSyncing` INTEGER NOT NULL,
                         `createdAt` INTEGER NOT NULL
                     )
                 """.trimIndent())
@@ -169,26 +169,26 @@ abstract class AppDatabase : RoomDatabase() {
                         `odometerKm` REAL,
                         `hourMeter` REAL,
                         `quantity` REAL NOT NULL,
-                        `quantityUnit` TEXT NOT NULL DEFAULT 'LITERS',
+                        `quantityUnit` TEXT NOT NULL,
                         `quantityLiters` REAL NOT NULL,
                         `pricePerUnit` REAL NOT NULL,
                         `totalCostCalculated` REAL NOT NULL,
                         `totalCostActual` REAL,
-                        `totalCostMismatch` INTEGER NOT NULL DEFAULT 0,
+                        `totalCostMismatch` INTEGER NOT NULL,
                         `fuelType` TEXT NOT NULL,
                         `serviceStation` TEXT,
-                        `isFullTank` INTEGER NOT NULL DEFAULT 1,
+                        `isFullTank` INTEGER NOT NULL,
                         `discountAmount` REAL,
                         `invoicePhotoPath` TEXT,
                         `invoicePhotoUrl` TEXT,
-                        `invoiceStatus` TEXT NOT NULL DEFAULT 'PENDING_REVIEW',
+                        `invoiceStatus` TEXT NOT NULL,
                         `voucherNumber` TEXT,
                         `notes` TEXT,
                         `efficiencyValue` REAL,
                         `efficiencyUnit` TEXT,
-                        `isAnomaly` INTEGER NOT NULL DEFAULT 0,
-                        `isSynced` INTEGER NOT NULL DEFAULT 0,
-                        `isSyncing` INTEGER NOT NULL DEFAULT 0,
+                        `isAnomaly` INTEGER NOT NULL,
+                        `isSynced` INTEGER NOT NULL,
+                        `isSyncing` INTEGER NOT NULL,
                         `createdAt` INTEGER NOT NULL
                     )
                 """.trimIndent())
@@ -240,25 +240,25 @@ abstract class AppDatabase : RoomDatabase() {
                         `odometerKm` REAL,
                         `hourMeter` REAL,
                         `quantity` REAL NOT NULL,
-                        `quantityUnit` TEXT NOT NULL DEFAULT 'LITERS',
+                        `quantityUnit` TEXT NOT NULL,
                         `quantityLiters` REAL NOT NULL,
                         `pricePerUnit` REAL NOT NULL,
                         `totalCostCalculated` REAL NOT NULL,
                         `totalCostActual` REAL,
-                        `totalCostMismatch` INTEGER NOT NULL DEFAULT 0,
+                        `totalCostMismatch` INTEGER NOT NULL,
                         `fuelType` TEXT NOT NULL,
                         `serviceStation` TEXT,
                         `discountAmount` REAL,
                         `invoicePhotoPath` TEXT,
                         `invoicePhotoUrl` TEXT,
-                        `invoiceStatus` TEXT NOT NULL DEFAULT 'PENDING_REVIEW',
+                        `invoiceStatus` TEXT NOT NULL,
                         `voucherNumber` TEXT,
                         `notes` TEXT,
                         `efficiencyValue` REAL,
                         `efficiencyUnit` TEXT,
-                        `isAnomaly` INTEGER NOT NULL DEFAULT 0,
-                        `isSynced` INTEGER NOT NULL DEFAULT 0,
-                        `isSyncing` INTEGER NOT NULL DEFAULT 0,
+                        `isAnomaly` INTEGER NOT NULL,
+                        `isSynced` INTEGER NOT NULL,
+                        `isSyncing` INTEGER NOT NULL,
                         `createdAt` INTEGER NOT NULL
                     )
                 """.trimIndent())
@@ -303,13 +303,13 @@ abstract class AppDatabase : RoomDatabase() {
                         `quantity` REAL NOT NULL,
                         `km_at_change` INTEGER NOT NULL,
                         `next_change_km` INTEGER NOT NULL,
-                        `percentage_used` INTEGER NOT NULL DEFAULT 0,
-                        `air_filter_changed` INTEGER NOT NULL DEFAULT 0,
+                        `percentage_used` INTEGER NOT NULL,
+                        `air_filter_changed` INTEGER NOT NULL,
                         `date_stamp` TEXT NOT NULL,
                         `oil_durability` TEXT NOT NULL,
                         `requirement_id` INTEGER NOT NULL,
                         `created_at` INTEGER NOT NULL,
-                        `is_synced` INTEGER NOT NULL DEFAULT 0,
+                        `is_synced` INTEGER NOT NULL,
                         `sync_error` TEXT
                     )
                 """.trimIndent())
@@ -324,14 +324,14 @@ abstract class AppDatabase : RoomDatabase() {
                         `quantity` REAL NOT NULL,
                         `hour_stamp` INTEGER NOT NULL,
                         `next_change_hours` INTEGER NOT NULL,
-                        `percentage_used` INTEGER NOT NULL DEFAULT 0,
-                        `motor_oil` INTEGER NOT NULL DEFAULT 1,
-                        `hydraulic_oil` INTEGER NOT NULL DEFAULT 0,
+                        `percentage_used` INTEGER NOT NULL,
+                        `motor_oil` INTEGER NOT NULL,
+                        `hydraulic_oil` INTEGER NOT NULL,
                         `date_stamp` TEXT NOT NULL,
                         `oil_durability` TEXT NOT NULL,
                         `requirement_id` INTEGER NOT NULL,
                         `created_at` INTEGER NOT NULL,
-                        `is_synced` INTEGER NOT NULL DEFAULT 0,
+                        `is_synced` INTEGER NOT NULL,
                         `sync_error` TEXT
                     )
                 """.trimIndent())
@@ -349,12 +349,12 @@ abstract class AppDatabase : RoomDatabase() {
                         `sos_report_url` TEXT NOT NULL,
                         `approved_by_mechanic` TEXT NOT NULL,
                         `observations` TEXT,
-                        `is_approved` INTEGER NOT NULL DEFAULT 0,
-                        `extended_hours` INTEGER NOT NULL DEFAULT 0,
-                        `authorizes_extension` INTEGER NOT NULL DEFAULT 0,
+                        `is_approved` INTEGER NOT NULL,
+                        `extended_hours` INTEGER NOT NULL,
+                        `authorizes_extension` INTEGER NOT NULL,
                         `created_at` TEXT NOT NULL,
                         `local_created_at` INTEGER NOT NULL,
-                        `is_synced` INTEGER NOT NULL DEFAULT 0,
+                        `is_synced` INTEGER NOT NULL,
                         `sync_error` TEXT
                     )
                 """.trimIndent())
@@ -383,6 +383,7 @@ abstract class AppDatabase : RoomDatabase() {
 
         val MIGRATION_35_36 = object : Migration(35, 36) {
             override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE motos ADD COLUMN marca TEXT DEFAULT ''")
                 database.execSQL("""
                     CREATE TABLE IF NOT EXISTS `moto_oil_changes` (
                         `localId` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
@@ -394,11 +395,218 @@ abstract class AppDatabase : RoomDatabase() {
                         `quantity` REAL,
                         `kmAtChange` INTEGER NOT NULL,
                         `intervalKm` INTEGER NOT NULL,
-                        `airFilterChanged` INTEGER NOT NULL DEFAULT 0,
-                        `isSynced` INTEGER NOT NULL DEFAULT 0,
-                        `isSyncing` INTEGER NOT NULL DEFAULT 0
+                        `airFilterChanged` INTEGER NOT NULL,
+                        `isSynced` INTEGER NOT NULL,
+                        `isSyncing` INTEGER NOT NULL
                     )
                 """.trimIndent())
+            }
+        }
+
+        /**
+         * Migración 36 → 37: reconstruye pending_inspecciones_moto para forzar
+         * DEFAULT '' en las columnas agregadas por MIGRATION_23_24/24_25/25_26.
+         *
+         * Dispositivos que ya ejecutaron esas migraciones antes de que se les
+         * agregara DEFAULT '' quedaron con esas columnas sin default en SQLite,
+         * lo que no coincide con lo que @ColumnInfo(defaultValue = "") declara
+         * en InspeccionMotoEntity y hace fallar la validación de Room al migrar
+         * (IllegalStateException: "Migration didn't properly handle").
+         * SQLite no soporta ALTER COLUMN, así que se recrea la tabla completa.
+         */
+        val MIGRATION_36_37 = object : Migration(36, 37) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `pending_inspecciones_moto_new` (
+                        `localId` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `serverId` INTEGER,
+                        `uuid` TEXT NOT NULL,
+                        `timestamp` INTEGER NOT NULL,
+                        `idVehiculo` INTEGER NOT NULL,
+                        `kilometrajeReportado` INTEGER NOT NULL,
+                        `estadoVehiculo` TEXT NOT NULL,
+                        `conscienteResponsabilidad` TEXT NOT NULL DEFAULT '',
+                        `aprobadoRuta` TEXT NOT NULL DEFAULT '',
+                        `observacionesFinales` TEXT NOT NULL,
+                        `checkSoat` TEXT NOT NULL,
+                        `checkTecno` TEXT NOT NULL,
+                        `checkLicencia` TEXT NOT NULL,
+                        `checkExtintor` TEXT NOT NULL,
+                        `idUbicacion` INTEGER NOT NULL,
+                        `isSynced` INTEGER NOT NULL,
+                        `isSyncing` INTEGER NOT NULL,
+                        `fechaSoat` TEXT NOT NULL,
+                        `fechaTecno` TEXT NOT NULL,
+                        `fechaLicencia` TEXT NOT NULL,
+                        `checkNivelAceite` TEXT NOT NULL DEFAULT '',
+                        `checkEstadoLlantas` TEXT NOT NULL DEFAULT '',
+                        `checkEstadoLuces` TEXT NOT NULL DEFAULT '',
+                        `placaVehiculo` TEXT NOT NULL DEFAULT '',
+                        `tipoVehiculo` TEXT NOT NULL DEFAULT ''
+                    )
+                """.trimIndent())
+
+                database.execSQL("""
+                    INSERT INTO `pending_inspecciones_moto_new`
+                        (`localId`, `serverId`, `uuid`, `timestamp`, `idVehiculo`,
+                         `kilometrajeReportado`, `estadoVehiculo`, `conscienteResponsabilidad`,
+                         `aprobadoRuta`, `observacionesFinales`, `checkSoat`, `checkTecno`,
+                         `checkLicencia`, `checkExtintor`, `idUbicacion`, `isSynced`, `isSyncing`,
+                         `fechaSoat`, `fechaTecno`, `fechaLicencia`, `checkNivelAceite`,
+                         `checkEstadoLlantas`, `checkEstadoLuces`, `placaVehiculo`, `tipoVehiculo`)
+                    SELECT
+                        `localId`, `serverId`, `uuid`, `timestamp`, `idVehiculo`,
+                        `kilometrajeReportado`, `estadoVehiculo`, `conscienteResponsabilidad`,
+                        `aprobadoRuta`, `observacionesFinales`, `checkSoat`, `checkTecno`,
+                        `checkLicencia`, `checkExtintor`, `idUbicacion`, `isSynced`, `isSyncing`,
+                        `fechaSoat`, `fechaTecno`, `fechaLicencia`, `checkNivelAceite`,
+                        `checkEstadoLlantas`, `checkEstadoLuces`, `placaVehiculo`, `tipoVehiculo`
+                    FROM `pending_inspecciones_moto`
+                """.trimIndent())
+
+                database.execSQL("DROP TABLE `pending_inspecciones_moto`")
+                database.execSQL("ALTER TABLE `pending_inspecciones_moto_new` RENAME TO `pending_inspecciones_moto`")
+            }
+        }
+
+        /**
+         * Migración 37 → 38: mismo problema que MIGRATION_36_37 pero en
+         * vehiculo_inspections. Las columnas agregadas por MIGRATION_26_27
+         * (urlImagenSoat/Tecno/Licencia/Extintor, registrarCambioAceite, oilType,
+         * oilAirFilterChanged) quedaron sin DEFAULT en dispositivos que ya habían
+         * migrado antes de que VehiculoInspectionEntity declarara
+         * @ColumnInfo(defaultValue = ...) en esos campos.
+         */
+        val MIGRATION_37_38 = object : Migration(37, 38) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `vehiculo_inspections_new` (
+                        `localId` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `UUID` TEXT NOT NULL,
+                        `serverId` INTEGER,
+                        `timestamp` INTEGER NOT NULL,
+                        `placaVehiculo` TEXT NOT NULL,
+                        `marca` TEXT NOT NULL,
+                        `tipoVehiculo` TEXT NOT NULL,
+                        `kilometrajeReportado` INTEGER NOT NULL,
+                        `responsableInspeccion` TEXT NOT NULL,
+                        `aprobadoRuta` INTEGER NOT NULL,
+                        `observacionesFinales` TEXT NOT NULL,
+                        `nivelAceite` TEXT NOT NULL,
+                        `nivelRefrigerante` TEXT NOT NULL,
+                        `nivelFrenos` TEXT NOT NULL,
+                        `estadoLlantas` TEXT NOT NULL,
+                        `lucesGeneral` TEXT NOT NULL,
+                        `estadoVisual` TEXT NOT NULL,
+                        `limpiezaGeneral` TEXT NOT NULL,
+                        `checkSoat` TEXT NOT NULL,
+                        `checkTecno` TEXT NOT NULL,
+                        `checkLicencia` TEXT NOT NULL,
+                        `checkExtintor` TEXT NOT NULL,
+                        `vigenciaExtintor` TEXT NOT NULL,
+                        `fechaVencSoat` TEXT NOT NULL,
+                        `fechaVencTecno` TEXT NOT NULL,
+                        `fechaVencLicencia` TEXT NOT NULL,
+                        `urlImagenSoat` TEXT NOT NULL DEFAULT '',
+                        `urlImagenTecno` TEXT NOT NULL DEFAULT '',
+                        `urlImagenLicencia` TEXT NOT NULL DEFAULT '',
+                        `urlImagenExtintor` TEXT NOT NULL DEFAULT '',
+                        `registrarCambioAceite` INTEGER NOT NULL DEFAULT 0,
+                        `oilType` TEXT NOT NULL DEFAULT '',
+                        `oilBrandId` INTEGER,
+                        `oilIntervalKm` INTEGER,
+                        `oilQuantity` REAL,
+                        `oilAirFilterChanged` INTEGER NOT NULL DEFAULT 0,
+                        `tieneBotiquin` INTEGER NOT NULL,
+                        `tieneSeñalizacion` INTEGER NOT NULL,
+                        `tieneLineasEmergencia` INTEGER NOT NULL,
+                        `tieneLlantaRepuesto` INTEGER NOT NULL,
+                        `tieneGatoHidraulico` INTEGER NOT NULL,
+                        `saludFisica` INTEGER NOT NULL,
+                        `saludMental` INTEGER NOT NULL,
+                        `sobrio` INTEGER NOT NULL,
+                        `medicamentos` INTEGER NOT NULL,
+                        `conscienteResponsabilidad` INTEGER NOT NULL,
+                        `condicionParaConducir` INTEGER NOT NULL,
+                        `isSynced` INTEGER NOT NULL,
+                        `isSyncing` INTEGER NOT NULL
+                    )
+                """.trimIndent())
+
+                database.execSQL("""
+                    INSERT INTO `vehiculo_inspections_new`
+                        (`localId`, `UUID`, `serverId`, `timestamp`, `placaVehiculo`, `marca`,
+                         `tipoVehiculo`, `kilometrajeReportado`, `responsableInspeccion`, `aprobadoRuta`,
+                         `observacionesFinales`, `nivelAceite`, `nivelRefrigerante`, `nivelFrenos`,
+                         `estadoLlantas`, `lucesGeneral`, `estadoVisual`, `limpiezaGeneral`, `checkSoat`,
+                         `checkTecno`, `checkLicencia`, `checkExtintor`, `vigenciaExtintor`, `fechaVencSoat`,
+                         `fechaVencTecno`, `fechaVencLicencia`, `urlImagenSoat`, `urlImagenTecno`,
+                         `urlImagenLicencia`, `urlImagenExtintor`, `registrarCambioAceite`, `oilType`,
+                         `oilBrandId`, `oilIntervalKm`, `oilQuantity`, `oilAirFilterChanged`, `tieneBotiquin`,
+                         `tieneSeñalizacion`, `tieneLineasEmergencia`, `tieneLlantaRepuesto`,
+                         `tieneGatoHidraulico`, `saludFisica`, `saludMental`, `sobrio`, `medicamentos`,
+                         `conscienteResponsabilidad`, `condicionParaConducir`, `isSynced`, `isSyncing`)
+                    SELECT
+                        `localId`, `UUID`, `serverId`, `timestamp`, `placaVehiculo`, `marca`,
+                        `tipoVehiculo`, `kilometrajeReportado`, `responsableInspeccion`, `aprobadoRuta`,
+                        `observacionesFinales`, `nivelAceite`, `nivelRefrigerante`, `nivelFrenos`,
+                        `estadoLlantas`, `lucesGeneral`, `estadoVisual`, `limpiezaGeneral`, `checkSoat`,
+                        `checkTecno`, `checkLicencia`, `checkExtintor`, `vigenciaExtintor`, `fechaVencSoat`,
+                        `fechaVencTecno`, `fechaVencLicencia`, `urlImagenSoat`, `urlImagenTecno`,
+                        `urlImagenLicencia`, `urlImagenExtintor`, `registrarCambioAceite`, `oilType`,
+                        `oilBrandId`, `oilIntervalKm`, `oilQuantity`, `oilAirFilterChanged`, `tieneBotiquin`,
+                        `tieneSeñalizacion`, `tieneLineasEmergencia`, `tieneLlantaRepuesto`,
+                        `tieneGatoHidraulico`, `saludFisica`, `saludMental`, `sobrio`, `medicamentos`,
+                        `conscienteResponsabilidad`, `condicionParaConducir`, `isSynced`, `isSyncing`
+                    FROM `vehiculo_inspections`
+                """.trimIndent())
+
+                database.execSQL("DROP TABLE `vehiculo_inspections`")
+                database.execSQL("ALTER TABLE `vehiculo_inspections_new` RENAME TO `vehiculo_inspections`")
+            }
+        }
+
+        /**
+         * Migración 38 → 39: mismo problema, esta vez preventivo en
+         * vehiculo_oil_changes.assetType (agregada por MIGRATION_33_34). No se
+         * confirmó una falla real en este caso, pero sigue el mismo patrón de
+         * ALTER TABLE + @ColumnInfo(defaultValue) que ya rompió otras dos tablas,
+         * así que se cierra por consistencia antes de que aparezca en producción.
+         */
+        val MIGRATION_38_39 = object : Migration(38, 39) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `vehiculo_oil_changes_new` (
+                        `localId` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `placa` TEXT NOT NULL,
+                        `timestamp` INTEGER NOT NULL,
+                        `oilType` TEXT NOT NULL,
+                        `oilBrandId` INTEGER NOT NULL,
+                        `oilBrandName` TEXT NOT NULL,
+                        `quantity` REAL,
+                        `kmAtChange` INTEGER NOT NULL,
+                        `intervalKm` INTEGER NOT NULL,
+                        `airFilterChanged` INTEGER NOT NULL,
+                        `assetType` TEXT NOT NULL DEFAULT 'VEHICLE',
+                        `isSynced` INTEGER NOT NULL,
+                        `isSyncing` INTEGER NOT NULL
+                    )
+                """.trimIndent())
+
+                database.execSQL("""
+                    INSERT INTO `vehiculo_oil_changes_new`
+                        (`localId`, `placa`, `timestamp`, `oilType`, `oilBrandId`, `oilBrandName`,
+                         `quantity`, `kmAtChange`, `intervalKm`, `airFilterChanged`, `assetType`,
+                         `isSynced`, `isSyncing`)
+                    SELECT
+                        `localId`, `placa`, `timestamp`, `oilType`, `oilBrandId`, `oilBrandName`,
+                        `quantity`, `kmAtChange`, `intervalKm`, `airFilterChanged`, `assetType`,
+                        `isSynced`, `isSyncing`
+                    FROM `vehiculo_oil_changes`
+                """.trimIndent())
+
+                database.execSQL("DROP TABLE `vehiculo_oil_changes`")
+                database.execSQL("ALTER TABLE `vehiculo_oil_changes_new` RENAME TO `vehiculo_oil_changes`")
             }
         }
     }

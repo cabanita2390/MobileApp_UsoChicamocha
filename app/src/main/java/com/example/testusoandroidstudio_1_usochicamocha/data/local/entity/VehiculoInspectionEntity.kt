@@ -1,5 +1,6 @@
 package com.example.testusoandroidstudio_1_usochicamocha.data.local.entity
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
@@ -38,17 +39,17 @@ data class VehiculoInspectionEntity(
     val fechaVencTecno: String,
     val fechaVencLicencia: String,
     /** URLs de documentos (referencia al guardar; se envían al backend). */
-    val urlImagenSoat: String = "",
-    val urlImagenTecno: String = "",
-    val urlImagenLicencia: String = "",
-    val urlImagenExtintor: String = "",
+    @ColumnInfo(defaultValue = "") val urlImagenSoat: String = "",
+    @ColumnInfo(defaultValue = "") val urlImagenTecno: String = "",
+    @ColumnInfo(defaultValue = "") val urlImagenLicencia: String = "",
+    @ColumnInfo(defaultValue = "") val urlImagenExtintor: String = "",
     /** Si true, tras sincronizar inspección se llama POST vehicle/oil-change. */
-    val registrarCambioAceite: Boolean = false,
-    val oilType: String = "",
+    @ColumnInfo(defaultValue = "0") val registrarCambioAceite: Boolean = false,
+    @ColumnInfo(defaultValue = "") val oilType: String = "",
     val oilBrandId: Long? = null,
     val oilIntervalKm: Int? = null,
     val oilQuantity: Double? = null,
-    val oilAirFilterChanged: Boolean = false,
+    @ColumnInfo(defaultValue = "0") val oilAirFilterChanged: Boolean = false,
 
     // ── insp_detalle_elementos ────────────────────────────────────────────
     val tieneBotiquin: Boolean,
