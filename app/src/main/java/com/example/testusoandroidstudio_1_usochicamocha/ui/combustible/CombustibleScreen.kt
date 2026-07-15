@@ -2,7 +2,6 @@ package com.example.testusoandroidstudio_1_usochicamocha.ui.combustible
 
 import android.Manifest
 import android.net.Uri
-import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
@@ -45,7 +44,6 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.FileProvider
-import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.Machine
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.Moto
@@ -86,14 +84,49 @@ private fun String.asTitleCase(): String =
         word.replaceFirstChar { it.uppercaseChar() }
     }
 
+/**
+ * Pantalla de registro de combustible.
+ *
+ * El módulo se está reconstruyendo desde cero (ver rama
+ * desarrollo-modulo-combustibles): esta pantalla conserva únicamente el
+ * diseño/UI ya construido, con estado 100% local — no persiste en Room,
+ * no llama a ningún backend ni ViewModel. El botón "Guardar" es un
+ * placeholder hasta que se reconstruya la lógica del módulo.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CombustibleScreen(
-    onNavigateBack: () -> Unit,
-    viewModel: CombustibleViewModel = hiltViewModel()
+    onNavigateBack: () -> Unit
 ) {
-    val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
+
+    // ── Estado local del formulario (solo diseño, sin lógica de negocio) ───────
+    var assetType by remember { mutableStateOf("MACHINE") }
+    var selectedMachine by remember { mutableStateOf<Machine?>(null) }
+    var selectedVehiculo by remember { mutableStateOf<VehiculoItem?>(null) }
+    var selectedMoto by remember { mutableStateOf<Moto?>(null) }
+    var fuelDateTime by remember { mutableStateOf(SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault()).format(Date())) }
+    var hourMeter by remember { mutableStateOf("") }
+    var odometerKm by remember { mutableStateOf("") }
+    var quantity by remember { mutableStateOf("") }
+    var quantityUnit by remember { mutableStateOf("GALLONS") }
+    var pricePerUnit by remember { mutableStateOf("") }
+    var totalCostActual by remember { mutableStateOf("") }
+    val totalCostMismatch = false
+    var discountAmount by remember { mutableStateOf("") }
+    var fuelType by remember { mutableStateOf("DIESEL") }
+    var serviceStation by remember { mutableStateOf("") }
+    var notes by remember { mutableStateOf("") }
+    var invoicePhotoPath by remember { mutableStateOf<String?>(null) }
+    var isLoading by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+
+    // Catálogos de activos/estaciones: la reconstrucción del módulo decide
+    // de dónde vuelven a alimentarse (Room local, API, etc.).
+    val machines = remember { emptyList<Machine>() }
+    val vehiculos = remember { emptyList<VehiculoItem>() }
+    val motos = remember { emptyList<Moto>() }
+    val stations = remember { emptyList<String>() }
 
     // ── Foto de factura ───────────────────────────────────────────────────────
     var tempCameraUri by remember { mutableStateOf<Uri?>(null) }
@@ -101,11 +134,11 @@ fun CombustibleScreen(
     val galleryLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         uri?.let {
             val compressed = ImageUtils.compressAndSaveImage(context, it)
-            viewModel.setInvoicePhotoPath(compressed?.path ?: it.path)
+            invoicePhotoPath = compressed?.path ?: it.path
         }
     }
     val cameraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { success ->
-        if (success) tempCameraUri?.let { viewModel.setInvoicePhotoPath(it.path) }
+        if (success) tempCameraUri?.let { invoicePhotoPath = it.path }
     }
     val cameraPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) {
@@ -116,19 +149,11 @@ fun CombustibleScreen(
         }
     }
 
-    LaunchedEffect(uiState.submissionSuccess) {
-        if (uiState.submissionSuccess) {
-            Toast.makeText(context, "Carga guardada. Se sincronizará cuando haya conexión.", Toast.LENGTH_SHORT).show()
-            viewModel.clearSuccess()
-            onNavigateBack()
-        }
-    }
-
-    val isMachine = uiState.assetType == "MACHINE"
-    val isGas = uiState.fuelType == "GAS_NATURAL"
+    val isMachine = assetType == "MACHINE"
+    val isGas = fuelType == "GAS_NATURAL"
     val unitLabel = when {
         isGas -> "m³"
-        uiState.quantityUnit == "LITERS" -> "L"
+        quantityUnit == "LITERS" -> "L"
         else -> "Gal"
     }
 
@@ -164,14 +189,19 @@ fun CombustibleScreen(
         ) {
 
             // ── 1. Tipo de activo ─────────────────────────────────────────────
-            AssetTypeRow(selected = uiState.assetType, onSelect = viewModel::setAssetType)
+            AssetTypeRow(selected = assetType, onSelect = {
+                assetType = it
+                selectedMachine = null
+                selectedVehiculo = null
+                selectedMoto = null
+            })
 
             // ── 2. Activo específico ──────────────────────────────────────────
             SectionCard(title = "Activo", icon = Icons.Default.Inventory2) {
-                when (uiState.assetType) {
-                    "MACHINE" -> MachineAssetSelector(uiState.machines, uiState.selectedMachine, viewModel::onMachineSelected)
-                    "VEHICLE" -> VehiculoAssetSelector(uiState.vehiculos, uiState.selectedVehiculo, viewModel::onVehiculoSelected)
-                    else      -> MotoAssetSelector(uiState.motos, uiState.selectedMoto, viewModel::onMotoSelected)
+                when (assetType) {
+                    "MACHINE" -> MachineAssetSelector(machines, selectedMachine) { selectedMachine = it }
+                    "VEHICLE" -> VehiculoAssetSelector(vehiculos, selectedVehiculo) { selectedVehiculo = it }
+                    else      -> MotoAssetSelector(motos, selectedMoto) { selectedMoto = it }
                 }
             }
 
@@ -179,13 +209,13 @@ fun CombustibleScreen(
             SectionCard(title = "Fecha y medidor", icon = Icons.Default.AccessTime) {
                 val focusMeter = LocalFocusManager.current
                 DateTimePickerField(
-                    value = uiState.fuelDateTime,
-                    onValueChange = viewModel::setFuelDateTime
+                    value = fuelDateTime,
+                    onValueChange = { fuelDateTime = it }
                 )
                 if (isMachine) {
                     OutlinedTextField(
-                        value = uiState.hourMeter,
-                        onValueChange = { viewModel.setHourMeter(it.asDecimal()) },
+                        value = hourMeter,
+                        onValueChange = { hourMeter = it.asDecimal() },
                         label = { Text("Lectura del horómetro *") },
                         supportingText = { Text("Contador de horas de operación de la máquina") },
                         leadingIcon = { Icon(Icons.Default.Timer, null, modifier = Modifier.size(18.dp)) },
@@ -200,8 +230,8 @@ fun CombustibleScreen(
                     )
                 } else {
                     OutlinedTextField(
-                        value = uiState.odometerKm,
-                        onValueChange = { viewModel.setOdometerKm(it.asDecimal()) },
+                        value = odometerKm,
+                        onValueChange = { odometerKm = it.asDecimal() },
                         label = { Text("Lectura del odómetro *") },
                         supportingText = { Text("Kilometraje actual marcado en el tablero") },
                         leadingIcon = { Icon(Icons.Default.Speed, null, modifier = Modifier.size(18.dp)) },
@@ -222,13 +252,17 @@ fun CombustibleScreen(
                 // Tipo + Unidad en la misma fila
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
                     FuelTypeDropdown(
-                        selected = uiState.fuelType,
-                        onSelect = viewModel::setFuelType,
+                        selected = fuelType,
+                        onSelect = {
+                            fuelType = it
+                            if (it == "GAS_NATURAL") quantityUnit = "CUBIC_METERS"
+                            else if (quantityUnit == "CUBIC_METERS") quantityUnit = "GALLONS"
+                        },
                         modifier = Modifier.weight(1.6f)
                     )
                     UnitDropdown(
-                        selected = uiState.quantityUnit,
-                        onSelect = viewModel::setQuantityUnit,
+                        selected = quantityUnit,
+                        onSelect = { quantityUnit = it },
                         enabled = !isGas,
                         modifier = Modifier.weight(1f)
                     )
@@ -237,8 +271,8 @@ fun CombustibleScreen(
                 val focusFuel = LocalFocusManager.current
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                     OutlinedTextField(
-                        value = uiState.quantity,
-                        onValueChange = { viewModel.setQuantity(it.asDecimal()) },
+                        value = quantity,
+                        onValueChange = { quantity = it.asDecimal() },
                         label = { Text("Cantidad *") },
                         suffix = { Text(unitLabel) },
                         keyboardOptions = KeyboardOptions(
@@ -250,8 +284,8 @@ fun CombustibleScreen(
                         modifier = Modifier.weight(1f)
                     )
                     OutlinedTextField(
-                        value = uiState.pricePerUnit,
-                        onValueChange = { viewModel.setPricePerUnit(it.asDecimal()) },
+                        value = pricePerUnit,
+                        onValueChange = { pricePerUnit = it.asDecimal() },
                         label = { Text("Precio / $unitLabel *") },
                         prefix = { Text("$") },
                         keyboardOptions = KeyboardOptions(
@@ -267,24 +301,24 @@ fun CombustibleScreen(
 
             // ── 5. Costos ─────────────────────────────────────────────────────
             CostCard(
-                totalActual = uiState.totalCostActual,
-                hasMismatch = uiState.totalCostMismatch,
-                discountAmount = uiState.discountAmount,
-                onTotalActualChange = viewModel::setTotalCostActual,
-                onDiscountChange = viewModel::setDiscountAmount
+                totalActual = totalCostActual,
+                hasMismatch = totalCostMismatch,
+                discountAmount = discountAmount,
+                onTotalActualChange = { totalCostActual = it },
+                onDiscountChange = { discountAmount = it }
             )
 
             // ── 6. Datos adicionales ──────────────────────────────────────────
             SectionCard(title = "Datos adicionales", icon = Icons.Default.MoreHoriz) {
-                // Selector de bomba / estación (catálogo sincronizado desde el servidor)
+                // Selector de bomba / estación (catálogo por reconectar)
                 StationDropdown(
-                    selected = uiState.serviceStation,
-                    stations = uiState.stations.map { it.name },
-                    onSelect = viewModel::setServiceStation
+                    selected = serviceStation,
+                    stations = stations,
+                    onSelect = { serviceStation = it }
                 )
                 OutlinedTextField(
-                    value = uiState.notes,
-                    onValueChange = viewModel::setNotes,
+                    value = notes,
+                    onValueChange = { notes = it },
                     label = { Text("Notas (opcional)") },
                     keyboardOptions = KeyboardOptions(
                         capitalization = KeyboardCapitalization.Sentences,
@@ -297,14 +331,14 @@ fun CombustibleScreen(
 
             // ── 7. Foto de factura ────────────────────────────────────────────
             InvoicePhotoCard(
-                photoPath = uiState.invoicePhotoPath,
+                photoPath = invoicePhotoPath,
                 onPickGallery = { galleryLauncher.launch("image/*") },
                 onTakePhoto = { cameraPermissionLauncher.launch(Manifest.permission.CAMERA) },
-                onRemove = { viewModel.setInvoicePhotoPath(null) }
+                onRemove = { invoicePhotoPath = null }
             )
 
             // ── Error ─────────────────────────────────────────────────────────
-            AnimatedVisibility(visible = uiState.error != null) {
+            AnimatedVisibility(visible = error != null) {
                 Card(
                     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
                     shape = RoundedCornerShape(10.dp)
@@ -315,19 +349,21 @@ fun CombustibleScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Icon(Icons.Default.ErrorOutline, null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp))
-                        Text(uiState.error ?: "", color = MaterialTheme.colorScheme.onErrorContainer, style = MaterialTheme.typography.bodySmall)
+                        Text(error ?: "", color = MaterialTheme.colorScheme.onErrorContainer, style = MaterialTheme.typography.bodySmall)
                     }
                 }
             }
 
             // ── Guardar ───────────────────────────────────────────────────────
             Button(
-                onClick = viewModel::submitFuelLog,
+                onClick = {
+                    error = "El módulo de combustibles está en reconstrucción — el guardado aún no está implementado."
+                },
                 modifier = Modifier.fillMaxWidth().height(54.dp),
                 shape = RoundedCornerShape(12.dp),
-                enabled = !uiState.isLoading
+                enabled = !isLoading
             ) {
-                if (uiState.isLoading) {
+                if (isLoading) {
                     CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = MaterialTheme.colorScheme.onPrimary)
                     Spacer(Modifier.width(10.dp))
                 }
