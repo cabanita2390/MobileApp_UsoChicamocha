@@ -19,11 +19,7 @@ import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.Ubicacion
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.VehiculoDao
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.VehiculoInspectionDao
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.DocumentoVehiculoDao
-import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.FuelLogDao
-import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.FuelStationDao
-import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.FuelStationEntity
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.VehiculoOilChangeDao
-import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.FuelLogEntity
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.FormEntity
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.ImageEntity
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.DocumentoMotoEntity
@@ -65,8 +61,6 @@ import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.MotoOi
         com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.DocumentoVehiculoEntity::class,
         com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.VehiculoOilChangeEntity::class,
         com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.MotoOilChangeEntity::class,
-        com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.FuelLogEntity::class,
-        FuelStationEntity::class,
         VehicleOilChangeImprovedEntity::class,
         MachineOilChangeImprovedEntity::class,
         OilAnalysisSosEntity::class
@@ -423,8 +417,6 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun documentoVehiculoDao(): DocumentoVehiculoDao
     abstract fun vehiculoOilChangeDao(): VehiculoOilChangeDao
     abstract fun motoOilChangeDao(): MotoOilChangeDao
-    abstract fun fuelLogDao(): FuelLogDao
-    abstract fun fuelStationDao(): FuelStationDao
     abstract fun vehicleOilChangeImprovedDao(): VehicleOilChangeImprovedDao
     abstract fun machineOilChangeImprovedDao(): MachineOilChangeImprovedDao
     abstract fun oilAnalysisSosDao(): OilAnalysisSosDao

@@ -86,9 +86,4 @@ object RepositoryModule {
         dao: InspeccionMotoDao,
         apiService: ApiService
     ): InspeccionMotoRepository = InspeccionMotoRepositoryImpl(dao, apiService)
-
-    @Provides
-    @Singleton
-    fun provideFuelRepository(dao: FuelLogDao, apiService: ApiService): FuelRepository =
-        FuelRepositoryImpl(dao, apiService)
 }

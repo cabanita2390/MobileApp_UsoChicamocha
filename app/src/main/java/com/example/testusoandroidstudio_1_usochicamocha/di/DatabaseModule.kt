@@ -97,14 +97,6 @@ object DatabaseModule {
 
     @Provides
     @Singleton
-    fun provideFuelLogDao(db: AppDatabase): FuelLogDao = db.fuelLogDao()
-
-    @Provides
-    @Singleton
-    fun provideFuelStationDao(db: AppDatabase): FuelStationDao = db.fuelStationDao()
-
-    @Provides
-    @Singleton
     fun provideVehicleOilChangeImprovedDao(db: AppDatabase): VehicleOilChangeImprovedDao = db.vehicleOilChangeImprovedDao()
 
     @Provides
