@@ -65,7 +65,7 @@ import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.MotoOi
         MachineOilChangeImprovedEntity::class,
         OilAnalysisSosEntity::class
     ],
-    version = 39,
+    version = 40,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -607,6 +607,22 @@ abstract class AppDatabase : RoomDatabase() {
 
                 database.execSQL("DROP TABLE `vehiculo_oil_changes`")
                 database.execSQL("ALTER TABLE `vehiculo_oil_changes_new` RENAME TO `vehiculo_oil_changes`")
+            }
+        }
+
+        /**
+         * Migración 39 → 40: elimina las tablas del módulo de combustibles
+         * (fuel_logs_local, fuel_stations_local). El módulo se retiró de las
+         * entidades de @Database (ver rama desarrollo-modulo-combustibles) sin
+         * subir la versión, lo que dejaba el hash de esquema de Room
+         * desincronizado en cualquier instalación que ya hubiera llegado a la
+         * versión 39 con esas tablas presentes, y la app crasheaba al abrir
+         * con "Room cannot verify the data integrity" (checkIdentity).
+         */
+        val MIGRATION_39_40 = object : Migration(39, 40) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("DROP TABLE IF EXISTS `fuel_logs_local`")
+                database.execSQL("DROP TABLE IF EXISTS `fuel_stations_local`")
             }
         }
     }
