@@ -196,12 +196,12 @@ fun CambioAceiteScreen(
                 }
             }
 
-            // ── Kilometraje actual ────────────────────────────────────────────
+            // ── Kilometraje al momento del cambio ─────────────────────────────
             item {
                 OutlinedTextField(
                     value = uiState.kmAtChange,
                     onValueChange = onKmAtChangeChange,
-                    label = { Text("Kilometraje actual (*)", fontWeight = FontWeight.Bold) },
+                    label = { Text("Kilometraje al momento del cambio (*)", fontWeight = FontWeight.Bold) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                     enabled = uiState.isRoleAllowed,
                     modifier = Modifier.fillMaxWidth(),

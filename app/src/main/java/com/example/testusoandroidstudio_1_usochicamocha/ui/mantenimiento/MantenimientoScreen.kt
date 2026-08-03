@@ -309,7 +309,7 @@ fun MaintenanceDetailsCard(
             OutlinedTextField(
                 value = uiState.currentHourMeter,
                 onValueChange = { onFormEvent(MantenimientoFormEvent.CurrentHourMeterChanged(it)) },
-                label = { Text("Horómetro actual") },
+                label = { Text("Horómetro al momento del cambio") },
                 modifier = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 enabled = isEnabled
