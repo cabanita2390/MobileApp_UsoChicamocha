@@ -26,7 +26,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.ConnectionStatusTopBar
 
-private const val SHOW_FUEL_FEATURE = true
+private const val SHOW_FUEL_FEATURE = false
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
