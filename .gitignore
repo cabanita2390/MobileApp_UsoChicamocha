@@ -26,3 +26,7 @@ test_report.txt
 # Kotlin error logs
 .kotlin/errors/*.log
 .idea/deploymentTargetSelector.xml
+
+### Artifacts que no deben subirse al repo ###
+.claude/**
+/graphify-out/**
