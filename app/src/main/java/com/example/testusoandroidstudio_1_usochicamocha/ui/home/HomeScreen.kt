@@ -9,7 +9,6 @@ import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.DirectionsBike
 import androidx.compose.material.icons.filled.DirectionsCar
-import androidx.compose.material.icons.filled.LocalGasStation
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -26,8 +25,6 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.ConnectionStatusTopBar
 
-private const val SHOW_FUEL_FEATURE = false
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
@@ -37,7 +34,6 @@ fun HomeScreen(
     onNavigateToMaquinaria: () -> Unit,
     onNavigateToVehicular: () -> Unit,
     onNavigateToMotos: () -> Unit,
-    onNavigateToCombustible: () -> Unit = {},
     onNavigateToCambioAceiteMaquinaria: () -> Unit = {},
     onNavigateToCambioAceiteVehicular: () -> Unit = {}
 ) {
@@ -113,7 +109,6 @@ fun HomeScreen(
                         icon = Icons.Filled.DirectionsBike,
                         onClick = onNavigateToMotos
                     )
-                    if (SHOW_FUEL_FEATURE) FuelCategoryCard(onClick = onNavigateToCombustible)
                 }
                 isAdmin -> {
                     // ADMIN: acceso completo
@@ -135,7 +130,6 @@ fun HomeScreen(
                         icon = Icons.Filled.DirectionsBike,
                         onClick = onNavigateToMotos
                     )
-                    if (SHOW_FUEL_FEATURE) FuelCategoryCard(onClick = onNavigateToCombustible)
                 }
                 else -> {
                     // OPERARIO: solo inspecciones pre-operativas + combustible (sin aceite)
@@ -157,7 +151,6 @@ fun HomeScreen(
                         icon = Icons.Filled.DirectionsBike,
                         onClick = onNavigateToMotos
                     )
-                    if (SHOW_FUEL_FEATURE) FuelCategoryCard(onClick = onNavigateToCombustible)
                 }
             }
         }
@@ -215,54 +208,6 @@ fun InspectionCategoryCard(
                     )
                     Text(
                         text = subtitle,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun FuelCategoryCard(onClick: () -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer)
-    ) {
-        OutlinedButton(
-            onClick = onClick,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(8.dp)
-                .height(100.dp),
-            shape = RoundedCornerShape(12.dp),
-            border = ButtonDefaults.outlinedButtonBorder,
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onPrimaryContainer)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Start,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.LocalGasStation,
-                    contentDescription = null,
-                    modifier = Modifier.size(40.dp),
-                    tint = MaterialTheme.colorScheme.primary
-                )
-                Spacer(modifier = Modifier.width(16.dp))
-                Column(verticalArrangement = Arrangement.Center) {
-                    Text(
-                        text = "Registrar Combustible",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                        text = "Maquinaria · Vehículos · Motos",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

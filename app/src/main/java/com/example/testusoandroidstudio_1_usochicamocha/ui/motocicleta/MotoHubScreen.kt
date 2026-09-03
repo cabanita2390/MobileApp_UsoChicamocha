@@ -33,7 +33,6 @@ fun MotoHubScreen(
     networkStatus: Boolean,
     onNavigateBack: () -> Unit,
     onNavigateToForm: () -> Unit,
-    onNavigateToCombustible: () -> Unit = {},
     onNavigateToCambioAceite: () -> Unit = {},
     viewModel: MotocicletaViewModel = hiltViewModel()
 ) {

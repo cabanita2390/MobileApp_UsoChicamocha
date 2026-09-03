@@ -36,8 +36,7 @@ fun VehiculoMainScreen(
     onLogout: () -> Unit,
     onNavigateBack: () -> Unit,
     onNavigateToForm: () -> Unit,
-    onNavigateToCambioAceite: () -> Unit,
-    onNavigateToCombustible: () -> Unit = {}
+    onNavigateToCambioAceite: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
@@ -88,7 +87,6 @@ fun VehiculoMainScreen(
             VehiculoAvailableFormsCard(
                 onNavigateToForm = onNavigateToForm,
                 onNavigateToCambioAceite = onNavigateToCambioAceite,
-                onNavigateToCombustible = onNavigateToCombustible,
                 showOilChange = !isOperario
             )
 
@@ -125,7 +123,6 @@ fun VehiculoMainScreen(
 fun VehiculoAvailableFormsCard(
     onNavigateToForm: () -> Unit,
     onNavigateToCambioAceite: () -> Unit,
-    onNavigateToCombustible: () -> Unit = {},
     showOilChange: Boolean = true
 ) {
     Card(

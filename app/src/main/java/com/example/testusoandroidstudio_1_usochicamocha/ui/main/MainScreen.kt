@@ -43,8 +43,7 @@ fun MainScreen(
     onNavigateToLogs: () -> Unit,
     onNavigateToForm: () -> Unit,
     onNavigateToImprevisto: () -> Unit,
-    onNavigateToMantenimiento: (Int?) -> Unit,
-    onNavigateToCombustible: () -> Unit = {}
+    onNavigateToMantenimiento: (Int?) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
@@ -128,7 +127,6 @@ fun MainScreen(
                 onNavigateToForm = onNavigateToForm,
                 onNavigateToImprevisto = onNavigateToImprevisto,
                 onNavigateToMantenimiento = { onNavigateToMantenimiento(null) },
-                onNavigateToCombustible = onNavigateToCombustible,
                 showOilChange = !isOperario
             )
 
@@ -267,7 +265,6 @@ fun AvailableFormsCard(
     onNavigateToForm: () -> Unit,
     onNavigateToImprevisto: () -> Unit,
     onNavigateToMantenimiento: () -> Unit,
-    onNavigateToCombustible: () -> Unit = {},
     showOilChange: Boolean = true
 ) {
     Card(
