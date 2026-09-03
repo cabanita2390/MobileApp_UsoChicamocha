@@ -46,6 +46,13 @@ util/             # NetworkMonitor (detecta conectividad), TokenRefreshMonitor, 
 
 `util/NetworkMonitor` decide si algo se sincroniza de inmediato o se difiere con WorkManager para cuando vuelva la conexión. La navegación (`NavHost`) vive directo en `MainActivity.kt` — no hay un paquete de navegación separado.
 
+**Sincronización en segundo plano** (`data/workers/`, orquestada desde `MyApplication` y `domain/usecase/LocalSyncCoordinator.kt`):
+- `SyncDataWorker`: cada 15 min (y una vez al abrir la app), si hay conexión — sincroniza formularios/inspecciones/mantenimientos pendientes y catálogos maestros (vehículos, motos, máquinas, aceites, ubicaciones, documentos); al terminar encola `ImagenSyncWorker`.
+- `ImagenSyncWorker`: sube las imágenes asociadas a los registros ya sincronizados.
+- `CleanupWorker`: cada 24h (no requiere red) — resetea locks de formularios que quedaron colgados en `isSyncing = 1` por una sincronización interrumpida.
+
+**Permisos** (`AndroidManifest.xml`): `INTERNET`, `ACCESS_NETWORK_STATE`, `CAMERA`, `READ_MEDIA_IMAGES` — la app toma fotos directamente para inspecciones/documentos.
+
 ## Prerequisitos
 
 - Android Studio (o JDK 17 + Gradle vía línea de comandos)
@@ -78,6 +85,8 @@ O directamente desde Android Studio: **Run ▸ Run 'app'**.
 ./gradlew test                      # Unit tests (JVM, JUnit + MockK)
 ./gradlew connectedAndroidTest       # Tests instrumentados — requiere un dispositivo/emulador conectado
 ```
+
+Los instrumentados (`app/src/androidTest/`) son de flujo completo: `HappyPathE2ETest`, `MotoHappyPathTest`, `FullAuditTest`.
 
 ## Distribución
 
