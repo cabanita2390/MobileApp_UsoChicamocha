@@ -72,6 +72,7 @@ class MotocicletaViewModelTest {
         every { getPendingInspeccionesMotoUseCase() } returns flowOf(emptyList())
         every { tokenManager.getInspectorInfo() } returns flowOf("Test Inspector")
         every { tokenManager.getUsername() } returns flowOf("Test Inspector")
+        every { tokenManager.getRole() } returns flowOf("INSPECTOR")
         
         // Mock Coordinator observations
         every { localSyncCoordinator.observeSyncTrigger(any()) } returns flowOf(false)
