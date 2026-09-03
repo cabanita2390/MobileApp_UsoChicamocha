@@ -40,11 +40,11 @@ data/remote/      # Retrofit — interceptor JWT + authenticator de refresh de t
 data/repository/  # Sincroniza lo local con el backend (idempotencia vía UUID + lock isSyncing)
 di/               # Módulos Hilt: AppModule, DatabaseModule, DataStoreModule, NetworkModule, RepositoryModule, UseCaseModule
 domain/           # Modelos y casos de uso
-ui/screens/        # Pantallas Compose, organizadas por dominio (vehiculo/, motocicleta/, mantenimiento/, shared/, etc.)
+ui/               # Un paquete por dominio: vehiculo/, motocicleta/, mantenimiento/, home/, login/, form/, shared/, theme/, etc.
 util/             # NetworkMonitor (detecta conectividad), TokenRefreshMonitor, JwtUtils, ImageUtils, AppLogger
 ```
 
-`util/NetworkMonitor` decide si algo se sincroniza de inmediato o se difiere con WorkManager para cuando vuelva la conexión.
+`util/NetworkMonitor` decide si algo se sincroniza de inmediato o se difiere con WorkManager para cuando vuelva la conexión. La navegación (`NavHost`) vive directo en `MainActivity.kt` — no hay un paquete de navegación separado.
 
 ## Prerequisitos
 
