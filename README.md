@@ -1,8 +1,6 @@
 # UsoChicamocha Móvil
 
-![Kotlin](https://img.shields.io/badge/Kotlin-2.0-7F52FF)
-![Jetpack Compose](https://img.shields.io/badge/Compose-2024.09-4285F4)
-![Android](https://img.shields.io/badge/minSdk-24-3DDC84)
+**Kotlin 2.0 · Jetpack Compose · minSdk 24**
 
 App Android de campo del sistema de gestión de flota y maquinaria pesada de **Distrito de Riego Usochicamocha** (Colombia). Offline-first: los inspectores registran inspecciones, cambios de aceite y datos de vehículos/motos/maquinaria sin necesidad de conexión, y la app sincroniza contra el [backend](https://github.com/cabanita2390/UsochimochaBackend) apenas hay señal.
 
