@@ -47,11 +47,11 @@ class MotoCambioAceiteViewModel @Inject constructor(
 
         override suspend fun save(
             asset: AssetOilChangeItem, oilType: String, oil: Oil, quantity: Double?,
-            km: Int, interval: Int, airFilterChanged: Boolean
+            km: Int, interval: Int, airFilterChanged: Boolean, dateTimeMillis: Long
         ) {
             val entity = MotoOilChangeEntity(
                 placa = asset.placa,
-                timestamp = System.currentTimeMillis(),
+                timestamp = dateTimeMillis,
                 oilType = oilType,
                 oilBrandId = oil.id.toLong(),
                 oilBrandName = oil.name,
@@ -81,6 +81,7 @@ class MotoCambioAceiteViewModel @Inject constructor(
     fun onOilSelected(oil: Oil) = core.onOilSelected(oil)
     fun onKmAtChangeChange(km: String) = core.onKmAtChangeChange(km)
     fun onIntervalKmChange(km: String) = core.onIntervalKmChange(km)
+    fun onDateTimeChange(millis: Long) = core.onDateTimeChange(millis)
     fun onQuantityChange(q: String) = core.onQuantityChange(q)
     fun onAirFilterChanged(value: Boolean) = core.onAirFilterChanged(value)
     fun clearError() = core.clearError()

@@ -7,7 +7,6 @@ import com.example.testusoandroidstudio_1_usochicamocha.data.remote.ApiService
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.request.VehicleOilChangeRequest
 import com.example.testusoandroidstudio_1_usochicamocha.domain.repository.VehiculoOilChangeRepository
 import kotlinx.coroutines.flow.Flow
-import java.time.LocalDateTime
 
 class VehiculoOilChangeRepositoryImpl(
     private val dao: VehiculoOilChangeDao,
@@ -37,7 +36,8 @@ class VehiculoOilChangeRepositoryImpl(
             try {
                 val request = VehicleOilChangeRequest(
                     placa = item.placa,
-                    dateStamp = LocalDateTime.now().toString(),
+                    dateStamp = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", java.util.Locale.US)
+                        .format(java.util.Date(item.timestamp)),
                     oilType = item.oilType,
                     brandId = item.oilBrandId,
                     quantity = item.quantity,

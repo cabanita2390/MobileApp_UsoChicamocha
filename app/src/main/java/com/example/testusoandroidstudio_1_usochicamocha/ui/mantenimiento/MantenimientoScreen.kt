@@ -36,6 +36,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.Machine
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.Maintenance
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.Oil
+import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.ServiceDateField
 import com.example.testusoandroidstudio_1_usochicamocha.ui.theme.AppUsoChicamochaTheme
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -305,6 +306,13 @@ fun MaintenanceDetailsCard(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            ServiceDateField(
+                label = "Fecha del servicio",
+                dateTimeMillis = uiState.dateTime,
+                onDateTimeSelected = { onFormEvent(MantenimientoFormEvent.DateTimeChanged(it)) },
+                enabled = isEnabled
+            )
+
             // Este campo NO cambia
             OutlinedTextField(
                 value = uiState.currentHourMeter,

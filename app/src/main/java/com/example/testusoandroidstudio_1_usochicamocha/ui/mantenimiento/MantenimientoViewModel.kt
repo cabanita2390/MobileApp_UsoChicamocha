@@ -20,7 +20,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.util.Date
 import javax.inject.Inject
 
 @HiltViewModel
@@ -64,7 +63,8 @@ class MantenimientoViewModel @Inject constructor(
                             quantity = form.quantity.toString(),
                             currentHourMeter = form.currentHourMeter.toString(),
                             averageHoursChange = form.averageHoursChange.toString(),
-                            maintenanceType = form.type
+                            maintenanceType = form.type,
+                            dateTime = form.dateTime
                         )
                     }
                     // Post-procesamiento para seleccionar aceite y maquina si ya cargaron
@@ -197,6 +197,9 @@ class MantenimientoViewModel @Inject constructor(
             is MantenimientoFormEvent.CurrentHourMeterChanged -> {
                 _uiState.update { it.copy(currentHourMeter = event.hourMeter) }
             }
+            is MantenimientoFormEvent.DateTimeChanged -> {
+                _uiState.update { it.copy(dateTime = event.dateTime) }
+            }
             is MantenimientoFormEvent.AverageHoursChangeChanged -> {
                 _uiState.update { it.copy(averageHoursChange = event.hours) }
             }
@@ -217,10 +220,15 @@ class MantenimientoViewModel @Inject constructor(
                 return@launch
             }
 
+            if (state.dateTime > System.currentTimeMillis()) {
+                _uiState.update { it.copy(error = "La fecha del servicio no puede ser futura.") }
+                return@launch
+            }
+
             val form = Maintenance(
                 id = state.editingFormId ?: 0, // Usar ID existente si se edita, o 0 para nuevo (Room autogenera)
                 machineId = state.selectedMachine.id,
-                dateTime = Date().time, // Actualizamos la fecha al momento de la edición/creación
+                dateTime = state.dateTime,
                 brand = state.selectedOil.name,
                 brandId = state.selectedOil.id,
                 quantity = state.quantity.toDoubleOrNull() ?: 0.0,
@@ -254,7 +262,8 @@ class MantenimientoViewModel @Inject constructor(
                         averageHoursChange = "",
                         selectedMachine = null,
                         maintenanceType = null,
-                        editingFormId = null // Resetear modo edición
+                        editingFormId = null, // Resetear modo edición
+                        dateTime = System.currentTimeMillis()
                     )
                 }
             }.onFailure { exception ->
@@ -289,6 +298,9 @@ data class MantenimientoUiState(
     val currentHourMeter: String = "",
     val averageHoursChange: String = "",
     val maintenanceType: String? = null,
+    /** Momento del servicio, en epoch millis. Por defecto "ahora", pero editable — permite
+     * registrar hoy un cambio que en realidad ocurrió antes. */
+    val dateTime: Long = System.currentTimeMillis(),
     val isLoading: Boolean = false,
     val isSyncingOils: Boolean = false,
     val error: String? = null,
@@ -305,6 +317,7 @@ sealed class MantenimientoFormEvent {
     data class OilSelected(val oil: Oil) : MantenimientoFormEvent()
     data class QuantityChanged(val quantity: String) : MantenimientoFormEvent()
     data class CurrentHourMeterChanged(val hourMeter: String) : MantenimientoFormEvent()
+    data class DateTimeChanged(val dateTime: Long) : MantenimientoFormEvent()
     data class AverageHoursChangeChanged(val hours: String) : MantenimientoFormEvent()
     data class MaintenanceTypeChanged(val type: String) : MantenimientoFormEvent()
     object Submit : MantenimientoFormEvent()

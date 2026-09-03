@@ -52,7 +52,7 @@ class CambioAceiteCoreTest {
         every { strategy.assetsFlow() } returns flowOf(listOf(asset))
         every { strategy.kmPrefillOnSelect(any()) } returns "5000"
         coEvery { strategy.onInit() } just Runs
-        coEvery { strategy.save(any(), any(), any(), any(), any(), any(), any()) } just Runs
+        coEvery { strategy.save(any(), any(), any(), any(), any(), any(), any(), any()) } just Runs
 
         core = CambioAceiteCore(strategy, getLocalOilsUseCase, syncOilsUseCase, tokenManager, logTag = "Test")
     }
@@ -84,7 +84,7 @@ class CambioAceiteCoreTest {
         advanceUntilIdle()
 
         assertEquals("Seleccione un activo.", core.uiState.value.error)
-        coVerify(exactly = 0) { strategy.save(any(), any(), any(), any(), any(), any(), any()) }
+        coVerify(exactly = 0) { strategy.save(any(), any(), any(), any(), any(), any(), any(), any()) }
     }
 
     @Test
@@ -100,7 +100,7 @@ class CambioAceiteCoreTest {
         advanceUntilIdle()
 
         assertEquals("Ingrese el kilometraje actual.", core.uiState.value.error)
-        coVerify(exactly = 0) { strategy.save(any(), any(), any(), any(), any(), any(), any()) }
+        coVerify(exactly = 0) { strategy.save(any(), any(), any(), any(), any(), any(), any(), any()) }
     }
 
     @Test
@@ -117,7 +117,7 @@ class CambioAceiteCoreTest {
         advanceUntilIdle()
 
         coVerify(exactly = 1) {
-            strategy.save(asset, "motor", oil, 3.5, 5200, 3000, false)
+            strategy.save(asset, "motor", oil, 3.5, 5200, 3000, false, any())
         }
         assertNull(core.uiState.value.error)
         assertEquals(true, core.uiState.value.submissionSuccess)
@@ -137,6 +137,6 @@ class CambioAceiteCoreTest {
         advanceUntilIdle()
 
         assertEquals(false, core.uiState.value.isRoleAllowed)
-        coVerify(exactly = 0) { strategy.save(any(), any(), any(), any(), any(), any(), any()) }
+        coVerify(exactly = 0) { strategy.save(any(), any(), any(), any(), any(), any(), any(), any()) }
     }
 }

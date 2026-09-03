@@ -120,6 +120,10 @@ class CambioAceiteCore(
         _uiState.update { it.copy(intervalKm = km) }
     }
 
+    fun onDateTimeChange(millis: Long) {
+        _uiState.update { it.copy(dateTimeMillis = millis) }
+    }
+
     fun onQuantityChange(q: String) {
         val sanitized = q.replace(',', '.')
         if (sanitized.count { it == '.' } <= 1) {
@@ -169,6 +173,10 @@ class CambioAceiteCore(
                 _uiState.update { it.copy(error = "Ingrese el intervalo del próximo cambio.") }
                 return@launch
             }
+            if (state.dateTimeMillis > System.currentTimeMillis()) {
+                _uiState.update { it.copy(error = "La fecha del servicio no puede ser futura.") }
+                return@launch
+            }
 
             _uiState.update { it.copy(isLoading = true) }
             try {
@@ -179,7 +187,8 @@ class CambioAceiteCore(
                     quantity = state.quantity.toDoubleOrNull(),
                     km = km,
                     interval = interval,
-                    airFilterChanged = state.airFilterChanged
+                    airFilterChanged = state.airFilterChanged,
+                    dateTimeMillis = state.dateTimeMillis
                 )
                 _uiState.update { it.copy(isLoading = false, submissionSuccess = true) }
             } catch (e: Exception) {

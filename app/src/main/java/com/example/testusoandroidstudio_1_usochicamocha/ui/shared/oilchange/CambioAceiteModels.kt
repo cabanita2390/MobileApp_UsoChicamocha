@@ -22,6 +22,10 @@ data class CambioAceiteUiState(
     val intervalKm: String = "",
     val quantity: String = "",
     val airFilterChanged: Boolean = false,
+    /** Momento del servicio, en epoch millis. Por defecto "ahora", pero editable — permite
+     * registrar hoy un cambio que en realidad ocurrió antes (p. ej. si no se alcanzó a
+     * capturar el mismo día). */
+    val dateTimeMillis: Long = System.currentTimeMillis(),
     val isLoading: Boolean = false,
     val isSyncingOils: Boolean = false,
     val submissionSuccess: Boolean = false,
@@ -42,6 +46,7 @@ interface CambioAceiteStrategy {
         quantity: Double?,
         km: Int,
         interval: Int,
-        airFilterChanged: Boolean
+        airFilterChanged: Boolean,
+        dateTimeMillis: Long
     )
 }

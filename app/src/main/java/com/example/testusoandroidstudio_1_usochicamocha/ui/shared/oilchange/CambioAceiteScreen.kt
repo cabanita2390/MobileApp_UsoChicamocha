@@ -29,6 +29,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.Oil
+import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.ServiceDateField
 
 /** Lo que de verdad difiere entre la pantalla de cambio de aceite de vehículo y la de moto:
  * textos y cómo se muestra cada activo en el selector. Todo lo demás (layout, validación,
@@ -53,6 +54,7 @@ fun CambioAceiteScreen(
     onOilSelected: (Oil) -> Unit,
     onKmAtChangeChange: (String) -> Unit,
     onIntervalKmChange: (String) -> Unit,
+    onDateTimeChange: (Long) -> Unit,
     onQuantityChange: (String) -> Unit,
     onAirFilterChanged: (Boolean) -> Unit,
     onSyncOils: () -> Unit,
@@ -194,6 +196,16 @@ fun CambioAceiteScreen(
                         }
                     }
                 }
+            }
+
+            // ── Fecha del servicio (editable: permite backdatear) ──────────────
+            item {
+                ServiceDateField(
+                    label = "Fecha del servicio",
+                    dateTimeMillis = uiState.dateTimeMillis,
+                    onDateTimeSelected = onDateTimeChange,
+                    enabled = uiState.isRoleAllowed
+                )
             }
 
             // ── Kilometraje al momento del cambio ─────────────────────────────

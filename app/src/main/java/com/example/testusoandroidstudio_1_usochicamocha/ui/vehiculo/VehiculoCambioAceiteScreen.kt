@@ -30,6 +30,7 @@ fun VehiculoCambioAceiteScreen(
         onOilSelected = viewModel::onOilSelected,
         onKmAtChangeChange = viewModel::onKmAtChangeChange,
         onIntervalKmChange = viewModel::onIntervalKmChange,
+        onDateTimeChange = viewModel::onDateTimeChange,
         onQuantityChange = viewModel::onQuantityChange,
         onAirFilterChanged = viewModel::onAirFilterChanged,
         onSyncOils = viewModel::syncOils,
