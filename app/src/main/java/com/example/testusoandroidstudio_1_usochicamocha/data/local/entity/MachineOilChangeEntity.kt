@@ -2,10 +2,10 @@ package com.example.testusoandroidstudio_1_usochicamocha.data.local.entity
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
-import com.example.testusoandroidstudio_1_usochicamocha.domain.model.Maintenance
+import com.example.testusoandroidstudio_1_usochicamocha.domain.model.MachineOilChangeForm
 
 @Entity(tableName = "maintenance_forms")
-data class MaintenanceEntity(
+data class MachineOilChangeEntity(
     @PrimaryKey(autoGenerate = true) val id: Int = 0,
     val machineId: Int,
     val brandId: Int,
@@ -20,8 +20,8 @@ data class MaintenanceEntity(
     val syncError: String? = null
 )
 
-fun MaintenanceEntity.toDomain(): Maintenance {
-    return Maintenance(
+fun MachineOilChangeEntity.toDomain(): MachineOilChangeForm {
+    return MachineOilChangeForm(
         id = this.id,
         machineId = this.machineId,
         dateTime = this.dateTime,

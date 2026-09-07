@@ -1,14 +1,14 @@
-package com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.maintenance
+package com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.machineoilchange
 
-import com.example.testusoandroidstudio_1_usochicamocha.domain.model.Maintenance
-import com.example.testusoandroidstudio_1_usochicamocha.domain.repository.MaintenanceRepository
+import com.example.testusoandroidstudio_1_usochicamocha.domain.model.MachineOilChangeForm
+import com.example.testusoandroidstudio_1_usochicamocha.domain.repository.MachineOilChangeRepository
 import javax.inject.Inject
 
-class SaveMaintenanceFormUseCase @Inject constructor(
-    private val repository: MaintenanceRepository
+class SaveMachineOilChangeFormUseCase @Inject constructor(
+    private val repository: MachineOilChangeRepository
 ) {
-    suspend operator fun invoke(maintenance: Maintenance): Result<Unit> {
+    suspend operator fun invoke(machineOilChange: MachineOilChangeForm): Result<Unit> {
 
-        return repository.saveMaintenanceLocally(maintenance)
+        return repository.saveMachineOilChangeLocally(machineOilChange)
     }
 }

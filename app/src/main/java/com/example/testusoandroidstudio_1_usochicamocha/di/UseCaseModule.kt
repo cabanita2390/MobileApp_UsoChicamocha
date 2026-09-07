@@ -10,7 +10,7 @@ import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.inspeccio
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.log.GetLogsUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.machine.GetLocalMachinesUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.machine.SyncMachinesUseCase
-import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.maintenance.*
+import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.machineoilchange.*
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.moto.GetLocalMotosUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.moto.GetLocalUbicacionesUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.moto.SyncDocumentosUseCase
@@ -65,15 +65,15 @@ object UseCaseModule {
 
     @Provides
     @Singleton
-    fun provideSaveMaintenanceFormUseCase(repo: MaintenanceRepository): SaveMaintenanceFormUseCase = SaveMaintenanceFormUseCase(repo)
+    fun provideSaveMachineOilChangeFormUseCase(repo: MachineOilChangeRepository): SaveMachineOilChangeFormUseCase = SaveMachineOilChangeFormUseCase(repo)
 
     @Provides
     @Singleton
-    fun provideGetPendingMaintenanceFormsUseCase(repo: MaintenanceRepository): GetPendingMaintenanceFormsUseCase = GetPendingMaintenanceFormsUseCase(repo)
+    fun provideGetPendingMachineOilChangeFormsUseCase(repo: MachineOilChangeRepository): GetPendingMachineOilChangeFormsUseCase = GetPendingMachineOilChangeFormsUseCase(repo)
 
     @Provides
     @Singleton
-    fun provideSyncMaintenanceFormsUseCase(repo: MaintenanceRepository): SyncMaintenanceFormsUseCase = SyncMaintenanceFormsUseCase(repo)
+    fun provideSyncMachineOilChangeFormsUseCase(repo: MachineOilChangeRepository): SyncMachineOilChangeFormsUseCase = SyncMachineOilChangeFormsUseCase(repo)
 
     @Provides
     @Singleton

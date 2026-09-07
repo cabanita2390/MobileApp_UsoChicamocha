@@ -27,7 +27,7 @@ import com.example.testusoandroidstudio_1_usochicamocha.ui.log.LogScreen
 import com.example.testusoandroidstudio_1_usochicamocha.ui.login.LoginScreen
 import com.example.testusoandroidstudio_1_usochicamocha.ui.login.LoginViewModel
 import com.example.testusoandroidstudio_1_usochicamocha.ui.main.MainScreen
-import com.example.testusoandroidstudio_1_usochicamocha.ui.mantenimiento.MantenimientoScreen
+import com.example.testusoandroidstudio_1_usochicamocha.ui.maquinaria.MaquinariaCambioAceiteScreen
 import com.example.testusoandroidstudio_1_usochicamocha.ui.motocicleta.MotocicletaScreen
 import com.example.testusoandroidstudio_1_usochicamocha.ui.motocicleta.MotoHubScreen
 import com.example.testusoandroidstudio_1_usochicamocha.ui.motocicleta.MotoCambioAceiteScreen
@@ -120,7 +120,7 @@ class MainActivity : ComponentActivity() {
                                 navController.navigate("motocicleta")
                             },
                             onNavigateToCambioAceiteMaquinaria = {
-                                navController.navigate("mantenimiento")
+                                navController.navigate("maquinaria_cambio_aceite")
                             },
                             onNavigateToCambioAceiteVehicular = {
                                 navController.navigate("vehiculo_cambio_aceite")
@@ -148,8 +148,8 @@ class MainActivity : ComponentActivity() {
                             onNavigateToImprevisto = {
                                 navController.navigate("imprevisto")
                             },
-                            onNavigateToMantenimiento = { maintenanceId ->
-                                val route = if (maintenanceId != null) "mantenimiento?maintenanceId=$maintenanceId" else "mantenimiento"
+                            onNavigateToMaquinariaCambioAceite = { machineOilChangeId ->
+                                val route = if (machineOilChangeId != null) "maquinaria_cambio_aceite?machineOilChangeId=$machineOilChangeId" else "maquinaria_cambio_aceite"
                                 navController.navigate(route)
                             }
                         )
@@ -240,15 +240,15 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                     composable(
-                        route = "mantenimiento?maintenanceId={maintenanceId}",
+                        route = "maquinaria_cambio_aceite?machineOilChangeId={machineOilChangeId}",
                         arguments = listOf(
-                            androidx.navigation.navArgument("maintenanceId") {
+                            androidx.navigation.navArgument("machineOilChangeId") {
                                 type = androidx.navigation.NavType.IntType
                                 defaultValue = -1 // Use -1 to indicate no ID
                             }
                         )
                     ) {
-                        MantenimientoScreen(
+                        MaquinariaCambioAceiteScreen(
                             onNavigateBack = {
                                 navController.popBackStack()
                             }

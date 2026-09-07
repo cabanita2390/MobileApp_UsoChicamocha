@@ -5,7 +5,7 @@ import android.widget.Toast
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.Form
-import com.example.testusoandroidstudio_1_usochicamocha.domain.model.Maintenance
+import com.example.testusoandroidstudio_1_usochicamocha.domain.model.MachineOilChangeForm
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.PendingFormStatus
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.LocalSyncCoordinator
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.auth.LogoutUseCase
@@ -14,8 +14,8 @@ import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.form.GetP
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.form.SyncFormUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.form.TriggerImageSyncUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.machine.SyncMachinesUseCase
-import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.maintenance.GetPendingMaintenanceFormsUseCase
-import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.maintenance.SyncMaintenanceFormsUseCase
+import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.machineoilchange.GetPendingMachineOilChangeFormsUseCase
+import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.machineoilchange.SyncMachineOilChangeFormsUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.oil.SyncOilsUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.TokenManager
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -31,9 +31,9 @@ data class MainUiState(
     val syncMachinesMessage: String? = null,
     val isSyncingForms: Boolean = false,
     val syncFormsMessage: String? = null,
-    val pendingMaintenanceForms: List<Maintenance> = emptyList(),
-    val isSyncingMaintenance: Boolean = false,
-    val syncMaintenanceMessage: String? = null,
+    val pendingMachineOilChangeForms: List<MachineOilChangeForm> = emptyList(),
+    val isSyncingMachineOilChange: Boolean = false,
+    val syncMachineOilChangeMessage: String? = null,
     val isSyncingOils: Boolean = false,
     val syncOilsMessage: String? = null,
     val syncImagesMessage: String? = null,
@@ -44,7 +44,7 @@ data class MainUiState(
 class MainViewModel @Inject constructor(
     private val logoutUseCase: LogoutUseCase,
     private val getPendingFormsWithStatusUseCase: GetPendingFormsWithStatusUseCase,
-    private val getPendingMaintenanceFormsUseCase: GetPendingMaintenanceFormsUseCase,
+    private val getPendingMachineOilChangeFormsUseCase: GetPendingMachineOilChangeFormsUseCase,
     private val localSyncCoordinator: LocalSyncCoordinator,
     private val triggerImageSyncUseCase: TriggerImageSyncUseCase,
     private val tokenManager: TokenManager
@@ -55,7 +55,7 @@ class MainViewModel @Inject constructor(
 
     init {
         observePendingForms()
-        observePendingMaintenanceForms()
+        observePendingMachineOilChangeForms()
         observeSyncStatuses()
         observeUserRole()
     }
@@ -72,9 +72,9 @@ class MainViewModel @Inject constructor(
         }.launchIn(viewModelScope)
     }
 
-    private fun observePendingMaintenanceForms() {
-        getPendingMaintenanceFormsUseCase().onEach { maintenanceForms ->
-            _uiState.update { it.copy(pendingMaintenanceForms = maintenanceForms) }
+    private fun observePendingMachineOilChangeForms() {
+        getPendingMachineOilChangeFormsUseCase().onEach { machineOilChangeForms ->
+            _uiState.update { it.copy(pendingMachineOilChangeForms = machineOilChangeForms) }
         }.launchIn(viewModelScope)
     }
 
@@ -103,11 +103,11 @@ class MainViewModel @Inject constructor(
             _uiState.update { it.copy(isSyncingForms = isRunning) }
         }.launchIn(viewModelScope)
 
-        // Maintenance
+        // MachineOilChangeForm
         localSyncCoordinator.observeSyncTrigger(
-            LocalSyncCoordinator.SyncTrigger.ManualSync(LocalSyncCoordinator.SyncType.MAINTENANCE_ONLY)
+            LocalSyncCoordinator.SyncTrigger.ManualSync(LocalSyncCoordinator.SyncType.MACHINE_OIL_CHANGE_ONLY)
         ).onEach { isRunning ->
-            _uiState.update { it.copy(isSyncingMaintenance = isRunning) }
+            _uiState.update { it.copy(isSyncingMachineOilChange = isRunning) }
         }.launchIn(viewModelScope)
     }
 
@@ -202,35 +202,35 @@ class MainViewModel @Inject constructor(
         _uiState.update { it.copy(syncFormsMessage = null) }
     }
 
-    fun onSyncMaintenanceClicked() {
+    fun onSyncMachineOilChangeClicked() {
         viewModelScope.launch {
-            _uiState.update { it.copy(syncMaintenanceMessage = null) }
+            _uiState.update { it.copy(syncMachineOilChangeMessage = null) }
 
-            val pendingMaintenance = _uiState.value.pendingMaintenanceForms
-            if (pendingMaintenance.isEmpty()) {
-                _uiState.update { it.copy(syncMaintenanceMessage = "No hay mantenimientos para sincronizar.") }
+            val pendingMachineOilChange = _uiState.value.pendingMachineOilChangeForms
+            if (pendingMachineOilChange.isEmpty()) {
+                _uiState.update { it.copy(syncMachineOilChangeMessage = "No hay mantenimientos para sincronizar.") }
                 return@launch
             }
             
-            Log.d("MainViewModel", "🔄 Starting maintenance sync with ${pendingMaintenance.size} pending forms")
+            Log.d("MainViewModel", "🔄 Starting machineOilChange sync with ${pendingMachineOilChange.size} pending forms")
 
             // Solicitamos sincronización de mantenimientos
             val result = localSyncCoordinator.coordinateSync(
-                LocalSyncCoordinator.SyncTrigger.ManualSync(LocalSyncCoordinator.SyncType.MAINTENANCE_ONLY)
+                LocalSyncCoordinator.SyncTrigger.ManualSync(LocalSyncCoordinator.SyncType.MACHINE_OIL_CHANGE_ONLY)
             )
 
             if (result.isSuccess) {
-                _uiState.update { it.copy(syncMaintenanceMessage = "Sincronización de mantenimientos iniciada en segundo plano") }
-                Log.d("MainViewModel", "✅ Maintenance sync coordinated successfully")
+                _uiState.update { it.copy(syncMachineOilChangeMessage = "Sincronización de mantenimientos iniciada en segundo plano") }
+                Log.d("MainViewModel", "✅ MachineOilChangeForm sync coordinated successfully")
             } else {
-                _uiState.update { it.copy(syncMaintenanceMessage = "Error al iniciar sincronización") }
-                Log.e("MainViewModel", "❌ Failed to coordinate maintenance sync", result.exceptionOrNull())
+                _uiState.update { it.copy(syncMachineOilChangeMessage = "Error al iniciar sincronización") }
+                Log.e("MainViewModel", "❌ Failed to coordinate machineOilChange sync", result.exceptionOrNull())
             }
         }
     }
 
-    fun clearSyncMaintenanceMessage() {
-        _uiState.update { it.copy(syncMaintenanceMessage = null) }
+    fun clearSyncMachineOilChangeMessage() {
+        _uiState.update { it.copy(syncMachineOilChangeMessage = null) }
     }
 
     fun onSyncOilsClicked() {

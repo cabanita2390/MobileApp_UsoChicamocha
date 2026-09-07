@@ -1,13 +1,13 @@
 package com.example.testusoandroidstudio_1_usochicamocha.domain.repository
 
-import com.example.testusoandroidstudio_1_usochicamocha.domain.model.Maintenance
+import com.example.testusoandroidstudio_1_usochicamocha.domain.model.MachineOilChangeForm
 import kotlinx.coroutines.flow.Flow
 
-interface MaintenanceRepository {
-    suspend fun saveMaintenanceLocally(maintenance: Maintenance): Result<Unit>
-    fun getPendingMaintenanceForms(): Flow<List<Maintenance>>
+interface MachineOilChangeRepository {
+    suspend fun saveMachineOilChangeLocally(machineOilChange: MachineOilChangeForm): Result<Unit>
+    fun getPendingMachineOilChangeForms(): Flow<List<MachineOilChangeForm>>
 
-    suspend fun syncMaintenanceForm(maintenance: Maintenance): Result<Unit>
-    suspend fun deleteMaintenanceForm(id: Int): Result<Unit>
-    suspend fun getMaintenanceById(id: Int): Maintenance?
+    suspend fun syncMachineOilChangeForm(machineOilChange: MachineOilChangeForm): Result<Unit>
+    suspend fun deleteMachineOilChangeForm(id: Int): Result<Unit>
+    suspend fun getMachineOilChangeById(id: Int): MachineOilChangeForm?
 }

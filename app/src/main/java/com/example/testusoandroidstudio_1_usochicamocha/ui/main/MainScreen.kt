@@ -27,7 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.Form
-import com.example.testusoandroidstudio_1_usochicamocha.domain.model.Maintenance
+import com.example.testusoandroidstudio_1_usochicamocha.domain.model.MachineOilChangeForm
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.PendingFormStatus
 import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.ConnectionStatusTopBar
 import java.text.SimpleDateFormat
@@ -43,7 +43,7 @@ fun MainScreen(
     onNavigateToLogs: () -> Unit,
     onNavigateToForm: () -> Unit,
     onNavigateToImprevisto: () -> Unit,
-    onNavigateToMantenimiento: (Int?) -> Unit
+    onNavigateToMaquinariaCambioAceite: (Int?) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
@@ -77,10 +77,10 @@ fun MainScreen(
         }
     }
 
-    LaunchedEffect(uiState.syncMaintenanceMessage) {
-        uiState.syncMaintenanceMessage?.let {
+    LaunchedEffect(uiState.syncMachineOilChangeMessage) {
+        uiState.syncMachineOilChangeMessage?.let {
             Toast.makeText(context, it, Toast.LENGTH_LONG).show()
-            viewModel.clearSyncMaintenanceMessage()
+            viewModel.clearSyncMachineOilChangeMessage()
         }
     }
 
@@ -126,15 +126,15 @@ fun MainScreen(
             AvailableFormsCard(
                 onNavigateToForm = onNavigateToForm,
                 onNavigateToImprevisto = onNavigateToImprevisto,
-                onNavigateToMantenimiento = { onNavigateToMantenimiento(null) },
+                onNavigateToMaquinariaCambioAceite = { onNavigateToMaquinariaCambioAceite(null) },
                 showOilChange = !isOperario
             )
 
-            PendingMaintenanceCard(
-                pendingMaintenance = uiState.pendingMaintenanceForms,
-                isSyncing = uiState.isSyncingMaintenance,
-                onSyncClicked = { viewModel.onSyncMaintenanceClicked() },
-                onEditClicked = { id -> onNavigateToMantenimiento(id) }
+            PendingMachineOilChangeCard(
+                pendingMachineOilChange = uiState.pendingMachineOilChangeForms,
+                isSyncing = uiState.isSyncingMachineOilChange,
+                onSyncClicked = { viewModel.onSyncMachineOilChangeClicked() },
+                onEditClicked = { id -> onNavigateToMaquinariaCambioAceite(id) }
             )
 
             PendingFormsCard(
@@ -264,7 +264,7 @@ fun PendingFormsCard(
 fun AvailableFormsCard(
     onNavigateToForm: () -> Unit,
     onNavigateToImprevisto: () -> Unit,
-    onNavigateToMantenimiento: () -> Unit,
+    onNavigateToMaquinariaCambioAceite: () -> Unit,
     showOilChange: Boolean = true
 ) {
     Card(
@@ -281,7 +281,7 @@ fun AvailableFormsCard(
                 Text("Imprevisto Maquinaria", fontSize = 18.sp)
             }
             if (showOilChange) {
-                OutlinedButton(onClick = onNavigateToMantenimiento, modifier = Modifier.fillMaxWidth()) {
+                OutlinedButton(onClick = onNavigateToMaquinariaCambioAceite, modifier = Modifier.fillMaxWidth()) {
                     Text("Cambio aceite", fontSize = 18.sp)
                 }
             }
@@ -290,8 +290,8 @@ fun AvailableFormsCard(
 }
 
 @Composable
-fun PendingMaintenanceCard(
-    pendingMaintenance: List<Maintenance>,
+fun PendingMachineOilChangeCard(
+    pendingMachineOilChange: List<MachineOilChangeForm>,
     isSyncing: Boolean,
     onSyncClicked: () -> Unit,
     onEditClicked: (Int) -> Unit
@@ -319,7 +319,7 @@ fun PendingMaintenanceCard(
                 }
             }
             Spacer(modifier = Modifier.height(16.dp))
-            if (pendingMaintenance.isEmpty()) {
+            if (pendingMachineOilChange.isEmpty()) {
                 Box(modifier = Modifier.fillMaxWidth().padding(16.dp), contentAlignment = Alignment.Center) {
                     Text("No hay fomularios de cambio de aceite pendientes.")
                 }
@@ -327,9 +327,9 @@ fun PendingMaintenanceCard(
                 Column(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    pendingMaintenance.forEach { maintenance ->
-                        PendingMaintenanceItem(
-                            maintenance = maintenance,
+                    pendingMachineOilChange.forEach { machineOilChange ->
+                        PendingMachineOilChangeItem(
+                            machineOilChange = machineOilChange,
                             onEditClicked = onEditClicked
                         )
                         Divider()
@@ -341,12 +341,12 @@ fun PendingMaintenanceCard(
 }
 
 @Composable
-fun PendingMaintenanceItem(
-    maintenance: Maintenance,
+fun PendingMachineOilChangeItem(
+    machineOilChange: MachineOilChangeForm,
     onEditClicked: (Int) -> Unit
 ) {
     val sdf = SimpleDateFormat("HH:mm - dd/MM/yyyy", Locale.getDefault())
-    val formattedDate = sdf.format(Date(maintenance.dateTime))
+    val formattedDate = sdf.format(Date(machineOilChange.dateTime))
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
@@ -360,18 +360,18 @@ fun PendingMaintenanceItem(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("Cambio de aceite (${maintenance.type})", fontWeight = FontWeight.Bold)
+                    Text("Cambio de aceite (${machineOilChange.type})", fontWeight = FontWeight.Bold)
                     Text(formattedDate, style = MaterialTheme.typography.bodySmall)
                 }
                 Button(
-                    onClick = { onEditClicked(maintenance.id) },
+                    onClick = { onEditClicked(machineOilChange.id) },
                     modifier = Modifier.padding(start = 8.dp)
                 ) {
                     Text("EDITAR")
                 }
             }
 
-            if (maintenance.syncError != null) {
+            if (machineOilChange.syncError != null) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.Top) {
                     Icon(
@@ -382,7 +382,7 @@ fun PendingMaintenanceItem(
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        "Error: ${maintenance.syncError}",
+                        "Error: ${machineOilChange.syncError}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error,
                         fontWeight = FontWeight.Bold

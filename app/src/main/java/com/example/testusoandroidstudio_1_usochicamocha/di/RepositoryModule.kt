@@ -40,8 +40,8 @@ object RepositoryModule {
 
     @Provides
     @Singleton
-    fun provideMaintenanceRepository(maintenanceDao: MaintenanceDao, apiService: ApiService): MaintenanceRepository {
-        return MaintenanceRepositoryImpl(maintenanceDao, apiService)
+    fun provideMachineOilChangeRepository(machineOilChangeDao: MachineOilChangeDao, apiService: ApiService): MachineOilChangeRepository {
+        return MachineOilChangeRepositoryImpl(machineOilChangeDao, apiService)
     }
 
     @Provides

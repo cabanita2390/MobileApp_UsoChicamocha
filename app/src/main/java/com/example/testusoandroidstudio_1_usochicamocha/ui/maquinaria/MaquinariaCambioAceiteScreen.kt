@@ -1,4 +1,4 @@
-package com.example.testusoandroidstudio_1_usochicamocha.ui.mantenimiento
+package com.example.testusoandroidstudio_1_usochicamocha.ui.maquinaria
 
 import android.widget.Toast
 import androidx.compose.foundation.border
@@ -34,7 +34,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.Machine
-import com.example.testusoandroidstudio_1_usochicamocha.domain.model.Maintenance
+import com.example.testusoandroidstudio_1_usochicamocha.domain.model.MachineOilChangeForm
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.Oil
 import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.ServiceDateField
 import com.example.testusoandroidstudio_1_usochicamocha.ui.theme.AppUsoChicamochaTheme
@@ -44,8 +44,8 @@ import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MantenimientoScreen(
-    viewModel: MantenimientoViewModel = hiltViewModel(),
+fun MaquinariaCambioAceiteScreen(
+    viewModel: MaquinariaCambioAceiteViewModel = hiltViewModel(),
     onNavigateBack: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -90,24 +90,24 @@ fun MantenimientoScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
-                MachineSelectorMantenimiento(
+                MachineSelectorMaquinaria(
                     machines = uiState.machines,
                     selectedMachine = uiState.selectedMachine,
-                    onMachineSelected = { viewModel.onFormEvent(MantenimientoFormEvent.MachineSelected(it)) },
+                    onMachineSelected = { viewModel.onFormEvent(MaquinariaCambioAceiteFormEvent.MachineSelected(it)) },
                     isEnabled = !uiState.isLoading
                 )
             }
 
             item {
-                MaintenanceTypeSelector(
-                    selectedType = uiState.maintenanceType,
-                    onTypeSelected = { viewModel.onFormEvent(MantenimientoFormEvent.MaintenanceTypeChanged(it)) },
+                MachineOilChangeTypeSelector(
+                    selectedType = uiState.machineOilChangeType,
+                    onTypeSelected = { viewModel.onFormEvent(MaquinariaCambioAceiteFormEvent.MachineOilChangeFormTypeChanged(it)) },
                     isEnabled = !uiState.isLoading
                 )
             }
 
             item {
-                MaintenanceDetailsCard(
+                MachineOilChangeDetailsCard(
                     uiState = uiState,
                     onFormEvent = viewModel::onFormEvent, // Pasamos la referencia a la función
                     onRetrySyncOils = { viewModel.syncOils() },
@@ -117,9 +117,9 @@ fun MantenimientoScreen(
 
             item {
                 Button(
-                    onClick = { viewModel.onFormEvent(MantenimientoFormEvent.Submit) },
+                    onClick = { viewModel.onFormEvent(MaquinariaCambioAceiteFormEvent.Submit) },
                     enabled = uiState.selectedMachine != null &&
-                            uiState.maintenanceType != null &&
+                            uiState.machineOilChangeType != null &&
                             uiState.selectedOil != null &&
                             uiState.quantity.toDoubleOrNull() != null && // Validar que sea un número
                             !uiState.isLoading,
@@ -134,14 +134,14 @@ fun MantenimientoScreen(
             }
 
             item {
-                PendingMaintenanceList(forms = uiState.pendingForms)
+                PendingMachineOilChangeList(forms = uiState.pendingForms)
             }
         }
     }
 }
 
 @Composable
-fun MachineSelectorMantenimiento(
+fun MachineSelectorMaquinaria(
     machines: List<Machine>,
     selectedMachine: Machine?,
     onMachineSelected: (Machine) -> Unit,
@@ -247,7 +247,7 @@ fun MachineSelectorMantenimiento(
 }
 
 @Composable
-fun MaintenanceTypeSelector(
+fun MachineOilChangeTypeSelector(
     selectedType: String?,
     onTypeSelected: (String) -> Unit,
     isEnabled: Boolean
@@ -292,9 +292,9 @@ fun MaintenanceTypeSelector(
 }
 
 @Composable
-fun MaintenanceDetailsCard(
-    uiState: MantenimientoUiState,
-    onFormEvent: (MantenimientoFormEvent) -> Unit,
+fun MachineOilChangeDetailsCard(
+    uiState: MaquinariaCambioAceiteUiState,
+    onFormEvent: (MaquinariaCambioAceiteFormEvent) -> Unit,
     onRetrySyncOils: () -> Unit,
     isEnabled: Boolean
 ) {
@@ -309,14 +309,14 @@ fun MaintenanceDetailsCard(
             ServiceDateField(
                 label = "Fecha del servicio",
                 dateTimeMillis = uiState.dateTime,
-                onDateTimeSelected = { onFormEvent(MantenimientoFormEvent.DateTimeChanged(it)) },
+                onDateTimeSelected = { onFormEvent(MaquinariaCambioAceiteFormEvent.DateTimeChanged(it)) },
                 enabled = isEnabled
             )
 
             // Este campo NO cambia
             OutlinedTextField(
                 value = uiState.currentHourMeter,
-                onValueChange = { onFormEvent(MantenimientoFormEvent.CurrentHourMeterChanged(it)) },
+                onValueChange = { onFormEvent(MaquinariaCambioAceiteFormEvent.CurrentHourMeterChanged(it)) },
                 label = { Text("Horómetro al momento del cambio") },
                 modifier = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -326,7 +326,7 @@ fun MaintenanceDetailsCard(
             // --- INICIO DE LA MODIFICACIÓN ---
 
             // 1. Obtenemos la lista de aceites como antes.
-            val availableOils = when (uiState.maintenanceType) {
+            val availableOils = when (uiState.machineOilChangeType) {
                 "motor" -> uiState.motorOils
                 "hydraulic" -> uiState.hydraulicOils
                 else -> emptyList()
@@ -338,9 +338,9 @@ fun MaintenanceDetailsCard(
                     oils = availableOils,
                     selectedOil = uiState.selectedOil, // <-- PASA EL OBJETO "selectedOil"
                     onOilSelected = { oil -> // <-- RECIBE EL OBJETO "oil"
-                        onFormEvent(MantenimientoFormEvent.OilSelected(oil)) // <-- ENVÍA EL NUEVO EVENTO
+                        onFormEvent(MaquinariaCambioAceiteFormEvent.OilSelected(oil)) // <-- ENVÍA EL NUEVO EVENTO
                     },
-                    isEnabled = isEnabled && uiState.maintenanceType != null,
+                    isEnabled = isEnabled && uiState.machineOilChangeType != null,
                     allOilsEmpty = uiState.allOils.isEmpty(),
                     isSyncingOils = uiState.isSyncingOils,
                     onRetrySyncOils = onRetrySyncOils
@@ -349,7 +349,7 @@ fun MaintenanceDetailsCard(
 
             OutlinedTextField(
                 value = uiState.quantity,
-                onValueChange = { onFormEvent(MantenimientoFormEvent.QuantityChanged(it)) },
+                onValueChange = { onFormEvent(MaquinariaCambioAceiteFormEvent.QuantityChanged(it)) },
                 label = { Text("Cantidad (Gl)") },
                 modifier = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
@@ -359,7 +359,7 @@ fun MaintenanceDetailsCard(
             // Este campo NO cambia
             OutlinedTextField(
                 value = uiState.averageHoursChange,
-                onValueChange = { onFormEvent(MantenimientoFormEvent.AverageHoursChangeChanged(it)) },
+                onValueChange = { onFormEvent(MaquinariaCambioAceiteFormEvent.AverageHoursChangeChanged(it)) },
                 label = { Text("Horas para siguiente cambio") },
                 modifier = Modifier.fillMaxWidth(),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -371,9 +371,9 @@ fun MaintenanceDetailsCard(
 
 @Preview(showBackground = true)
 @Composable
-fun PreviewMantenimientoScreen() {
+fun PreviewMaquinariaCambioAceiteScreen() {
     AppUsoChicamochaTheme {
-        MantenimientoScreen(onNavigateBack = {})
+        MaquinariaCambioAceiteScreen(onNavigateBack = {})
     }
 }
 
@@ -512,7 +512,7 @@ fun OilSelector(
 }
 
 @Composable
-fun PendingMaintenanceList(forms: List<Maintenance>) {
+fun PendingMachineOilChangeList(forms: List<MachineOilChangeForm>) {
     if (forms.isNotEmpty()) {
         Text(
             "Pendientes de Sincronización / Errores",
@@ -521,14 +521,14 @@ fun PendingMaintenanceList(forms: List<Maintenance>) {
             color = MaterialTheme.colorScheme.onSurface
         )
         forms.forEach { form ->
-            PendingMaintenanceItem(form)
+            PendingMachineOilChangeItem(form)
             Spacer(modifier = Modifier.height(8.dp))
         }
     }
 }
 
 @Composable
-fun PendingMaintenanceItem(form: Maintenance) {
+fun PendingMachineOilChangeItem(form: MachineOilChangeForm) {
     val cardColor = if (form.syncError != null) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.surfaceVariant
     val contentColor = if (form.syncError != null) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onSurfaceVariant
 

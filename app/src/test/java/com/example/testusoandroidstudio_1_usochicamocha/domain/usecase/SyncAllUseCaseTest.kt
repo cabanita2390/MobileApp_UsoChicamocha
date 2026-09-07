@@ -6,13 +6,13 @@ import androidx.work.WorkManager
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.form.SyncFormUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.form.SyncPendingImagesUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.form.TriggerImageSyncUseCase
-import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.maintenance.SyncMaintenanceFormsUseCase
+import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.machineoilchange.SyncMachineOilChangeFormsUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.machine.SyncMachinesUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.oil.SyncOilsUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.Form
-import com.example.testusoandroidstudio_1_usochicamocha.domain.model.Maintenance
+import com.example.testusoandroidstudio_1_usochicamocha.domain.model.MachineOilChangeForm
 import com.example.testusoandroidstudio_1_usochicamocha.domain.repository.FormRepository
-import com.example.testusoandroidstudio_1_usochicamocha.domain.repository.MaintenanceRepository
+import com.example.testusoandroidstudio_1_usochicamocha.domain.repository.MachineOilChangeRepository
 import com.example.testusoandroidstudio_1_usochicamocha.domain.repository.MachineRepository
 import com.example.testusoandroidstudio_1_usochicamocha.domain.repository.OilRepository
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.pojo.ImageForSync
@@ -35,7 +35,7 @@ class SyncAllUseCaseTest {
 
     private lateinit var formRepository: FormRepository
 
-    private lateinit var maintenanceRepository: MaintenanceRepository
+    private lateinit var machineOilChangeRepository: MachineOilChangeRepository
 
     private lateinit var machineRepository: MachineRepository
 
@@ -48,7 +48,7 @@ class SyncAllUseCaseTest {
     private lateinit var workManager: WorkManager
 
     private lateinit var syncFormUseCase: SyncFormUseCase
-    private lateinit var syncMaintenanceFormsUseCase: SyncMaintenanceFormsUseCase
+    private lateinit var syncMachineOilChangeFormsUseCase: SyncMachineOilChangeFormsUseCase
     private lateinit var syncMachinesUseCase: SyncMachinesUseCase
     private lateinit var syncOilsUseCase: SyncOilsUseCase
     private lateinit var syncPendingImagesUseCase: SyncPendingImagesUseCase
@@ -58,7 +58,7 @@ class SyncAllUseCaseTest {
     fun setUp() {
         // Initialize mocks
         formRepository = mockk(relaxed = true)
-        maintenanceRepository = mockk(relaxed = true)
+        machineOilChangeRepository = mockk(relaxed = true)
         machineRepository = mockk(relaxed = true)
         oilRepository = mockk(relaxed = true)
         logger = mockk(relaxed = true)
@@ -72,7 +72,7 @@ class SyncAllUseCaseTest {
         every { Log.e(any(), any(), any()) } returns 0
 
         syncFormUseCase = SyncFormUseCase(formRepository)
-        syncMaintenanceFormsUseCase = SyncMaintenanceFormsUseCase(maintenanceRepository)
+        syncMachineOilChangeFormsUseCase = SyncMachineOilChangeFormsUseCase(machineOilChangeRepository)
         syncMachinesUseCase = SyncMachinesUseCase(machineRepository, logger)
         syncOilsUseCase = SyncOilsUseCase(oilRepository, logger)
         syncPendingImagesUseCase = SyncPendingImagesUseCase(formRepository)
@@ -191,8 +191,8 @@ class SyncAllUseCaseTest {
     fun `test random sync operations with success and failure scenarios`() = runTest {
         // Mock successful sync for all repositories including images
         coEvery { formRepository.syncForm(any()) } returns Result.success(Unit)
-        coEvery { maintenanceRepository.syncMaintenanceForm(any()) } returns Result.success(Unit)
-        coEvery { maintenanceRepository.deleteMaintenanceForm(any()) } returns Result.success(Unit)
+        coEvery { machineOilChangeRepository.syncMachineOilChangeForm(any()) } returns Result.success(Unit)
+        coEvery { machineOilChangeRepository.deleteMachineOilChangeForm(any()) } returns Result.success(Unit)
         coEvery { machineRepository.syncMachines() } returns Result.success(Unit)
         coEvery { oilRepository.syncOils() } returns Result.success(Unit)
         coEvery { formRepository.getPendingImagesForSync() } returns flowOf(emptyList())
@@ -227,7 +227,7 @@ class SyncAllUseCaseTest {
             isSyncing = false
         )
 
-        val sampleMaintenance = Maintenance(
+        val sampleMachineOilChange = MachineOilChangeForm(
             id = 1,
             machineId = 1,
             dateTime = System.currentTimeMillis(),
@@ -244,7 +244,7 @@ class SyncAllUseCaseTest {
         // Test all sync operations sequentially (not randomly)
         val syncOperations = listOf(
             suspend { syncFormUseCase(sampleForm) },
-            suspend { syncMaintenanceFormsUseCase(sampleMaintenance) },
+            suspend { syncMachineOilChangeFormsUseCase(sampleMachineOilChange) },
             suspend { syncMachinesUseCase() },
             suspend { syncOilsUseCase() },
             suspend { syncPendingImagesUseCase() }
@@ -258,7 +258,7 @@ class SyncAllUseCaseTest {
 
         // Verify that all operations were called exactly once
         coVerify(exactly = 1) { formRepository.syncForm(any()) }
-        coVerify(exactly = 1) { maintenanceRepository.syncMaintenanceForm(any()) }
+        coVerify(exactly = 1) { machineOilChangeRepository.syncMachineOilChangeForm(any()) }
         coVerify(exactly = 1) { machineRepository.syncMachines() }
         coVerify(exactly = 1) { oilRepository.syncOils() }
         coVerify(exactly = 1) { formRepository.getPendingImagesForSync() }
@@ -268,7 +268,7 @@ class SyncAllUseCaseTest {
     fun `test random sync operations with mixed success and failure`() = runTest {
         // Mock mixed results - some succeed, some fail
         coEvery { formRepository.syncForm(any()) } returns Result.success(Unit)
-        coEvery { maintenanceRepository.syncMaintenanceForm(any()) } returns Result.failure(Exception("Sync failed"))
+        coEvery { machineOilChangeRepository.syncMachineOilChangeForm(any()) } returns Result.failure(Exception("Sync failed"))
         coEvery { machineRepository.syncMachines() } returns Result.success(Unit)
         coEvery { oilRepository.syncOils() } returns Result.failure(Exception("Network error"))
         coEvery { formRepository.getPendingImagesForSync() } returns flowOf(emptyList())
@@ -302,7 +302,7 @@ class SyncAllUseCaseTest {
             isSyncing = false
         )
 
-        val sampleMaintenance = Maintenance(
+        val sampleMachineOilChange = MachineOilChangeForm(
             id = 2,
             machineId = 2,
             dateTime = System.currentTimeMillis(),
@@ -319,7 +319,7 @@ class SyncAllUseCaseTest {
         // Test all sync operations sequentially with expected results
         val syncOperations = listOf(
             suspend { syncFormUseCase(sampleForm) } to true,  // Should succeed
-            suspend { syncMaintenanceFormsUseCase(sampleMaintenance) } to false, // Should fail
+            suspend { syncMachineOilChangeFormsUseCase(sampleMachineOilChange) } to false, // Should fail
             suspend { syncMachinesUseCase() } to true,  // Should succeed
             suspend { syncOilsUseCase() } to false,  // Should fail
             suspend { syncPendingImagesUseCase() } to true  // Should succeed
@@ -337,7 +337,7 @@ class SyncAllUseCaseTest {
 
         // Verify that all operations were called exactly once
         coVerify(exactly = 1) { formRepository.syncForm(any()) }
-        coVerify(exactly = 1) { maintenanceRepository.syncMaintenanceForm(any()) }
+        coVerify(exactly = 1) { machineOilChangeRepository.syncMachineOilChangeForm(any()) }
         coVerify(exactly = 1) { machineRepository.syncMachines() }
         coVerify(exactly = 1) { oilRepository.syncOils() }
         coVerify(exactly = 1) { formRepository.getPendingImagesForSync() }
@@ -347,8 +347,8 @@ class SyncAllUseCaseTest {
     fun `test concurrent random sync operations`() = runTest {
         // Mock all operations to succeed including images
         coEvery { formRepository.syncForm(any()) } returns Result.success(Unit)
-        coEvery { maintenanceRepository.syncMaintenanceForm(any()) } returns Result.success(Unit)
-        coEvery { maintenanceRepository.deleteMaintenanceForm(any()) } returns Result.success(Unit)
+        coEvery { machineOilChangeRepository.syncMachineOilChangeForm(any()) } returns Result.success(Unit)
+        coEvery { machineOilChangeRepository.deleteMachineOilChangeForm(any()) } returns Result.success(Unit)
         coEvery { machineRepository.syncMachines() } returns Result.success(Unit)
         coEvery { oilRepository.syncOils() } returns Result.success(Unit)
         coEvery { formRepository.getPendingImagesForSync() } returns flowOf(emptyList())
@@ -382,7 +382,7 @@ class SyncAllUseCaseTest {
             isSyncing = false
         )
 
-        val sampleMaintenance = Maintenance(
+        val sampleMachineOilChange = MachineOilChangeForm(
             id = 3,
             machineId = 3,
             dateTime = System.currentTimeMillis(),
@@ -399,7 +399,7 @@ class SyncAllUseCaseTest {
         // Run all sync operations sequentially (not concurrently for deterministic testing)
         val syncOperations = listOf(
             suspend { syncFormUseCase(sampleForm) },
-            suspend { syncMaintenanceFormsUseCase(sampleMaintenance) },
+            suspend { syncMachineOilChangeFormsUseCase(sampleMachineOilChange) },
             suspend { syncMachinesUseCase() },
             suspend { syncOilsUseCase() },
             suspend { syncPendingImagesUseCase() }
@@ -420,7 +420,7 @@ class SyncAllUseCaseTest {
 
         // Verify that operations were called the expected number of times
         coVerify(exactly = 15) { formRepository.syncForm(any()) }
-        coVerify(exactly = 15) { maintenanceRepository.syncMaintenanceForm(any()) }
+        coVerify(exactly = 15) { machineOilChangeRepository.syncMachineOilChangeForm(any()) }
         coVerify(exactly = 15) { machineRepository.syncMachines() }
         coVerify(exactly = 15) { oilRepository.syncOils() }
         coVerify(exactly = 15) { formRepository.getPendingImagesForSync() }
@@ -430,8 +430,8 @@ class SyncAllUseCaseTest {
     fun `test complete random sync workflow including images`() = runTest {
         // Mock all sync operations
         coEvery { formRepository.syncForm(any()) } returns Result.success(Unit)
-        coEvery { maintenanceRepository.syncMaintenanceForm(any()) } returns Result.success(Unit)
-        coEvery { maintenanceRepository.deleteMaintenanceForm(any()) } returns Result.success(Unit)
+        coEvery { machineOilChangeRepository.syncMachineOilChangeForm(any()) } returns Result.success(Unit)
+        coEvery { machineOilChangeRepository.deleteMachineOilChangeForm(any()) } returns Result.success(Unit)
         coEvery { machineRepository.syncMachines() } returns Result.success(Unit)
         coEvery { oilRepository.syncOils() } returns Result.success(Unit)
 
@@ -473,7 +473,7 @@ class SyncAllUseCaseTest {
             isSyncing = false
         )
 
-        val sampleMaintenance = Maintenance(
+        val sampleMachineOilChange = MachineOilChangeForm(
             id = 4,
             machineId = 4,
             dateTime = System.currentTimeMillis(),
@@ -490,7 +490,7 @@ class SyncAllUseCaseTest {
         // All sync operations including images - run sequentially for deterministic testing
         val allSyncOperations = listOf(
             suspend { syncFormUseCase(sampleForm) },
-            suspend { syncMaintenanceFormsUseCase(sampleMaintenance) },
+            suspend { syncMachineOilChangeFormsUseCase(sampleMachineOilChange) },
             suspend { syncMachinesUseCase() },
             suspend { syncOilsUseCase() },
             suspend { syncPendingImagesUseCase() }
@@ -506,7 +506,7 @@ class SyncAllUseCaseTest {
 
         // Verify all types of sync operations were called the expected number of times
         coVerify(exactly = 30) { formRepository.syncForm(any()) }
-        coVerify(exactly = 30) { maintenanceRepository.syncMaintenanceForm(any()) }
+        coVerify(exactly = 30) { machineOilChangeRepository.syncMachineOilChangeForm(any()) }
         coVerify(exactly = 30) { machineRepository.syncMachines() }
         coVerify(exactly = 30) { oilRepository.syncOils() }
         coVerify(exactly = 30) { formRepository.getPendingImagesForSync() }

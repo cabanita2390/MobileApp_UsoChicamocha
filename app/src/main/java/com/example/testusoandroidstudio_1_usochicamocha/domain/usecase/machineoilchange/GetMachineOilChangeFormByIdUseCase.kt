@@ -1,13 +1,13 @@
-package com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.maintenance
+package com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.machineoilchange
 
-import com.example.testusoandroidstudio_1_usochicamocha.domain.model.Maintenance
-import com.example.testusoandroidstudio_1_usochicamocha.domain.repository.MaintenanceRepository
+import com.example.testusoandroidstudio_1_usochicamocha.domain.model.MachineOilChangeForm
+import com.example.testusoandroidstudio_1_usochicamocha.domain.repository.MachineOilChangeRepository
 import javax.inject.Inject
 
-class GetMaintenanceByIdUseCase @Inject constructor(
-    private val repository: MaintenanceRepository
+class GetMachineOilChangeFormByIdUseCase @Inject constructor(
+    private val repository: MachineOilChangeRepository
 ) {
-    suspend operator fun invoke(id: Int): Maintenance? {
-        return repository.getMaintenanceById(id)
+    suspend operator fun invoke(id: Int): MachineOilChangeForm? {
+        return repository.getMachineOilChangeById(id)
     }
 }

@@ -1,19 +1,19 @@
-package com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.maintenance
+package com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.machineoilchange
 
-import com.example.testusoandroidstudio_1_usochicamocha.domain.model.Maintenance
-import com.example.testusoandroidstudio_1_usochicamocha.domain.repository.MaintenanceRepository
+import com.example.testusoandroidstudio_1_usochicamocha.domain.model.MachineOilChangeForm
+import com.example.testusoandroidstudio_1_usochicamocha.domain.repository.MachineOilChangeRepository
 import javax.inject.Inject
 
-class SyncMaintenanceFormsUseCase @Inject constructor(
-    private val repository: MaintenanceRepository
+class SyncMachineOilChangeFormsUseCase @Inject constructor(
+    private val repository: MachineOilChangeRepository
 ) {
-    suspend operator fun invoke(maintenanceForm: Maintenance): Result<Unit> {
+    suspend operator fun invoke(machineOilChangeForm: MachineOilChangeForm): Result<Unit> {
         // 1. Intenta sincronizar el formulario con el backend
-        val syncResult = repository.syncMaintenanceForm(maintenanceForm)
+        val syncResult = repository.syncMachineOilChangeForm(machineOilChangeForm)
 
         // 2. Si la sincronización es exitosa, lo borra de la base de datos local
         if (syncResult.isSuccess) {
-            return repository.deleteMaintenanceForm(maintenanceForm.id)
+            return repository.deleteMachineOilChangeForm(machineOilChangeForm.id)
         }
 
         // 3. Si la sincronización falla, devuelve el error original

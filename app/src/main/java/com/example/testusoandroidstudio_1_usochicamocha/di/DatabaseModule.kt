@@ -44,7 +44,10 @@ object DatabaseModule {
                 AppDatabase.MIGRATION_36_37,
                 AppDatabase.MIGRATION_37_38,
                 AppDatabase.MIGRATION_38_39,
-                AppDatabase.MIGRATION_39_40
+                AppDatabase.MIGRATION_39_40,
+                AppDatabase.MIGRATION_40_41,
+                AppDatabase.MIGRATION_41_42,
+                AppDatabase.MIGRATION_42_43
             )
             .build()
     }
@@ -67,7 +70,7 @@ object DatabaseModule {
 
     @Provides
     @Singleton
-    fun provideMaintenanceDao(db: AppDatabase): MaintenanceDao = db.maintenanceDao()
+    fun provideMachineOilChangeDao(db: AppDatabase): MachineOilChangeDao = db.machineOilChangeDao()
 
     @Provides
     @Singleton
@@ -108,16 +111,4 @@ object DatabaseModule {
     @Provides
     @Singleton
     fun provideInspeccionMotoDao(db: AppDatabase): InspeccionMotoDao = db.inspeccionMotoDao()
-
-    @Provides
-    @Singleton
-    fun provideVehicleOilChangeImprovedDao(db: AppDatabase): VehicleOilChangeImprovedDao = db.vehicleOilChangeImprovedDao()
-
-    @Provides
-    @Singleton
-    fun provideMachineOilChangeImprovedDao(db: AppDatabase): MachineOilChangeImprovedDao = db.machineOilChangeImprovedDao()
-
-    @Provides
-    @Singleton
-    fun provideOilAnalysisSosDao(db: AppDatabase): OilAnalysisSosDao = db.oilAnalysisSosDao()
 }

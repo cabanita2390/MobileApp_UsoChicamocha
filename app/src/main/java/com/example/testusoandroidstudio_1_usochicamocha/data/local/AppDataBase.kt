@@ -10,7 +10,7 @@ import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.FormDao
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.ImageDao
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.LogDao
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.MachineDao
-import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.MaintenanceDao
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.MachineOilChangeDao
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.DocumentoMotoDao
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.InspeccionMotoDao
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.MotoDao
@@ -26,7 +26,7 @@ import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.Docume
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.InspeccionMotoEntity
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.LogEntity
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.MachineEntity
-import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.MaintenanceEntity
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.MachineOilChangeEntity
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.MotoEntity
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.OilEntity
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.UbicacionEntity
@@ -34,12 +34,6 @@ import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.Vehicu
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.VehiculoInspectionEntity
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.DocumentoVehiculoEntity
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.VehiculoOilChangeEntity
-import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.VehicleOilChangeImprovedEntity
-import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.MachineOilChangeImprovedEntity
-import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.OilAnalysisSosEntity
-import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.VehicleOilChangeImprovedDao
-import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.MachineOilChangeImprovedDao
-import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.OilAnalysisSosDao
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.MotoOilChangeDao
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.MotoOilChangeEntity
 
@@ -49,7 +43,7 @@ import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.MotoOi
         com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.FormEntity::class,
         com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.MachineEntity::class,
         com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.LogEntity::class,
-        com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.MaintenanceEntity::class,
+        com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.MachineOilChangeEntity::class,
         com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.OilEntity::class,
         com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.ImageEntity::class,
         com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.MotoEntity::class,
@@ -60,12 +54,9 @@ import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.MotoOi
         com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.VehiculoEntity::class,
         com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.DocumentoVehiculoEntity::class,
         com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.VehiculoOilChangeEntity::class,
-        com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.MotoOilChangeEntity::class,
-        VehicleOilChangeImprovedEntity::class,
-        MachineOilChangeImprovedEntity::class,
-        OilAnalysisSosEntity::class
+        com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.MotoOilChangeEntity::class
     ],
-    version = 40,
+    version = 43,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -625,11 +616,38 @@ abstract class AppDatabase : RoomDatabase() {
                 database.execSQL("DROP TABLE IF EXISTS `fuel_stations_local`")
             }
         }
+
+        // MachineOilChangeImprovedEntity nunca tuvo consumidores reales (sin
+        // repositorio, sin caso de uso, sin UI) — se retira sin reemplazo.
+        val MIGRATION_40_41 = object : Migration(40, 41) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("DROP TABLE IF EXISTS `machine_oil_changes_improved`")
+            }
+        }
+
+        // VehicleOilChangeImprovedEntity nunca tuvo consumidores reales (sin
+        // repositorio, sin caso de uso, sin UI) — se retira sin reemplazo. Los
+        // endpoints /v1/improved-oil-changes/* que la acompañaban en ApiService
+        // tampoco tenían controlador en el backend (nunca se implementaron).
+        val MIGRATION_41_42 = object : Migration(41, 42) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("DROP TABLE IF EXISTS `vehicle_oil_changes_improved`")
+            }
+        }
+
+        // OilAnalysisSosEntity nunca tuvo consumidores reales (sin repositorio, sin
+        // caso de uso, sin UI) ni del lado backend (sin controlador) — mismo patrón
+        // que MachineOilChangeImproved/VehicleOilChangeImproved.
+        val MIGRATION_42_43 = object : Migration(42, 43) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("DROP TABLE IF EXISTS `oil_analysis_sos`")
+            }
+        }
     }
     abstract fun formDao(): FormDao
     abstract fun machineDao(): MachineDao
     abstract fun logDao(): LogDao
-    abstract fun maintenanceDao(): MaintenanceDao
+    abstract fun machineOilChangeDao(): MachineOilChangeDao
     abstract fun oilDao(): OilDao
     abstract fun imageDao(): ImageDao
     abstract fun motoDao(): MotoDao
@@ -641,7 +659,4 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun documentoVehiculoDao(): DocumentoVehiculoDao
     abstract fun vehiculoOilChangeDao(): VehiculoOilChangeDao
     abstract fun motoOilChangeDao(): MotoOilChangeDao
-    abstract fun vehicleOilChangeImprovedDao(): VehicleOilChangeImprovedDao
-    abstract fun machineOilChangeImprovedDao(): MachineOilChangeImprovedDao
-    abstract fun oilAnalysisSosDao(): OilAnalysisSosDao
 }

@@ -1,12 +1,12 @@
 package com.example.testusoandroidstudio_1_usochicamocha.domain.model
 
-import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.MaintenanceEntity
-import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.MaintenanceDto
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.MachineOilChangeEntity
+import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.MachineOilChangeDto
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.request.OilChangeRequest
 import java.text.SimpleDateFormat
 import java.util.*
 
-data class Maintenance(
+data class MachineOilChangeForm(
     val id: Int = 0,
     val machineId: Int,
     val dateTime: Long,
@@ -21,8 +21,8 @@ data class Maintenance(
     val syncError: String? = null
 )
 
-fun Maintenance.toEntity(): MaintenanceEntity {
-    return MaintenanceEntity(
+fun MachineOilChangeForm.toEntity(): MachineOilChangeEntity {
+    return MachineOilChangeEntity(
         id = this.id,
         machineId = this.machineId,
         dateTime = this.dateTime,
@@ -37,12 +37,12 @@ fun Maintenance.toEntity(): MaintenanceEntity {
         syncError = this.syncError
     )
 }
-fun Maintenance.toDto(): MaintenanceDto {
+fun MachineOilChangeForm.toDto(): MachineOilChangeDto {
     val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
     sdf.timeZone = TimeZone.getTimeZone("UTC")
     val isoDateString = sdf.format(Date(this.dateTime))
 
-    return MaintenanceDto(
+    return MachineOilChangeDto(
         machineId = this.machineId,
         dateTime = isoDateString,
         brand = this.brand,
@@ -51,7 +51,7 @@ fun Maintenance.toDto(): MaintenanceDto {
         averageHoursChange = this.averageHoursChange
     )
 }
-fun Maintenance.toOilChangeRequest(): OilChangeRequest {
+fun MachineOilChangeForm.toOilChangeRequest(): OilChangeRequest {
     val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault())
     sdf.timeZone = TimeZone.getTimeZone("UTC")
     val isoDateString = sdf.format(Date(this.dateTime))

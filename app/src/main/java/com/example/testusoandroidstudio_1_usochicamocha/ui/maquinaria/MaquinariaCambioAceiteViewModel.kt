@@ -1,15 +1,15 @@
-package com.example.testusoandroidstudio_1_usochicamocha.ui.mantenimiento
+package com.example.testusoandroidstudio_1_usochicamocha.ui.maquinaria
 
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.LocalSyncCoordinator
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.Machine
-import com.example.testusoandroidstudio_1_usochicamocha.domain.model.Maintenance
+import com.example.testusoandroidstudio_1_usochicamocha.domain.model.MachineOilChangeForm
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.Oil
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.machine.GetLocalMachinesUseCase
-import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.maintenance.GetPendingMaintenanceFormsUseCase
-import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.maintenance.SaveMaintenanceFormUseCase
+import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.machineoilchange.GetPendingMachineOilChangeFormsUseCase
+import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.machineoilchange.SaveMachineOilChangeFormUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.oil.GetLocalOilsUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.oil.SyncOilsUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.util.Resource
@@ -23,19 +23,19 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
-class MantenimientoViewModel @Inject constructor(
-    private val saveMaintenanceFormUseCase: SaveMaintenanceFormUseCase,
+class MaquinariaCambioAceiteViewModel @Inject constructor(
+    private val saveMachineOilChangeFormUseCase: SaveMachineOilChangeFormUseCase,
     private val getLocalMachinesUseCase: GetLocalMachinesUseCase,
     private val getLocalOilsUseCase: GetLocalOilsUseCase,
     private val syncOilsUseCase: SyncOilsUseCase,
-    private val getPendingMaintenanceFormsUseCase: GetPendingMaintenanceFormsUseCase,
-    private val getMaintenanceByIdUseCase: com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.maintenance.GetMaintenanceByIdUseCase,
+    private val getPendingMachineOilChangeFormsUseCase: GetPendingMachineOilChangeFormsUseCase,
+    private val getMachineOilChangeFormByIdUseCase: com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.machineoilchange.GetMachineOilChangeFormByIdUseCase,
     private val localSyncCoordinator: com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.LocalSyncCoordinator,
     private val savedStateHandle: androidx.lifecycle.SavedStateHandle
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(MantenimientoUiState())
-    val uiState: StateFlow<MantenimientoUiState> = _uiState.asStateFlow()
+    private val _uiState = MutableStateFlow(MaquinariaCambioAceiteUiState())
+    val uiState: StateFlow<MaquinariaCambioAceiteUiState> = _uiState.asStateFlow()
 
 
     init {
@@ -47,11 +47,11 @@ class MantenimientoViewModel @Inject constructor(
     }
 
     private fun checkIfEditing() {
-        val maintenanceId = savedStateHandle.get<Int>("maintenanceId")
-        if (maintenanceId != null && maintenanceId != -1) {
+        val machineOilChangeId = savedStateHandle.get<Int>("machineOilChangeId")
+        if (machineOilChangeId != null && machineOilChangeId != -1) {
             viewModelScope.launch {
-                val maintenance = getMaintenanceByIdUseCase(maintenanceId)
-                maintenance?.let { form ->
+                val machineOilChange = getMachineOilChangeFormByIdUseCase(machineOilChangeId)
+                machineOilChange?.let { form ->
                     _uiState.update {
                         it.copy(
                             editingFormId = form.id,
@@ -63,7 +63,7 @@ class MantenimientoViewModel @Inject constructor(
                             quantity = form.quantity.toString(),
                             currentHourMeter = form.currentHourMeter.toString(),
                             averageHoursChange = form.averageHoursChange.toString(),
-                            maintenanceType = form.type,
+                            machineOilChangeType = form.type,
                             dateTime = form.dateTime
                         )
                     }
@@ -84,7 +84,7 @@ class MantenimientoViewModel @Inject constructor(
 
     private fun loadPendingForms() {
         viewModelScope.launch {
-            getPendingMaintenanceFormsUseCase().collect { forms ->
+            getPendingMachineOilChangeFormsUseCase().collect { forms ->
                 _uiState.update { it.copy(pendingForms = forms) }
             }
         }
@@ -100,10 +100,10 @@ class MantenimientoViewModel @Inject constructor(
                     )
                 }
                 // Intentar seleccionar el aceite si estamos editando
-                val maintenanceId = savedStateHandle.get<Int>("maintenanceId")
-                if (maintenanceId != null && maintenanceId != -1) {
-                     val maintenance = getMaintenanceByIdUseCase(maintenanceId)
-                     maintenance?.let { form ->
+                val machineOilChangeId = savedStateHandle.get<Int>("machineOilChangeId")
+                if (machineOilChangeId != null && machineOilChangeId != -1) {
+                     val machineOilChange = getMachineOilChangeFormByIdUseCase(machineOilChangeId)
+                     machineOilChange?.let { form ->
                          _uiState.update { state ->
                              state.copy(selectedOil = oils.find { it.id == form.brandId })
                          }
@@ -132,7 +132,7 @@ class MantenimientoViewModel @Inject constructor(
             try {
                 syncOilsUseCase()
             } catch (e: Exception) {
-                Log.e("MantenimientoVM", "Error al sincronizar aceites", e)
+                Log.e("MaquinariaCambioAceiteVM", "Error al sincronizar aceites", e)
             } finally {
                 _uiState.update { it.copy(isSyncingOils = false) }
             }
@@ -155,10 +155,10 @@ class MantenimientoViewModel @Inject constructor(
                             )
                         }
                         // Intentar seleccionar la maquina si estamos editando
-                        val maintenanceId = savedStateHandle.get<Int>("maintenanceId")
-                        if (maintenanceId != null && maintenanceId != -1) {
-                            val maintenance = getMaintenanceByIdUseCase(maintenanceId)
-                            maintenance?.let { form ->
+                        val machineOilChangeId = savedStateHandle.get<Int>("machineOilChangeId")
+                        if (machineOilChangeId != null && machineOilChangeId != -1) {
+                            val machineOilChange = getMachineOilChangeFormByIdUseCase(machineOilChangeId)
+                            machineOilChange?.let { form ->
                                 _uiState.update { state ->
                                     state.copy(selectedMachine = state.machines.find { it.id == form.machineId })
                                 }
@@ -178,15 +178,15 @@ class MantenimientoViewModel @Inject constructor(
         }
     }
 
-    fun onFormEvent(event: MantenimientoFormEvent) {
+    fun onFormEvent(event: MaquinariaCambioAceiteFormEvent) {
         when (event) {
-            is MantenimientoFormEvent.MachineSelected -> {
+            is MaquinariaCambioAceiteFormEvent.MachineSelected -> {
                 _uiState.update { it.copy(selectedMachine = event.machine) }
             }
-            is MantenimientoFormEvent.OilSelected -> { // <-- CAMBIA EL HANDLER
+            is MaquinariaCambioAceiteFormEvent.OilSelected -> { // <-- CAMBIA EL HANDLER
                 _uiState.update { it.copy(selectedOil = event.oil) }
             }
-            is MantenimientoFormEvent.QuantityChanged -> {
+            is MaquinariaCambioAceiteFormEvent.QuantityChanged -> {
                 // Sanitize input: replace comma with dot to support both formats
                 val sanitizedQuantity = event.quantity.replace(',', '.')
                 // Allow update only if there is at most one dot
@@ -194,19 +194,19 @@ class MantenimientoViewModel @Inject constructor(
                     _uiState.update { it.copy(quantity = sanitizedQuantity) }
                 }
             }
-            is MantenimientoFormEvent.CurrentHourMeterChanged -> {
+            is MaquinariaCambioAceiteFormEvent.CurrentHourMeterChanged -> {
                 _uiState.update { it.copy(currentHourMeter = event.hourMeter) }
             }
-            is MantenimientoFormEvent.DateTimeChanged -> {
+            is MaquinariaCambioAceiteFormEvent.DateTimeChanged -> {
                 _uiState.update { it.copy(dateTime = event.dateTime) }
             }
-            is MantenimientoFormEvent.AverageHoursChangeChanged -> {
+            is MaquinariaCambioAceiteFormEvent.AverageHoursChangeChanged -> {
                 _uiState.update { it.copy(averageHoursChange = event.hours) }
             }
-            is MantenimientoFormEvent.MaintenanceTypeChanged -> {
-                _uiState.update { it.copy(maintenanceType = event.type) }
+            is MaquinariaCambioAceiteFormEvent.MachineOilChangeFormTypeChanged -> {
+                _uiState.update { it.copy(machineOilChangeType = event.type) }
             }
-            MantenimientoFormEvent.Submit -> {
+            MaquinariaCambioAceiteFormEvent.Submit -> {
                 submitForm()
             }
         }
@@ -215,7 +215,7 @@ class MantenimientoViewModel @Inject constructor(
     private fun submitForm() {
         viewModelScope.launch {
             val state = _uiState.value
-            if (state.selectedMachine == null || state.maintenanceType == null || state.selectedOil == null) {
+            if (state.selectedMachine == null || state.machineOilChangeType == null || state.selectedOil == null) {
                 _uiState.update { it.copy(error = "Debe seleccionar una máquina y un tipo de mantenimiento.") }
                 return@launch
             }
@@ -225,7 +225,7 @@ class MantenimientoViewModel @Inject constructor(
                 return@launch
             }
 
-            val form = Maintenance(
+            val form = MachineOilChangeForm(
                 id = state.editingFormId ?: 0, // Usar ID existente si se edita, o 0 para nuevo (Room autogenera)
                 machineId = state.selectedMachine.id,
                 dateTime = state.dateTime,
@@ -234,7 +234,7 @@ class MantenimientoViewModel @Inject constructor(
                 quantity = state.quantity.toDoubleOrNull() ?: 0.0,
                 currentHourMeter = state.currentHourMeter.toIntOrNull() ?: 0,
                 averageHoursChange = state.averageHoursChange.toIntOrNull() ?: 0,
-                type = state.maintenanceType,
+                type = state.machineOilChangeType,
                 isSynced = false,
                 isSyncing = false,
                 syncError = null // Limpiamos el error previo al guardar
@@ -242,12 +242,12 @@ class MantenimientoViewModel @Inject constructor(
 
             _uiState.update { it.copy(isLoading = true, error = null) }
 
-            val result = saveMaintenanceFormUseCase(form)
+            val result = saveMachineOilChangeFormUseCase(form)
 
             result.onSuccess {
                 // 2. Usar el coordinador para iniciar la sincronización
                 localSyncCoordinator.coordinateSync(
-                    LocalSyncCoordinator.SyncTrigger.MaintenanceSaved(state.maintenanceType ?: "Unknown")
+                    LocalSyncCoordinator.SyncTrigger.MachineOilChangeSaved(state.machineOilChangeType ?: "Unknown")
                 )
 
                 // Esto solo limpia los campos del formulario, pero mantiene
@@ -261,7 +261,7 @@ class MantenimientoViewModel @Inject constructor(
                         currentHourMeter = "",
                         averageHoursChange = "",
                         selectedMachine = null,
-                        maintenanceType = null,
+                        machineOilChangeType = null,
                         editingFormId = null, // Resetear modo edición
                         dateTime = System.currentTimeMillis()
                     )
@@ -290,14 +290,14 @@ class MantenimientoViewModel @Inject constructor(
     }
 }
 
-data class MantenimientoUiState(
+data class MaquinariaCambioAceiteUiState(
     val machines: List<Machine> = emptyList(),
     val selectedMachine: Machine? = null,
     val selectedOil: Oil? = null,
     val quantity: String = "",
     val currentHourMeter: String = "",
     val averageHoursChange: String = "",
-    val maintenanceType: String? = null,
+    val machineOilChangeType: String? = null,
     /** Momento del servicio, en epoch millis. Por defecto "ahora", pero editable — permite
      * registrar hoy un cambio que en realidad ocurrió antes. */
     val dateTime: Long = System.currentTimeMillis(),
@@ -308,17 +308,17 @@ data class MantenimientoUiState(
     val motorOils: List<Oil> = emptyList(),
     val hydraulicOils: List<Oil> = emptyList(),
     val allOils: List<Oil> = emptyList(),
-    val pendingForms: List<Maintenance> = emptyList(),
+    val pendingForms: List<MachineOilChangeForm> = emptyList(),
     val editingFormId: Int? = null // ID del formulario que se está editando
 )
 
-sealed class MantenimientoFormEvent {
-    data class MachineSelected(val machine: Machine) : MantenimientoFormEvent()
-    data class OilSelected(val oil: Oil) : MantenimientoFormEvent()
-    data class QuantityChanged(val quantity: String) : MantenimientoFormEvent()
-    data class CurrentHourMeterChanged(val hourMeter: String) : MantenimientoFormEvent()
-    data class DateTimeChanged(val dateTime: Long) : MantenimientoFormEvent()
-    data class AverageHoursChangeChanged(val hours: String) : MantenimientoFormEvent()
-    data class MaintenanceTypeChanged(val type: String) : MantenimientoFormEvent()
-    object Submit : MantenimientoFormEvent()
+sealed class MaquinariaCambioAceiteFormEvent {
+    data class MachineSelected(val machine: Machine) : MaquinariaCambioAceiteFormEvent()
+    data class OilSelected(val oil: Oil) : MaquinariaCambioAceiteFormEvent()
+    data class QuantityChanged(val quantity: String) : MaquinariaCambioAceiteFormEvent()
+    data class CurrentHourMeterChanged(val hourMeter: String) : MaquinariaCambioAceiteFormEvent()
+    data class DateTimeChanged(val dateTime: Long) : MaquinariaCambioAceiteFormEvent()
+    data class AverageHoursChangeChanged(val hours: String) : MaquinariaCambioAceiteFormEvent()
+    data class MachineOilChangeFormTypeChanged(val type: String) : MaquinariaCambioAceiteFormEvent()
+    object Submit : MaquinariaCambioAceiteFormEvent()
 }

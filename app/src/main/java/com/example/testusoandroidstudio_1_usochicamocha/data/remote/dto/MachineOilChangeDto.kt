@@ -2,7 +2,7 @@ package com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto
 
 import com.squareup.moshi.Json
 
-data class MaintenanceDto(
+data class MachineOilChangeDto(
     @field:Json(name = "machineId")
     val machineId: Int,
     @field:Json(name = "dateTime")

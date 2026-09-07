@@ -19,13 +19,6 @@ import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.VehicleD
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.request.OilChangeRequest
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.request.VehicleOilChangeRequest
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.request.VehiculoInspectionRequest
-import com.example.testusoandroidstudio_1_usochicamocha.data.remote.request.CreateVehicleOilChangeRequest
-import com.example.testusoandroidstudio_1_usochicamocha.data.remote.request.CreateMachineOilChangeRequest
-import com.example.testusoandroidstudio_1_usochicamocha.data.remote.request.CreateOilAnalysisSosRequest
-import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.OilChangeRequirementDto
-import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.VehicleOilChangeResponseDto
-import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.MachineOilChangeResponseDto
-import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.OilAnalysisSosDto
 import okhttp3.MultipartBody
 import retrofit2.Response
 import retrofit2.http.Body
@@ -115,43 +108,6 @@ interface ApiService {
         @retrofit2.http.Query("placa") placa: String,
         @retrofit2.http.Query("kilometraje") kilometraje: Int
     ): Response<KilometrajeValidacionResponse>
-
-    // --- Improved Oil Change endpoints ---
-    @POST("v1/improved-oil-changes/vehicle")
-    suspend fun createVehicleOilChange(
-        @Body request: CreateVehicleOilChangeRequest
-    ): Response<VehicleOilChangeResponseDto>
-
-    @POST("v1/improved-oil-changes/machine")
-    suspend fun createMachineOilChange(
-        @Body request: CreateMachineOilChangeRequest
-    ): Response<MachineOilChangeResponseDto>
-
-    @GET("v1/improved-oil-changes/requirements")
-    suspend fun getOilChangeRequirements(
-        @Query("assetType") assetType: String? = null
-    ): Response<List<OilChangeRequirementDto>>
-
-    @POST("v1/improved-oil-changes/analysis-sos")
-    suspend fun createOilAnalysisSos(
-        @Body request: CreateOilAnalysisSosRequest
-    ): Response<OilAnalysisSosDto>
-
-    @PUT("v1/improved-oil-changes/analysis-sos/{id}/approve")
-    suspend fun approveSosAnalysis(
-        @Path("id") id: Long
-    ): Response<OilAnalysisSosDto>
-
-    @GET("v1/improved-oil-changes/analysis-sos/machine/{machineId}")
-    suspend fun getMachineAnalyses(
-        @Path("machineId") machineId: Long,
-        @Query("approvedOnly") approvedOnly: Boolean = false
-    ): Response<List<OilAnalysisSosDto>>
-
-    @GET("v1/improved-oil-changes/analysis-sos/pending/{machineId}")
-    suspend fun getPendingAnalyses(
-        @Path("machineId") machineId: Long
-    ): Response<List<OilAnalysisSosDto>>
 
     // --- Asset Management endpoints (SUPERVISOR_OPERATIVO) ---
     @POST("v1/vehicle")

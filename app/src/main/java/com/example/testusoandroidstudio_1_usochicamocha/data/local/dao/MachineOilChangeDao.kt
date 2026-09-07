@@ -4,17 +4,17 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
-import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.MaintenanceEntity
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.MachineOilChangeEntity
 import kotlinx.coroutines.flow.Flow
 
 
 @Dao
-interface MaintenanceDao {
+interface MachineOilChangeDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insert(maintenance: MaintenanceEntity)
+    suspend fun insert(machineOilChange: MachineOilChangeEntity)
 
     @Query("SELECT * FROM maintenance_forms WHERE isSynced = 0 AND isSyncing = 0 ORDER BY dateTime DESC")
-    fun getPendingMaintenanceForms(): Flow<List<MaintenanceEntity>>
+    fun getPendingMachineOilChangeForms(): Flow<List<MachineOilChangeEntity>>
 
     @Query("UPDATE maintenance_forms SET isSyncing = 1 WHERE id = :id")
     suspend fun markAsSyncing(id: Int)
@@ -29,5 +29,5 @@ interface MaintenanceDao {
     suspend fun deleteById(id: Int)
 
     @Query("SELECT * FROM maintenance_forms WHERE id = :id")
-    suspend fun getMaintenanceById(id: Int): MaintenanceEntity?
+    suspend fun getMachineOilChangeById(id: Int): MachineOilChangeEntity?
 }

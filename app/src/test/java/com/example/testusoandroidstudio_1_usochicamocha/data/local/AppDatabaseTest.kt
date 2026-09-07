@@ -50,7 +50,7 @@ class AppDatabaseTest {
         assertNotNull(db.formDao())
         assertNotNull(db.machineDao())
         assertNotNull(db.logDao())
-        assertNotNull(db.maintenanceDao())
+        assertNotNull(db.machineOilChangeDao())
         assertNotNull(db.oilDao())
         assertNotNull(db.imageDao())
     }

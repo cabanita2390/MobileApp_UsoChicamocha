@@ -75,8 +75,8 @@ class LocalSyncCoordinator @Inject constructor(
         data class FormSaved(val formType: String) : SyncTrigger() {
             override fun getWorkName(): String = "form_save_sync"
         }
-        data class MaintenanceSaved(val maintenanceType: String) : SyncTrigger() {
-            override fun getWorkName(): String = "maintenance_save_sync"
+        data class MachineOilChangeSaved(val machineOilChangeType: String) : SyncTrigger() {
+            override fun getWorkName(): String = "machine_oil_change_save_sync"
         }
         data class ManualSync(val syncType: SyncType) : SyncTrigger() {
             override fun getWorkName(): String = "manual_${syncType}_sync"
@@ -92,7 +92,7 @@ class LocalSyncCoordinator @Inject constructor(
     enum class SyncType {
         ALL_DATA,
         FORMS_ONLY,
-        MAINTENANCE_ONLY,
+        MACHINE_OIL_CHANGE_ONLY,
         IMAGES_ONLY,
         MASTER_DATA,
         MACHINES_ONLY,
@@ -381,7 +381,7 @@ class LocalSyncCoordinator @Inject constructor(
                     .addTag(COORDINATED_SYNC_WORK)
                     .build()
             }
-            is SyncTrigger.MaintenanceSaved,
+            is SyncTrigger.MachineOilChangeSaved,
             is SyncTrigger.AppStartSync,
             is SyncTrigger.PeriodicSync -> {
                 OneTimeWorkRequestBuilder<SyncDataWorker>()
