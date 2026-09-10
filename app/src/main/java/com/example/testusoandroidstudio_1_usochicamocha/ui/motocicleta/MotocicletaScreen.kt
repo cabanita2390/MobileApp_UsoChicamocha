@@ -75,13 +75,15 @@ fun MotocicletaScreen(
     Scaffold(
         topBar = {
             Column {
-                com.example.testusoandroidstudio_1_usochicamocha.ui.shared.ConnectionStatusTopBar(isConnected = networkStatus)
                 TopAppBar(
                     title = { Text("Inspección Motocicleta") },
                     navigationIcon = {
                         IconButton(onClick = onNavigateBack) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
                         }
+                    },
+                    actions = {
+                        com.example.testusoandroidstudio_1_usochicamocha.ui.shared.ConnectionStatusTopBar(isConnected = networkStatus)
                     }
                 )
             }

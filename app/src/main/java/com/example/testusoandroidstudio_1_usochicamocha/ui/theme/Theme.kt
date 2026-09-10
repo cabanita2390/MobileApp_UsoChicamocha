@@ -45,8 +45,15 @@ fun AppUsoChicamochaTheme(
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-            window.statusBarColor = colorScheme.primary.toArgb()
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = darkTheme
+            // No se fuerza window.statusBarColor acá: pelearía con enableEdgeToEdge()
+            // (llamado una vez en MainActivity), que ya deja la barra transparente para
+            // que el fondo de cada pantalla se vea continuo hasta el borde real.
+            // isAppearanceLightStatusBars=true → íconos OSCUROS, correctos sobre un
+            // fondo claro (el tema de esta app siempre es claro, darkTheme=false). El
+            // valor anterior (=darkTheme, o sea siempre false) forzaba íconos blancos
+            // que se perdían contra cualquier fondo claro — solo se veían en pantallas
+            // que por casualidad tenían una franja de color oscuro/saturado detrás.
+            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
         }
     }
 

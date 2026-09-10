@@ -95,7 +95,6 @@ fun MainScreen(
     Scaffold(
         topBar = {
             Column {
-                ConnectionStatusTopBar(isConnected = networkStatus)
                 TopAppBar(
                     title = { Text("Menú Principal") },
                     navigationIcon = {
@@ -104,6 +103,7 @@ fun MainScreen(
                         }
                     },
                     actions = {
+                        ConnectionStatusTopBar(isConnected = networkStatus)
                         IconButton(onClick = onNavigateToLogs) {
                             Icon(Icons.Filled.History, contentDescription = "Ver Logs")
                         }

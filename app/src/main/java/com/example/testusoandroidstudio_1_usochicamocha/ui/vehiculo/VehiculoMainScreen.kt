@@ -59,7 +59,6 @@ fun VehiculoMainScreen(
     Scaffold(
         topBar = {
             Column {
-                ConnectionStatusTopBar(isConnected = networkStatus)
                 TopAppBar(
                     title = { Text("Menú Vehicular") },
                     navigationIcon = {
@@ -68,6 +67,7 @@ fun VehiculoMainScreen(
                         }
                     },
                     actions = {
+                        ConnectionStatusTopBar(isConnected = networkStatus)
                         IconButton(onClick = { viewModel.onLogoutClick() }) {
                             Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = "Cerrar Sesión")
                         }

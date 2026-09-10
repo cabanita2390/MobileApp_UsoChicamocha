@@ -240,7 +240,6 @@ fun VehiculoScreen(
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
             Column {
-                ConnectionStatusTopBar(isConnected = networkStatus)
                 TopAppBar(
                     title = { Text("Inspección del Vehículo") },
                     navigationIcon = {
@@ -249,6 +248,7 @@ fun VehiculoScreen(
                         }
                     },
                     actions = {
+                        ConnectionStatusTopBar(isConnected = networkStatus)
                         IconButton(
                             onClick = { viewModel.onSyncClicked() },
                             enabled = !uiState.isSyncing,

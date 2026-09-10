@@ -49,7 +49,6 @@ fun MotoHubScreen(
     Scaffold(
         topBar = {
             Column {
-                com.example.testusoandroidstudio_1_usochicamocha.ui.shared.ConnectionStatusTopBar(isConnected = networkStatus)
                 TopAppBar(
                     title = { Text("Menú Motocicletas") },
                     navigationIcon = {
@@ -58,6 +57,7 @@ fun MotoHubScreen(
                         }
                     },
                     actions = {
+                        com.example.testusoandroidstudio_1_usochicamocha.ui.shared.ConnectionStatusTopBar(isConnected = networkStatus)
                         val isSyncingAny = uiState.isSyncingMotos || uiState.isSyncingUbicaciones || uiState.isSyncingDocumentos
                         IconButton(
                             onClick = { viewModel.onSyncAllClicked() },
