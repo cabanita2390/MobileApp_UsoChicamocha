@@ -3,6 +3,7 @@ package com.example.testusoandroidstudio_1_usochicamocha
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
@@ -33,6 +34,12 @@ import com.example.testusoandroidstudio_1_usochicamocha.ui.motocicleta.MotoHubSc
 import com.example.testusoandroidstudio_1_usochicamocha.ui.motocicleta.MotoCambioAceiteScreen
 
 import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.ConnectionStatusTopBar
+import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.captura.CapturaScreen
+import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.cola.ColaScreen
+import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.cronograma.CronogramaScreen
+import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.detalle.DetalleScreen
+import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.home.SubestacionHomeScreen
+import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.pendientes.PendientesScreen
 import com.example.testusoandroidstudio_1_usochicamocha.ui.splash.SplashScreen
 import com.example.testusoandroidstudio_1_usochicamocha.ui.splash.SplashViewModel
 import com.example.testusoandroidstudio_1_usochicamocha.ui.theme.AppUsoChicamochaTheme
@@ -56,6 +63,11 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Sin esto, el sistema pinta la barra de estado/navegación con un color propio
+        // (no transparente) por encima del contenido de Compose, aunque el layout ya
+        // dibuje edge-to-edge (forzado desde Android 15 / targetSdk 35). Con esto, el
+        // fondo de cada pantalla se ve continuo hasta el borde real de la pantalla.
+        enableEdgeToEdge()
 
         setContent {
             AppUsoChicamochaTheme {
@@ -124,6 +136,9 @@ class MainActivity : ComponentActivity() {
                             },
                             onNavigateToCambioAceiteVehicular = {
                                 navController.navigate("vehiculo_cambio_aceite")
+                            },
+                            onNavigateToSubestaciones = {
+                                navController.navigate("subestaciones_home")
                             }
                         )
                     }
@@ -249,6 +264,174 @@ class MainActivity : ComponentActivity() {
                         )
                     ) {
                         MaquinariaCambioAceiteScreen(
+                            onNavigateBack = {
+                                navController.popBackStack()
+                            }
+                        )
+                    }
+
+                    composable("subestaciones_home") {
+                        SubestacionHomeScreen(
+                            networkStatus = networkStatus,
+                            onNavigateBack = {
+                                navController.popBackStack()
+                            },
+                            onNavigateToCaptura = {
+                                navController.navigate("subestaciones_captura?libre=true")
+                            },
+                            onNavigateToCronograma = {
+                                navController.navigate("subestaciones_cronograma")
+                            },
+                            onNavigateToPendientes = {
+                                navController.navigate("subestaciones_pendientes")
+                            },
+                            onNavigateToRealizadas = {
+                                navController.navigate("subestaciones_pendientes?filtroInicial=Realizadas")
+                            },
+                            onNavigateToCola = {
+                                navController.navigate("subestaciones_cola")
+                            }
+                        )
+                    }
+                    composable(
+                        route = "subestaciones_captura?programacionId={programacionId}&estacionId={estacionId}&actividadId={actividadId}&esInspeccion={esInspeccion}&vencida={vencida}&editandoId={editandoId}&motivoEdicion={motivoEdicion}&libre={libre}",
+                        arguments = listOf(
+                            androidx.navigation.navArgument("programacionId") {
+                                type = androidx.navigation.NavType.LongType
+                                defaultValue = -1L
+                            },
+                            androidx.navigation.navArgument("estacionId") {
+                                type = androidx.navigation.NavType.LongType
+                                defaultValue = -1L
+                            },
+                            androidx.navigation.navArgument("actividadId") {
+                                type = androidx.navigation.NavType.LongType
+                                defaultValue = -1L
+                            },
+                            androidx.navigation.navArgument("esInspeccion") {
+                                type = androidx.navigation.NavType.BoolType
+                                defaultValue = false
+                            },
+                            androidx.navigation.navArgument("vencida") {
+                                type = androidx.navigation.NavType.BoolType
+                                defaultValue = false
+                            },
+                            androidx.navigation.navArgument("editandoId") {
+                                type = androidx.navigation.NavType.LongType
+                                defaultValue = -1L
+                            },
+                            androidx.navigation.navArgument("motivoEdicion") {
+                                type = androidx.navigation.NavType.StringType
+                                defaultValue = ""
+                            },
+                            androidx.navigation.navArgument("libre") {
+                                type = androidx.navigation.NavType.BoolType
+                                defaultValue = false
+                            }
+                        )
+                    ) { backStackEntry ->
+                        CapturaScreen(
+                            networkStatus = networkStatus,
+                            programacionId = backStackEntry.arguments?.getLong("programacionId") ?: -1L,
+                            estacionId = backStackEntry.arguments?.getLong("estacionId") ?: -1L,
+                            actividadId = backStackEntry.arguments?.getLong("actividadId") ?: -1L,
+                            esInspeccion = backStackEntry.arguments?.getBoolean("esInspeccion") ?: false,
+                            vencida = backStackEntry.arguments?.getBoolean("vencida") ?: false,
+                            editandoId = backStackEntry.arguments?.getLong("editandoId") ?: -1L,
+                            motivoEdicionInicial = (backStackEntry.arguments?.getString("motivoEdicion") ?: "")
+                                .let { runCatching { java.net.URLDecoder.decode(it, "UTF-8") }.getOrDefault(it) },
+                            libre = backStackEntry.arguments?.getBoolean("libre") ?: false,
+                            onNavigateBack = {
+                                navController.popBackStack()
+                            },
+                            onNavigateToCola = {
+                                navController.navigate("subestaciones_cola")
+                            },
+                            onNavigateToPendientes = {
+                                navController.popBackStack("subestaciones_home", inclusive = false)
+                                navController.navigate("subestaciones_pendientes")
+                            },
+                            onNavigateToHome = {
+                                navController.popBackStack("subestaciones_home", inclusive = false)
+                            }
+                        )
+                    }
+                    composable("subestaciones_cronograma") {
+                        CronogramaScreen(
+                            networkStatus = networkStatus,
+                            onNavigateBack = {
+                                navController.popBackStack()
+                            },
+                            onNavigateToCaptura = { programacionId, estacionId, actividadId, esInspeccion, vencida ->
+                                navController.navigate(
+                                    "subestaciones_captura?programacionId=$programacionId&estacionId=$estacionId&actividadId=$actividadId&esInspeccion=$esInspeccion&vencida=$vencida"
+                                )
+                            },
+                            onNavigateToDetalle = { ejecucionId ->
+                                navController.navigate("subestaciones_detalle/$ejecucionId")
+                            },
+                            onNavigateToCapturaLibre = {
+                                navController.navigate("subestaciones_captura?libre=true")
+                            },
+                            onNavigateToCola = {
+                                navController.navigate("subestaciones_cola")
+                            }
+                        )
+                    }
+                    composable(
+                        route = "subestaciones_pendientes?filtroInicial={filtroInicial}",
+                        arguments = listOf(
+                            androidx.navigation.navArgument("filtroInicial") {
+                                type = androidx.navigation.NavType.StringType
+                                nullable = true
+                                defaultValue = null
+                            }
+                        )
+                    ) { backStackEntry ->
+                        PendientesScreen(
+                            networkStatus = networkStatus,
+                            onNavigateBack = {
+                                navController.popBackStack()
+                            },
+                            onNavigateToCaptura = { programacionId, estacionId, actividadId, esInspeccion, vencida ->
+                                navController.navigate(
+                                    "subestaciones_captura?programacionId=$programacionId&estacionId=$estacionId&actividadId=$actividadId&esInspeccion=$esInspeccion&vencida=$vencida"
+                                )
+                            },
+                            onNavigateToDetalle = { ejecucionId ->
+                                navController.navigate("subestaciones_detalle/$ejecucionId")
+                            },
+                            onNavigateToCola = {
+                                navController.navigate("subestaciones_cola")
+                            }
+                        )
+                    }
+                    composable(
+                        route = "subestaciones_detalle/{ejecucionId}",
+                        arguments = listOf(
+                            androidx.navigation.navArgument("ejecucionId") {
+                                type = androidx.navigation.NavType.LongType
+                            }
+                        )
+                    ) { backStackEntry ->
+                        DetalleScreen(
+                            ejecucionId = backStackEntry.arguments?.getLong("ejecucionId") ?: -1L,
+                            networkStatus = networkStatus,
+                            onNavigateBack = {
+                                navController.popBackStack()
+                            },
+                            onNavigateToEditar = { ejecucionId, motivo ->
+                                val motivoCodificado = java.net.URLEncoder.encode(motivo, "UTF-8")
+                                navController.navigate("subestaciones_captura?editandoId=$ejecucionId&motivoEdicion=$motivoCodificado")
+                            },
+                            onNavigateToCola = {
+                                navController.navigate("subestaciones_cola")
+                            }
+                        )
+                    }
+                    composable("subestaciones_cola") {
+                        ColaScreen(
+                            networkStatus = networkStatus,
                             onNavigateBack = {
                                 navController.popBackStack()
                             }

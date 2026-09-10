@@ -7,6 +7,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.Construction
 import androidx.compose.material.icons.filled.DirectionsBike
 import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.Settings
@@ -35,7 +36,8 @@ fun HomeScreen(
     onNavigateToVehicular: () -> Unit,
     onNavigateToMotos: () -> Unit,
     onNavigateToCambioAceiteMaquinaria: () -> Unit = {},
-    onNavigateToCambioAceiteVehicular: () -> Unit = {}
+    onNavigateToCambioAceiteVehicular: () -> Unit = {},
+    onNavigateToSubestaciones: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
     // SUPERVISOR_OPERATIVO (nuevo) + ACEITE (legacy en BD aún no migrada) = mismo acceso
@@ -53,10 +55,10 @@ fun HomeScreen(
     Scaffold(
         topBar = {
             Column {
-                ConnectionStatusTopBar(isConnected = networkStatus)
                 TopAppBar(
                     title = { Text("Menú Principal") },
                     actions = {
+                        ConnectionStatusTopBar(isConnected = networkStatus)
                         IconButton(onClick = { viewModel.onLogoutClick() }) {
                             Icon(
                                 Icons.AutoMirrored.Filled.ExitToApp,
@@ -109,6 +111,12 @@ fun HomeScreen(
                         icon = Icons.Filled.DirectionsBike,
                         onClick = onNavigateToMotos
                     )
+                    InspectionCategoryCard(
+                        title = "Subestaciones",
+                        subtitle = "Mantenimiento civil de\nestaciones",
+                        icon = Icons.Filled.Construction,
+                        onClick = onNavigateToSubestaciones
+                    )
                 }
                 isAdmin -> {
                     // ADMIN: acceso completo
@@ -130,6 +138,12 @@ fun HomeScreen(
                         icon = Icons.Filled.DirectionsBike,
                         onClick = onNavigateToMotos
                     )
+                    InspectionCategoryCard(
+                        title = "Subestaciones",
+                        subtitle = "Mantenimiento civil de\nestaciones",
+                        icon = Icons.Filled.Construction,
+                        onClick = onNavigateToSubestaciones
+                    )
                 }
                 else -> {
                     // OPERARIO: solo inspecciones pre-operativas + combustible (sin aceite)
@@ -150,6 +164,12 @@ fun HomeScreen(
                         subtitle = "Registro de inspección\nde motocicletas",
                         icon = Icons.Filled.DirectionsBike,
                         onClick = onNavigateToMotos
+                    )
+                    InspectionCategoryCard(
+                        title = "Subestaciones",
+                        subtitle = "Mantenimiento civil de\nestaciones",
+                        icon = Icons.Filled.Construction,
+                        onClick = onNavigateToSubestaciones
                     )
                 }
             }
