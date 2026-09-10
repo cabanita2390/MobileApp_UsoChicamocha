@@ -23,6 +23,9 @@ import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.moto.Sync
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.inspeccionmoto.GetPendingInspeccionesMotoUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.inspeccionmoto.SyncInspeccionMotoUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.oil.SyncOilsUseCase
+import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.ObtenerEjecucionesPendientesUseCase
+import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.SincronizarCatalogosSubestacionUseCase
+import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.SincronizarEjecucionUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.vehiculo.GetPendingVehiculoInspectionsUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.vehiculo.SyncVehiculoInspectionUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.vehiculo.SyncVehiclesCatalogUseCase
@@ -55,7 +58,10 @@ class SyncDataWorker @AssistedInject constructor(
     private val getPendingVehiculoInspectionsUseCase: GetPendingVehiculoInspectionsUseCase,
     private val syncVehiculoInspectionUseCase: SyncVehiculoInspectionUseCase,
     private val syncVehiclesCatalogUseCase: SyncVehiclesCatalogUseCase,
-    private val vehiculoRepository: VehiculoInspectionRepository
+    private val vehiculoRepository: VehiculoInspectionRepository,
+    private val getPendingEjecucionesUseCase: ObtenerEjecucionesPendientesUseCase,
+    private val sincronizarEjecucionUseCase: SincronizarEjecucionUseCase,
+    private val sincronizarCatalogosSubestacionUseCase: SincronizarCatalogosSubestacionUseCase
 ) : CoroutineWorker(appContext, workerParams) {
 
     override suspend fun doWork(): Result {
@@ -94,21 +100,26 @@ class SyncDataWorker @AssistedInject constructor(
             val syncMotosPendingOnly = syncType == "MOTOS_PENDING"
             val syncVehiclesPendingOnly = syncType == "VEHICLES_PENDING"
             val syncVehiclesDocumentsOnly = syncType == "VEHICLES_DOCUMENTS"
+            val syncSubstationOnly = syncType == "SUBSTATION_ONLY"
+            val syncSubstationCatalogOnly = syncType == "SUBSTATION_CATALOG"
 
             val shouldSyncForms = syncAll || syncFormsOnly
             val shouldSyncMachineOilChange = syncAll || syncMachineOilChangeOnly
             val shouldSyncVehicles = syncAll || syncVehiclesOnly || syncFormsOnly || syncVehiclesCatalogOnly || syncVehiclesPendingOnly || syncVehiclesDocumentsOnly
             val shouldSyncMotosPending = syncAll || syncFormsOnly || syncMotosPendingOnly
-            
+            val shouldSyncSubstation = syncAll || syncSubstationOnly
+
             var formsSyncedCount = 0
             var machineOilChangeSyncedCount = 0
             var motoSyncedCount = 0
             var vehiclesSynced = 0
+            var substationSyncedCount = 0
             var totalErrors = 0
             var pendingForms: List<com.example.testusoandroidstudio_1_usochicamocha.domain.model.Form> = emptyList()
             var pendingMachineOilChange: List<com.example.testusoandroidstudio_1_usochicamocha.domain.model.MachineOilChangeForm> = emptyList()
             var pendingInspMoto: List<com.example.testusoandroidstudio_1_usochicamocha.domain.model.InspeccionMotoPendiente> = emptyList()
             var pendingVehicles: List<com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.VehiculoInspectionEntity> = emptyList()
+            var pendingSubstation: List<com.example.testusoandroidstudio_1_usochicamocha.domain.model.Ejecucion> = emptyList()
 
             // 2. FORMULARIOS con timeout por cada formulario
             if (shouldSyncForms) {
@@ -258,8 +269,45 @@ class SyncDataWorker @AssistedInject constructor(
                 }
             }
 
+            // 4.5 SUBESTACIONES (ejecuciones de mantenimiento civil) con timeout por cada ejecución
+            if (shouldSyncSubstation) {
+                Log.d("SyncDataWorker", "🏗️ [$workId] Processing substation executions...")
+                try {
+                    pendingSubstation = withTimeout(30000) {
+                        getPendingEjecucionesUseCase().first()
+                    }
+                    Log.d("SyncDataWorker", "📋 [$workId] Found ${pendingSubstation.size} pending substation executions to sync")
+
+                    if (pendingSubstation.isNotEmpty()) {
+                        pendingSubstation.forEachIndexed { index, ejecucion ->
+                            try {
+                                Log.d("SyncDataWorker", "🏗️ [$workId] Syncing substation execution ${index + 1}/${pendingSubstation.size}: ${ejecucion.uuidCliente}")
+
+                                val result = withTimeout(30000) {
+                                    sincronizarEjecucionUseCase(ejecucion)
+                                }
+
+                                if (result.isSuccess) {
+                                    substationSyncedCount++
+                                    Log.d("SyncDataWorker", "✅ [$workId] Substation execution synced successfully: ${ejecucion.uuidCliente}")
+                                } else {
+                                    totalErrors++
+                                    Log.e("SyncDataWorker", "❌ [$workId] Substation execution sync failed: ${ejecucion.uuidCliente} - ${result.exceptionOrNull()?.message}")
+                                }
+                            } catch (e: Exception) {
+                                totalErrors++
+                                Log.e("SyncDataWorker", "❌ [$workId] Exception syncing substation execution ${ejecucion.uuidCliente}", e)
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    totalErrors++
+                    Log.e("SyncDataWorker", "❌ [$workId] Error fetching substation executions", e)
+                }
+            }
+
             // 5. IMÁGENES con timeout
-            if (shouldSyncForms || shouldSyncMachineOilChange || shouldSyncVehicles || syncImagesOnly) {
+            if (shouldSyncForms || shouldSyncMachineOilChange || shouldSyncVehicles || shouldSyncSubstation || syncImagesOnly) {
                 try {
                     Log.d("SyncDataWorker", "🖼️ [$workId] Enqueuing image sync...")
                     val imageWork = OneTimeWorkRequestBuilder<ImageSyncWorker>().build()
@@ -279,7 +327,7 @@ class SyncDataWorker @AssistedInject constructor(
             // La descarga del catálogo (máquinas, vehículos, motos) es independiente de si hay
             // formularios pendientes de subir. Siempre debe ejecutarse para que el dispositivo
             // reciba los activos nuevos creados desde el admin web.
-            val isExplicitMasterSync = syncMasterDataOnly || syncMachinesOnly || syncOilsOnly || syncMotosOnly || syncUbicacionesOnly || syncDocumentsOnly || syncVehiclesCatalogOnly || syncVehiclesDocumentsOnly
+            val isExplicitMasterSync = syncMasterDataOnly || syncMachinesOnly || syncOilsOnly || syncMotosOnly || syncUbicacionesOnly || syncDocumentsOnly || syncVehiclesCatalogOnly || syncVehiclesDocumentsOnly || syncSubstationCatalogOnly
 
             if (isExplicitMasterSync || syncAll) {
                 Log.d("SyncDataWorker", "⚙️ [$workId] Syncing master data... Type: $syncType")
@@ -319,6 +367,11 @@ class SyncDataWorker @AssistedInject constructor(
                             vehiculoRepository.syncAllVehiclesDocuments()
                         }
                         Log.d("SyncDataWorker", "✅ [$workId] Vehicles Documents synced successfully")
+                    } else if (syncSubstationCatalogOnly) {
+                        withTimeout(60000) {
+                            sincronizarCatalogosSubestacionUseCase()
+                        }
+                        Log.d("SyncDataWorker", "✅ [$workId] Substation catalogs synced successfully")
                     } else {
                         // Por defecto: sincroniza todo (MASTER_DATA o ALL_DATA)
                         withTimeout(270000) {
@@ -329,8 +382,9 @@ class SyncDataWorker @AssistedInject constructor(
                             syncVehiclesCatalogUseCase()
                             vehiculoRepository.syncAllVehiclesDocuments()
                             syncDocumentosUseCase() // Moto documents
+                            sincronizarCatalogosSubestacionUseCase()
                         }
-                        Log.d("SyncDataWorker", "✅ [$workId] Master data (Machines, Oils, Motos, Ubicaciones, Vehicles, Documents) synced successfully")
+                        Log.d("SyncDataWorker", "✅ [$workId] Master data (Machines, Oils, Motos, Ubicaciones, Vehicles, Documents, Substation catalogs) synced successfully")
                     }
                 } catch (e: Exception) {
                     totalErrors++
@@ -340,13 +394,14 @@ class SyncDataWorker @AssistedInject constructor(
 
             // Log summary
             Log.d("SyncDataWorker", "🏁 [$workId] === SYNC SESSION COMPLETE ===")
-            Log.d("SyncDataWorker", "📊 [$workId] Summary - Forms: $formsSyncedCount, MachineOilChangeForm: $machineOilChangeSyncedCount, Motos: $motoSyncedCount, Vehicles: $vehiclesSynced, Errors: $totalErrors")
-            
+            Log.d("SyncDataWorker", "📊 [$workId] Summary - Forms: $formsSyncedCount, MachineOilChangeForm: $machineOilChangeSyncedCount, Motos: $motoSyncedCount, Vehicles: $vehiclesSynced, Substation: $substationSyncedCount, Errors: $totalErrors")
+
             // 6. Summary y Result
-            val hasDataToProcess = pendingForms.isNotEmpty() || 
-                                  pendingMachineOilChange.isNotEmpty() || 
+            val hasDataToProcess = pendingForms.isNotEmpty() ||
+                                  pendingMachineOilChange.isNotEmpty() ||
                                   pendingInspMoto.isNotEmpty() ||
                                   pendingVehicles.isNotEmpty() ||
+                                  pendingSubstation.isNotEmpty() ||
                                   isExplicitMasterSync
             
             return if (totalErrors == 0 && hasDataToProcess) {

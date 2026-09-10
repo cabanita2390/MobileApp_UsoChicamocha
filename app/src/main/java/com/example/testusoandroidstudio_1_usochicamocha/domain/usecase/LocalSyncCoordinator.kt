@@ -75,6 +75,9 @@ class LocalSyncCoordinator @Inject constructor(
         data class FormSaved(val formType: String) : SyncTrigger() {
             override fun getWorkName(): String = "form_save_sync"
         }
+        data class SubstationSaved(val detail: String) : SyncTrigger() {
+            override fun getWorkName(): String = "substation_save_sync"
+        }
         data class MachineOilChangeSaved(val machineOilChangeType: String) : SyncTrigger() {
             override fun getWorkName(): String = "machine_oil_change_save_sync"
         }
@@ -104,7 +107,9 @@ class LocalSyncCoordinator @Inject constructor(
         VEHICLES_CATALOG,
         MOTOS_PENDING,
         VEHICLES_PENDING,
-        VEHICLES_DOCUMENTS
+        VEHICLES_DOCUMENTS,
+        SUBSTATION_ONLY,
+        SUBSTATION_CATALOG
     }
 
     enum class SyncStatus {
@@ -375,6 +380,14 @@ class LocalSyncCoordinator @Inject constructor(
             }
             is SyncTrigger.FormSaved -> {
                 val inputData = workDataOf("SYNC_TYPE" to SyncType.FORMS_ONLY.name)
+                OneTimeWorkRequestBuilder<SyncDataWorker>()
+                    .setConstraints(constraints)
+                    .setInputData(inputData)
+                    .addTag(COORDINATED_SYNC_WORK)
+                    .build()
+            }
+            is SyncTrigger.SubstationSaved -> {
+                val inputData = workDataOf("SYNC_TYPE" to SyncType.SUBSTATION_ONLY.name)
                 OneTimeWorkRequestBuilder<SyncDataWorker>()
                     .setConstraints(constraints)
                     .setInputData(inputData)
