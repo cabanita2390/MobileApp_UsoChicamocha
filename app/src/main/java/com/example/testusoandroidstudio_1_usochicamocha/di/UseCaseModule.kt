@@ -18,6 +18,7 @@ import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.moto.Sync
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.moto.SyncUbicacionesUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.oil.GetLocalOilsUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.oil.SyncOilsUseCase
+import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.*
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.vehiculo.GetPendingVehiculoInspectionsUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.vehiculo.SaveVehiculoInspectionUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.vehiculo.SyncVehiclesCatalogUseCase
@@ -137,4 +138,66 @@ object UseCaseModule {
     @Singleton
     fun provideGetPendingInspeccionesMotoUseCase(repo: InspeccionMotoRepository): GetPendingInspeccionesMotoUseCase =
         GetPendingInspeccionesMotoUseCase(repo)
+
+    // --- Subestaciones ---
+
+    @Provides
+    @Singleton
+    fun provideGuardarEjecucionLocalUseCase(repo: SubestacionRepository): GuardarEjecucionLocalUseCase =
+        GuardarEjecucionLocalUseCase(repo)
+
+    @Provides
+    @Singleton
+    fun provideSincronizarEjecucionUseCase(repo: SubestacionRepository): SincronizarEjecucionUseCase =
+        SincronizarEjecucionUseCase(repo)
+
+    @Provides
+    @Singleton
+    fun provideObtenerEjecucionesPendientesUseCase(repo: SubestacionRepository): ObtenerEjecucionesPendientesUseCase =
+        ObtenerEjecucionesPendientesUseCase(repo)
+
+    @Provides
+    @Singleton
+    fun provideObtenerEjecucionesColaUseCase(repo: SubestacionRepository): ObtenerEjecucionesColaUseCase =
+        ObtenerEjecucionesColaUseCase(repo)
+
+    @Provides
+    @Singleton
+    fun provideSincronizarCatalogosSubestacionUseCase(repo: SubestacionRepository): SincronizarCatalogosSubestacionUseCase =
+        SincronizarCatalogosSubestacionUseCase(repo)
+
+    @Provides
+    @Singleton
+    fun provideObtenerEstacionesCacheUseCase(repo: SubestacionRepository): ObtenerEstacionesCacheUseCase =
+        ObtenerEstacionesCacheUseCase(repo)
+
+    @Provides
+    @Singleton
+    fun provideObtenerActividadesCacheUseCase(repo: SubestacionRepository): ObtenerActividadesCacheUseCase =
+        ObtenerActividadesCacheUseCase(repo)
+
+    @Provides
+    @Singleton
+    fun provideObtenerCronogramaUseCase(repo: SubestacionRepository): ObtenerCronogramaUseCase =
+        ObtenerCronogramaUseCase(repo)
+
+    @Provides
+    @Singleton
+    fun provideObtenerPendientesUseCase(repo: SubestacionRepository): ObtenerPendientesUseCase =
+        ObtenerPendientesUseCase(repo)
+
+    @Provides
+    @Singleton
+    fun provideObtenerDetalleEjecucionUseCase(repo: SubestacionRepository): ObtenerDetalleEjecucionUseCase =
+        ObtenerDetalleEjecucionUseCase(repo)
+
+    @Provides
+    @Singleton
+    fun provideObtenerEjecucionPorProgramacionUseCase(repo: SubestacionRepository): ObtenerEjecucionPorProgramacionUseCase =
+        ObtenerEjecucionPorProgramacionUseCase(repo)
+
+    @Provides
+    @Singleton
+    fun provideEditarEjecucionUseCase(repo: SubestacionRepository): EditarEjecucionUseCase =
+        EditarEjecucionUseCase(repo)
 }

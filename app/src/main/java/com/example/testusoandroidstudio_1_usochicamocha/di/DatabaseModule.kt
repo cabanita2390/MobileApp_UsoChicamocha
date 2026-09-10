@@ -47,7 +47,9 @@ object DatabaseModule {
                 AppDatabase.MIGRATION_39_40,
                 AppDatabase.MIGRATION_40_41,
                 AppDatabase.MIGRATION_41_42,
-                AppDatabase.MIGRATION_42_43
+                AppDatabase.MIGRATION_42_43,
+                AppDatabase.MIGRATION_43_44,
+                AppDatabase.MIGRATION_44_45
             )
             .build()
     }
@@ -111,4 +113,16 @@ object DatabaseModule {
     @Provides
     @Singleton
     fun provideInspeccionMotoDao(db: AppDatabase): InspeccionMotoDao = db.inspeccionMotoDao()
+
+    @Provides
+    @Singleton
+    fun provideEjecucionDao(db: AppDatabase): EjecucionDao = db.ejecucionDao()
+
+    @Provides
+    @Singleton
+    fun provideEstacionCacheDao(db: AppDatabase): EstacionCacheDao = db.estacionCacheDao()
+
+    @Provides
+    @Singleton
+    fun provideActividadCacheDao(db: AppDatabase): ActividadCacheDao = db.actividadCacheDao()
 }

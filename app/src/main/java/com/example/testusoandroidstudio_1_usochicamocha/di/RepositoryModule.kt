@@ -86,4 +86,17 @@ object RepositoryModule {
         dao: InspeccionMotoDao,
         apiService: ApiService
     ): InspeccionMotoRepository = InspeccionMotoRepositoryImpl(dao, apiService)
+
+    @Provides
+    @Singleton
+    fun provideSubestacionRepository(
+        @ApplicationContext context: Context,
+        ejecucionDao: EjecucionDao,
+        estacionCacheDao: EstacionCacheDao,
+        actividadCacheDao: ActividadCacheDao,
+        imageDao: ImageDao,
+        apiService: ApiService
+    ): SubestacionRepository = SubestacionRepositoryImpl(
+        context, ejecucionDao, estacionCacheDao, actividadCacheDao, imageDao, apiService
+    )
 }

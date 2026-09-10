@@ -19,6 +19,14 @@ import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.VehicleD
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.request.OilChangeRequest
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.request.VehicleOilChangeRequest
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.request.VehiculoInspectionRequest
+import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.ActividadDto
+import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.CumplimientoDto
+import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.EjecucionEditRequestDto
+import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.EjecucionRequestDto
+import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.EjecucionResponseDto
+import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.EstacionDto
+import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.EvidenciaSubestacionDto
+import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.ProgramacionDto
 import okhttp3.MultipartBody
 import retrofit2.Response
 import retrofit2.http.Body
@@ -136,4 +144,51 @@ interface ApiService {
         @Path("id") id: Long,
         @Body request: MotoPlacaDto
     ): Response<MotoPlacaDto>
+
+    // --- Subestaciones (mantenimiento civil) ---
+
+    @GET("v1/substation/estaciones")
+    suspend fun getEstacionesSubestacion(): Response<List<EstacionDto>>
+
+    @GET("v1/substation/actividades")
+    suspend fun getActividadesSubestacion(@Query("disciplina") disciplina: String): Response<List<ActividadDto>>
+
+    @GET("v1/substation/programacion")
+    suspend fun getProgramacionSubestacion(
+        @Query("estacionId") estacionId: Long,
+        @Query("anio") anio: Int,
+        @Query("mes") mes: Int,
+        @Query("disciplina") disciplina: String
+    ): Response<List<ProgramacionDto>>
+
+    @POST("v1/substation/ejecuciones")
+    suspend fun registrarEjecucionSubestacion(@Body request: EjecucionRequestDto): Response<EjecucionResponseDto>
+
+    @PUT("v1/substation/ejecuciones/{id}")
+    suspend fun editarEjecucionSubestacion(
+        @Path("id") id: Long,
+        @Body request: EjecucionEditRequestDto
+    ): Response<EjecucionResponseDto>
+
+    /** El backend espera el nombre de parte "file" (SubstationController.agregarEvidencia), no "imagen". */
+    @Multipart
+    @POST("v1/substation/ejecuciones/{id}/evidencia")
+    suspend fun subirEvidenciaSubestacion(
+        @Path("id") id: Long,
+        @Part file: MultipartBody.Part
+    ): Response<EvidenciaSubestacionDto>
+
+    @GET("v1/substation/ejecuciones/{id}")
+    suspend fun getEjecucionSubestacion(@Path("id") id: Long): Response<EjecucionResponseDto>
+
+    @GET("v1/substation/ejecuciones/por-programacion/{programacionId}")
+    suspend fun getEjecucionPorProgramacion(@Path("programacionId") programacionId: Long): Response<EjecucionResponseDto>
+
+    @GET("v1/substation/indicadores/cumplimiento")
+    suspend fun getCumplimientoSubestacion(
+        @Query("estacionId") estacionId: Long? = null,
+        @Query("anio") anio: Int,
+        @Query("mes") mes: Int? = null,
+        @Query("disciplina") disciplina: String
+    ): Response<List<CumplimientoDto>>
 }

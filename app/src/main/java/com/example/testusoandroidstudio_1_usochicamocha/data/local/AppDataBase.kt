@@ -36,6 +36,12 @@ import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.Docume
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.VehiculoOilChangeEntity
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.MotoOilChangeDao
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.MotoOilChangeEntity
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.EjecucionDao
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.EstacionCacheDao
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.ActividadCacheDao
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.EjecucionEntity
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.EstacionCacheEntity
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.ActividadCacheEntity
 
 @TypeConverters(DateTimeConverters::class)
 @Database(
@@ -54,9 +60,12 @@ import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.MotoOi
         com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.VehiculoEntity::class,
         com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.DocumentoVehiculoEntity::class,
         com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.VehiculoOilChangeEntity::class,
-        com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.MotoOilChangeEntity::class
+        com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.MotoOilChangeEntity::class,
+        com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.EjecucionEntity::class,
+        com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.EstacionCacheEntity::class,
+        com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.ActividadCacheEntity::class
     ],
-    version = 43,
+    version = 45,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -643,6 +652,72 @@ abstract class AppDatabase : RoomDatabase() {
                 database.execSQL("DROP TABLE IF EXISTS `oil_analysis_sos`")
             }
         }
+
+        /**
+         * Migración 43 → 44: módulo Subestaciones (Civil). Crea la tabla de ejecuciones
+         * pendientes (mismo patrón que pending_forms: UUID + isSynced/isSyncing para
+         * idempotencia y lock atómico de sync) y los catálogos cacheados de estaciones/
+         * actividades (mismo patrón que `machines`: id sin autogenerar porque viene del
+         * servidor, clearAndInsert reemplaza todo). También agrega la 3ª FK polimórfica
+         * nullable a pending_images para que la evidencia de una ejecución use el mismo
+         * ImageDao/ImageSyncWorker que ya usan Form y Vehículo.
+         */
+        val MIGRATION_43_44 = object : Migration(43, 44) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `pending_mant_ejecucion` (
+                        `localId` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `serverId` INTEGER,
+                        `uuidCliente` TEXT NOT NULL,
+                        `fecha` TEXT NOT NULL,
+                        `mesEjecucion` INTEGER NOT NULL,
+                        `semanaEjecucion` INTEGER NOT NULL,
+                        `estacionId` INTEGER NOT NULL,
+                        `estacionNombre` TEXT NOT NULL,
+                        `tipoMantenimiento` TEXT NOT NULL,
+                        `tipoActividad` TEXT NOT NULL,
+                        `actividadId` INTEGER,
+                        `actividadNombre` TEXT,
+                        `programacionId` INTEGER,
+                        `esProgramada` INTEGER NOT NULL,
+                        `motivoNoCatalogado` TEXT,
+                        `resultado` TEXT NOT NULL,
+                        `observaciones` TEXT NOT NULL,
+                        `descripcionLibre` TEXT,
+                        `isSynced` INTEGER NOT NULL,
+                        `isSyncing` INTEGER NOT NULL
+                    )
+                """.trimIndent())
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `mant_estacion_cache` (
+                        `id` INTEGER PRIMARY KEY NOT NULL,
+                        `nombre` TEXT NOT NULL,
+                        `tipo` TEXT NOT NULL,
+                        `frecuenciaBase` TEXT NOT NULL
+                    )
+                """.trimIndent())
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `mant_actividad_cache` (
+                        `id` INTEGER PRIMARY KEY NOT NULL,
+                        `nombre` TEXT NOT NULL
+                    )
+                """.trimIndent())
+                database.execSQL("ALTER TABLE pending_images ADD COLUMN ejecucionUUID TEXT")
+            }
+        }
+
+        /**
+         * Migración 44 → 45: agrega `syncFallido` a `pending_mant_ejecucion` — antes
+         * un fallo persistente de envío (red/servidor) era indistinguible de "todavía
+         * no hay señal, esperando". Se limpia (`syncFallido=0`) cada vez que se
+         * reintenta el envío (ver `EjecucionDao.acquireLock`), y se marca en `1` solo
+         * cuando `syncEjecucion` falla de verdad.
+         */
+        val MIGRATION_44_45 = object : Migration(44, 45) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE pending_mant_ejecucion ADD COLUMN syncFallido INTEGER NOT NULL DEFAULT 0")
+            }
+        }
     }
     abstract fun formDao(): FormDao
     abstract fun machineDao(): MachineDao
@@ -659,4 +734,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun documentoVehiculoDao(): DocumentoVehiculoDao
     abstract fun vehiculoOilChangeDao(): VehiculoOilChangeDao
     abstract fun motoOilChangeDao(): MotoOilChangeDao
+    abstract fun ejecucionDao(): EjecucionDao
+    abstract fun estacionCacheDao(): EstacionCacheDao
+    abstract fun actividadCacheDao(): ActividadCacheDao
 }
