@@ -25,6 +25,7 @@ import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.inspeccio
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.oil.SyncOilsUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.ObtenerEjecucionesPendientesUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.SincronizarCatalogosSubestacionUseCase
+import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.SincronizarCumplimientoAnioUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.SincronizarEjecucionUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.vehiculo.GetPendingVehiculoInspectionsUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.vehiculo.SyncVehiculoInspectionUseCase
@@ -61,7 +62,8 @@ class SyncDataWorker @AssistedInject constructor(
     private val vehiculoRepository: VehiculoInspectionRepository,
     private val getPendingEjecucionesUseCase: ObtenerEjecucionesPendientesUseCase,
     private val sincronizarEjecucionUseCase: SincronizarEjecucionUseCase,
-    private val sincronizarCatalogosSubestacionUseCase: SincronizarCatalogosSubestacionUseCase
+    private val sincronizarCatalogosSubestacionUseCase: SincronizarCatalogosSubestacionUseCase,
+    private val sincronizarCumplimientoAnioUseCase: SincronizarCumplimientoAnioUseCase
 ) : CoroutineWorker(appContext, workerParams) {
 
     override suspend fun doWork(): Result {
@@ -372,6 +374,17 @@ class SyncDataWorker @AssistedInject constructor(
                             sincronizarCatalogosSubestacionUseCase()
                         }
                         Log.d("SyncDataWorker", "✅ [$workId] Substation catalogs synced successfully")
+                        try {
+                            val hoy = java.time.LocalDate.now()
+                            withTimeout(120000) {
+                                sincronizarCumplimientoAnioUseCase(hoy.year, hoy.monthValue)
+                            }
+                            Log.d("SyncDataWorker", "✅ [$workId] Substation cumplimiento cache synced successfully")
+                        } catch (e: Exception) {
+                            // Best-effort: sin red, el caché de cumplimiento se queda con lo último
+                            // sincronizado — no es un error del worker en sí.
+                            Log.w("SyncDataWorker", "⚠️ [$workId] Could not refresh substation cumplimiento cache", e)
+                        }
                     } else {
                         // Por defecto: sincroniza todo (MASTER_DATA o ALL_DATA)
                         withTimeout(270000) {
@@ -385,6 +398,17 @@ class SyncDataWorker @AssistedInject constructor(
                             sincronizarCatalogosSubestacionUseCase()
                         }
                         Log.d("SyncDataWorker", "✅ [$workId] Master data (Machines, Oils, Motos, Ubicaciones, Vehicles, Documents, Substation catalogs) synced successfully")
+                        try {
+                            val hoy = java.time.LocalDate.now()
+                            withTimeout(120000) {
+                                sincronizarCumplimientoAnioUseCase(hoy.year, hoy.monthValue)
+                            }
+                            Log.d("SyncDataWorker", "✅ [$workId] Substation cumplimiento cache synced successfully")
+                        } catch (e: Exception) {
+                            // Best-effort: sin red, el caché de cumplimiento se queda con lo último
+                            // sincronizado — no es un error del worker en sí.
+                            Log.w("SyncDataWorker", "⚠️ [$workId] Could not refresh substation cumplimiento cache", e)
+                        }
                     }
                 } catch (e: Exception) {
                     totalErrors++

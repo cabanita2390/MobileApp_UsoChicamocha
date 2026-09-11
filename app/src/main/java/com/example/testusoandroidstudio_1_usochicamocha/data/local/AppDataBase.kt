@@ -39,9 +39,13 @@ import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.MotoOi
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.EjecucionDao
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.EstacionCacheDao
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.ActividadCacheDao
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.CumplimientoCacheDao
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.EjecucionDetalleCacheDao
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.EjecucionEntity
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.EstacionCacheEntity
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.ActividadCacheEntity
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.CumplimientoCacheEntity
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.EjecucionDetalleCacheEntity
 
 @TypeConverters(DateTimeConverters::class)
 @Database(
@@ -63,9 +67,11 @@ import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.Activi
         com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.MotoOilChangeEntity::class,
         com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.EjecucionEntity::class,
         com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.EstacionCacheEntity::class,
-        com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.ActividadCacheEntity::class
+        com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.ActividadCacheEntity::class,
+        com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.CumplimientoCacheEntity::class,
+        com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.EjecucionDetalleCacheEntity::class
     ],
-    version = 45,
+    version = 46,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -718,6 +724,46 @@ abstract class AppDatabase : RoomDatabase() {
                 database.execSQL("ALTER TABLE pending_mant_ejecucion ADD COLUMN syncFallido INTEGER NOT NULL DEFAULT 0")
             }
         }
+
+        /**
+         * Migración 45 → 46: revierte la simplificación "online-first" del MVP de
+         * Subestaciones para Cronograma/Pendientes/Indicadores/Detalle (ver
+         * SubestacionRepository) — en modo avión esas 4 pantallas se quedaban vacías o
+         * rotas porque dependían de golpear el backend en cada carga. Crea:
+         * - `mant_cumplimiento_cache`: caché de la respuesta de cumplimiento del backend
+         *   (ejecutado/cumple ya calculados server-side, no recalculados en cliente), una
+         *   fila por programacionId — alimenta Cronograma (por año+mes) y Pendientes/Home
+         *   (por año, hasta el mes actual).
+         * - `mant_ejecucion_detalle_cache`: caché bajo demanda del detalle de una
+         *   ejecución ya consultada (JSON crudo de la respuesta, id = ejecucionId), para
+         *   poder volver a verla sin señal tras la primera consulta exitosa.
+         */
+        val MIGRATION_45_46 = object : Migration(45, 46) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `mant_cumplimiento_cache` (
+                        `programacionId` INTEGER PRIMARY KEY NOT NULL,
+                        `anio` INTEGER NOT NULL,
+                        `mes` INTEGER NOT NULL,
+                        `estacionId` INTEGER NOT NULL,
+                        `estacionNombre` TEXT NOT NULL,
+                        `estacionTipo` TEXT NOT NULL,
+                        `actividadId` INTEGER NOT NULL,
+                        `actividadNombre` TEXT NOT NULL,
+                        `disciplina` TEXT NOT NULL,
+                        `ejecutado` INTEGER NOT NULL,
+                        `cumple` INTEGER NOT NULL
+                    )
+                """.trimIndent())
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `mant_ejecucion_detalle_cache` (
+                        `id` INTEGER PRIMARY KEY NOT NULL,
+                        `json` TEXT NOT NULL,
+                        `cachedAt` INTEGER NOT NULL
+                    )
+                """.trimIndent())
+            }
+        }
     }
     abstract fun formDao(): FormDao
     abstract fun machineDao(): MachineDao
@@ -737,4 +783,6 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun ejecucionDao(): EjecucionDao
     abstract fun estacionCacheDao(): EstacionCacheDao
     abstract fun actividadCacheDao(): ActividadCacheDao
+    abstract fun cumplimientoCacheDao(): CumplimientoCacheDao
+    abstract fun ejecucionDetalleCacheDao(): EjecucionDetalleCacheDao
 }

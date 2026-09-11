@@ -4,13 +4,15 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.CitaProgramada
+import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.ObtenerCumplimientoAnioLocalUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.ObtenerEjecucionPorProgramacionUseCase
-import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.ObtenerPendientesUseCase
+import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.SincronizarCumplimientoAnioUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.CitaUi
 import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.EstadoCita
 import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.estadoDeCita
 import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.nombreMes
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -38,7 +40,8 @@ data class PendientesUiState(
 
 @HiltViewModel
 class PendientesViewModel @Inject constructor(
-    private val obtenerPendientesUseCase: ObtenerPendientesUseCase,
+    private val obtenerCumplimientoAnioLocalUseCase: ObtenerCumplimientoAnioLocalUseCase,
+    private val sincronizarCumplimientoAnioUseCase: SincronizarCumplimientoAnioUseCase,
     private val obtenerEjecucionPorProgramacionUseCase: ObtenerEjecucionPorProgramacionUseCase,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
@@ -61,23 +64,44 @@ class PendientesViewModel @Inject constructor(
 
     private var citasCrudas: List<CitaProgramada> = emptyList()
 
+    // `cargar()` se re-dispara en cada ON_RESUME de la pantalla — sin cancelar el
+    // colector anterior se irían acumulando suscripciones duplicadas al mismo Flow.
+    private var localJob: Job? = null
+
     init {
         cargar()
     }
 
+    /**
+     * Suscribe al caché local del año en curso (Room, offline-first) y dispara un
+     * refresco en segundo plano contra el backend — best-effort: si falla (sin red),
+     * la pantalla se queda con lo último cacheado en vez de quedar vacía/rota.
+     */
     fun cargar() {
+        val hoy = LocalDate.now()
+        _uiState.update { it.copy(isLoading = true, error = null) }
+
+        localJob?.cancel()
+        localJob = viewModelScope.launch {
+            obtenerCumplimientoAnioLocalUseCase(hoy.year, hoy.monthValue).collect { citas ->
+                citasCrudas = citas
+                _uiState.update { it.copy(isLoading = false, grupos = agrupar(citas, it.filtro)) }
+            }
+        }
+
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
-            val hoy = LocalDate.now()
-            obtenerPendientesUseCase(hoy.year, hoy.monthValue)
-                .onSuccess { citas ->
-                    citasCrudas = citas
-                    _uiState.update { it.copy(isLoading = false, grupos = agrupar(citas, it.filtro)) }
-                }
+            sincronizarCumplimientoAnioUseCase(hoy.year, hoy.monthValue)
                 .onFailure { e ->
                     _uiState.update {
-                        it.copy(isLoading = false, error = e.message ?: "No se pudieron cargar los pendientes.")
+                        if (citasCrudas.isEmpty()) {
+                            it.copy(isLoading = false, error = e.message ?: "Sin conexión. No hay datos guardados de pendientes.")
+                        } else {
+                            it.copy(error = null)
+                        }
                     }
+                }
+                .onSuccess {
+                    _uiState.update { it.copy(error = null) }
                 }
         }
     }

@@ -2,8 +2,9 @@ package com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.pendient
 
 import androidx.lifecycle.SavedStateHandle
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.CitaProgramada
+import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.ObtenerCumplimientoAnioLocalUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.ObtenerEjecucionPorProgramacionUseCase
-import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.ObtenerPendientesUseCase
+import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.SincronizarCumplimientoAnioUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.EstadoCita
 import io.mockk.MockKAnnotations
 import io.mockk.coEvery
@@ -12,6 +13,7 @@ import io.mockk.impl.annotations.MockK
 import io.mockk.unmockkAll
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
@@ -28,7 +30,10 @@ import java.time.LocalDate
  * `PendientesViewModel` — filtro inicial leído del `SavedStateHandle` (arreglo de esta
  * sesión: antes dependía de un efecto de pantalla que podía pisar un cambio manual de
  * chip; ahora se lee una sola vez al construir), agrupación/orden por mes más reciente
- * primero, y el sufijo "MES EN CURSO"/"MES CERRADO" agregado esta sesión.
+ * primero, y el sufijo "MES EN CURSO"/"MES CERRADO" agregado esta sesión. Offline-first
+ * (agregado esta sesión): la UI se alimenta del caché local en Room
+ * (`ObtenerCumplimientoAnioLocalUseCase`), el backend solo refresca ese caché en segundo
+ * plano (`SincronizarCumplimientoAnioUseCase`) sin bloquear ni vaciar la pantalla si falla.
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class PendientesViewModelTest {
@@ -36,7 +41,9 @@ class PendientesViewModelTest {
     private val testDispatcher = StandardTestDispatcher()
 
     @MockK
-    lateinit var obtenerPendientesUseCase: ObtenerPendientesUseCase
+    lateinit var obtenerCumplimientoAnioLocalUseCase: ObtenerCumplimientoAnioLocalUseCase
+    @MockK
+    lateinit var sincronizarCumplimientoAnioUseCase: SincronizarCumplimientoAnioUseCase
     @MockK
     lateinit var obtenerEjecucionPorProgramacionUseCase: ObtenerEjecucionPorProgramacionUseCase
     @MockK
@@ -63,7 +70,8 @@ class PendientesViewModelTest {
         MockKAnnotations.init(this)
         Dispatchers.setMain(testDispatcher)
         every { savedStateHandle.get<String>("filtroInicial") } returns null
-        coEvery { obtenerPendientesUseCase(any(), any()) } returns Result.success(emptyList())
+        every { obtenerCumplimientoAnioLocalUseCase(any(), any()) } returns flowOf(emptyList())
+        coEvery { sincronizarCumplimientoAnioUseCase(any(), any()) } returns Result.success(Unit)
     }
 
     @After
@@ -72,7 +80,12 @@ class PendientesViewModelTest {
         unmockkAll()
     }
 
-    private fun createViewModel() = PendientesViewModel(obtenerPendientesUseCase, obtenerEjecucionPorProgramacionUseCase, savedStateHandle)
+    private fun createViewModel() = PendientesViewModel(
+        obtenerCumplimientoAnioLocalUseCase,
+        sincronizarCumplimientoAnioUseCase,
+        obtenerEjecucionPorProgramacionUseCase,
+        savedStateHandle
+    )
 
     @Test
     fun `sin argumento de navegacion el filtro inicial es Por hacer`() = runTest {
@@ -99,7 +112,7 @@ class PendientesViewModelTest {
         val citaVencida = cita(anio = hoy.minusMonths(2).year, mes = hoy.minusMonths(2).monthValue)
         val citaPendiente = cita(anio = hoy.year, mes = hoy.monthValue)
         val citaEjecutada = cita(anio = hoy.year, mes = hoy.monthValue, actividadId = 2L, cumple = true)
-        coEvery { obtenerPendientesUseCase(any(), any()) } returns Result.success(listOf(citaVencida, citaPendiente, citaEjecutada))
+        every { obtenerCumplimientoAnioLocalUseCase(any(), any()) } returns flowOf(listOf(citaVencida, citaPendiente, citaEjecutada))
 
         val vm = createViewModel()
         advanceUntilIdle()
@@ -112,7 +125,7 @@ class PendientesViewModelTest {
     @Test
     fun `onFiltroChange re-agrupa sin volver a pedir datos al backend`() = runTest {
         val citaVencida = cita(anio = hoy.minusMonths(3).year, mes = hoy.minusMonths(3).monthValue)
-        coEvery { obtenerPendientesUseCase(any(), any()) } returns Result.success(listOf(citaVencida))
+        every { obtenerCumplimientoAnioLocalUseCase(any(), any()) } returns flowOf(listOf(citaVencida))
 
         val vm = createViewModel()
         advanceUntilIdle()
@@ -128,7 +141,7 @@ class PendientesViewModelTest {
     fun `los grupos quedan ordenados del mes mas reciente al mas antiguo`() = runTest {
         val haceDosMeses = hoy.minusMonths(2)
         val haceUnMes = hoy.minusMonths(1)
-        coEvery { obtenerPendientesUseCase(any(), any()) } returns Result.success(
+        every { obtenerCumplimientoAnioLocalUseCase(any(), any()) } returns flowOf(
             listOf(
                 cita(anio = haceDosMeses.year, mes = haceDosMeses.monthValue),
                 cita(anio = haceUnMes.year, mes = haceUnMes.monthValue, actividadId = 2L)

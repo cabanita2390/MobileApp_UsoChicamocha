@@ -9,6 +9,7 @@ import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestaci
 import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.CitaUi
 import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.estadoDeCita
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -55,6 +56,11 @@ class CronogramaViewModel @Inject constructor(
     // en Room para el wizard, sin pedirle nada nuevo al backend.
     private var frecuenciaPorEstacion: Map<Long, String> = emptyMap()
 
+    // Observa el caché local del mes actual — se reinicia cada vez que cambia el mes
+    // (ver `cargar()`). La UI se alimenta de este Flow, no de la respuesta directa de
+    // `refrescar()`: así sobrevive sin red mostrando lo último cacheado.
+    private var localJob: Job? = null
+
     init {
         viewModelScope.launch {
             obtenerEstacionesCacheUseCase().collect { estaciones ->
@@ -65,19 +71,36 @@ class CronogramaViewModel @Inject constructor(
         cargar()
     }
 
+    /**
+     * Suscribe al caché local del mes en curso (Room, offline-first) y dispara un
+     * refresco en segundo plano contra el backend — best-effort: si falla (sin red),
+     * la pantalla se queda con lo último cacheado en vez de quedar vacía/rota.
+     */
     fun cargar() {
         val s = _uiState.value
+        _uiState.update { it.copy(isLoading = true, error = null) }
+
+        localJob?.cancel()
+        localJob = viewModelScope.launch {
+            obtenerCronogramaUseCase.local(s.anio, s.mes).collect { citas ->
+                citasCrudas = citas
+                _uiState.update { it.copy(isLoading = false, grupos = agrupar(citas, it.query)) }
+            }
+        }
+
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
-            obtenerCronogramaUseCase(s.anio, s.mes)
-                .onSuccess { citas ->
-                    citasCrudas = citas
-                    _uiState.update { it.copy(isLoading = false, grupos = agrupar(citas, it.query)) }
-                }
+            obtenerCronogramaUseCase.refrescar(s.anio, s.mes)
                 .onFailure { e ->
                     _uiState.update {
-                        it.copy(isLoading = false, error = e.message ?: "No se pudo cargar el cronograma.")
+                        if (citasCrudas.isEmpty()) {
+                            it.copy(isLoading = false, error = e.message ?: "Sin conexión. No hay datos guardados para este mes.")
+                        } else {
+                            it.copy(error = null)
+                        }
                     }
+                }
+                .onSuccess {
+                    _uiState.update { it.copy(error = null) }
                 }
         }
     }

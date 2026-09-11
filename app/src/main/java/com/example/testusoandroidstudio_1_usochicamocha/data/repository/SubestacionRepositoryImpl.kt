@@ -4,10 +4,13 @@ import android.content.Context
 import android.net.Uri
 import android.util.Log
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.ActividadCacheDao
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.CumplimientoCacheDao
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.EjecucionDao
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.EjecucionDetalleCacheDao
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.EstacionCacheDao
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.ImageDao
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.ImageEntity
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.toCacheEntity
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.toDomain
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.ApiService
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.EjecucionEditRequestDto
@@ -38,7 +41,9 @@ class SubestacionRepositoryImpl @Inject constructor(
     private val estacionCacheDao: EstacionCacheDao,
     private val actividadCacheDao: ActividadCacheDao,
     private val imageDao: ImageDao,
-    private val apiService: ApiService
+    private val apiService: ApiService,
+    private val cumplimientoCacheDao: CumplimientoCacheDao,
+    private val ejecucionDetalleCacheDao: EjecucionDetalleCacheDao
 ) : SubestacionRepository {
 
     companion object {
@@ -301,6 +306,61 @@ class SubestacionRepositoryImpl @Inject constructor(
                 Result.failure(Exception("Error al editar la ejecución: ${response.code()}"))
             }
         } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    // --- Cumplimiento cacheado (offline-first: Cronograma/Pendientes/Home) ---
+
+    override fun getCumplimientoLocalPorMesFlow(anio: Int, mes: Int): Flow<List<CitaProgramada>> {
+        return cumplimientoCacheDao.getPorMesFlow(anio, mes).map { entities -> entities.map { it.toDomain() } }
+    }
+
+    override fun getCumplimientoLocalDelAnioFlow(anio: Int, mesActual: Int): Flow<List<CitaProgramada>> {
+        return cumplimientoCacheDao.getDelAnioFlow(anio, mesActual).map { entities -> entities.map { it.toDomain() } }
+    }
+
+    override suspend fun sincronizarCumplimientoMes(anio: Int, mes: Int): Result<Unit> {
+        return try {
+            val response = apiService.getCumplimientoSubestacion(anio = anio, mes = mes, disciplina = DISCIPLINA)
+            if (response.isSuccessful && response.body() != null) {
+                cumplimientoCacheDao.reemplazarMes(anio, mes, response.body()!!.map { it.toEntity() })
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Error al sincronizar cumplimiento: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Exception sincronizando cumplimiento $anio-$mes", e)
+            Result.failure(e)
+        }
+    }
+
+    /** Mismo criterio que la vieja `getPendientesDelAnio`: mes por mes, se aborta en el primer fallo. */
+    override suspend fun sincronizarCumplimientoDelAnio(anio: Int, mesActual: Int): Result<Unit> {
+        for (mes in 1..mesActual) {
+            val result = sincronizarCumplimientoMes(anio, mes)
+            if (result.isFailure) return result
+        }
+        return Result.success(Unit)
+    }
+
+    // --- Detalle de ejecución cacheado bajo demanda (offline-first: pantalla Detalle) ---
+
+    override fun getDetalleLocalFlow(id: Long): Flow<EjecucionDetalle?> {
+        return ejecucionDetalleCacheDao.getByIdFlow(id).map { it?.toDomain() }
+    }
+
+    override suspend fun sincronizarDetalle(id: Long): Result<Unit> {
+        return try {
+            val response = apiService.getEjecucionSubestacion(id)
+            if (response.isSuccessful && response.body() != null) {
+                ejecucionDetalleCacheDao.upsert(response.body()!!.toCacheEntity())
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Error al obtener el detalle de la ejecución: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Exception sincronizando detalle de ejecución $id", e)
             Result.failure(e)
         }
     }

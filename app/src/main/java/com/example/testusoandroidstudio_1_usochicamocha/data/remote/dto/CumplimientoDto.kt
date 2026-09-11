@@ -1,5 +1,6 @@
 package com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto
 
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.CumplimientoCacheEntity
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.CitaProgramada
 import com.google.gson.annotations.SerializedName
 
@@ -27,6 +28,23 @@ fun CumplimientoDto.toDomain(): CitaProgramada {
         estacionTipo = estacionTipo,
         actividadId = actividadId,
         actividadNombre = actividadNombre,
+        ejecutado = ejecutado,
+        cumple = cumple
+    )
+}
+
+/** Para el caché offline-first (ver CumplimientoCacheEntity) — se guarda tal cual la calculó el backend. */
+fun CumplimientoDto.toEntity(): CumplimientoCacheEntity {
+    return CumplimientoCacheEntity(
+        programacionId = programacionId,
+        anio = anio,
+        mes = mes,
+        estacionId = estacionId,
+        estacionNombre = estacionNombre,
+        estacionTipo = estacionTipo,
+        actividadId = actividadId,
+        actividadNombre = actividadNombre,
+        disciplina = disciplina,
         ejecutado = ejecutado,
         cumple = cumple
     )

@@ -200,4 +200,24 @@ object UseCaseModule {
     @Singleton
     fun provideEditarEjecucionUseCase(repo: SubestacionRepository): EditarEjecucionUseCase =
         EditarEjecucionUseCase(repo)
+
+    @Provides
+    @Singleton
+    fun provideObtenerCumplimientoAnioLocalUseCase(repo: SubestacionRepository): ObtenerCumplimientoAnioLocalUseCase =
+        ObtenerCumplimientoAnioLocalUseCase(repo)
+
+    @Provides
+    @Singleton
+    fun provideSincronizarCumplimientoAnioUseCase(repo: SubestacionRepository): SincronizarCumplimientoAnioUseCase =
+        SincronizarCumplimientoAnioUseCase(repo)
+
+    @Provides
+    @Singleton
+    fun provideObtenerDetalleEjecucionLocalUseCase(repo: SubestacionRepository): ObtenerDetalleEjecucionLocalUseCase =
+        ObtenerDetalleEjecucionLocalUseCase(repo)
+
+    @Provides
+    @Singleton
+    fun provideSincronizarDetalleEjecucionUseCase(repo: SubestacionRepository): SincronizarDetalleEjecucionUseCase =
+        SincronizarDetalleEjecucionUseCase(repo)
 }
