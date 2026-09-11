@@ -101,12 +101,34 @@ data class CapturaUiState(
 ) {
     val esEdicion: Boolean get() = editandoId != null
 
+    /**
+     * Modo cita: el registro viene de una cita real del cronograma (`cargarDesdeCita`
+     * fijó `programacionId`) y el técnico no pasó por "regístralo como actividad no
+     * programada" (`onToggleModoLibre`, que limpia `programacionId`). En este modo el
+     * wizard reduce de 4 a 3 pasos y bloquea estación/actividad/disciplina/tipo de
+     * mantenimiento — lo único capturable es fecha/mes/semana, tipo de actividad
+     * realizada, resultado, observaciones y evidencia. Derivado, no un campo de estado
+     * propio: cambia solo como efecto de `programacionId`/`modoLibre`.
+     */
+    val citaMode: Boolean get() = programacionId != null && !modoLibre
+
+    /** 3 pasos en modo cita (Cita/Resultado/Evidencia), 4 en modo libre (como hoy). */
+    val nSteps: Int get() = if (citaMode) 3 else 4
+
     val stepName: String
-        get() = when (currentStep) {
-            1 -> "CONTEXTO"
-            2 -> "ACTIVIDAD"
-            3 -> "RESULTADO"
-            else -> "EVIDENCIA"
+        get() = if (citaMode) {
+            when (currentStep) {
+                1 -> "CITA"
+                2 -> "RESULTADO"
+                else -> "EVIDENCIA"
+            }
+        } else {
+            when (currentStep) {
+                1 -> "CONTEXTO"
+                2 -> "ACTIVIDAD"
+                3 -> "RESULTADO"
+                else -> "EVIDENCIA"
+            }
         }
 
     /** Mismas 3 categorías que `OBS_BY_TIPO` del diseño: cambian según tipoActividad. */
@@ -462,13 +484,26 @@ class CapturaViewModel @Inject constructor(
         actualizarCitaSugeridaPorActividad()
     }
 
+    /**
+     * Activa/desactiva modo libre. Es también la única forma de salir del modo cita
+     * ("regístralo como actividad no programada" en la tarjeta bloqueada del paso 1):
+     * al ACTIVAR modo libre (`activandoLibre`), se limpia `programacionId` — si no,
+     * el registro se seguiría enviando ligado a la cita original y esta quedaría
+     * marcada "cumplida" sin serlo de verdad (mismo bug de fondo que `onActividadSeleccionada`
+     * ya resuelve al cambiar de actividad dentro de una cita — este era el otro hueco
+     * pendiente: cambiar a modo libre sin pasar por un cambio de actividad primero).
+     * Al desactivar modo libre no hay `programacionId` que restaurar (ese flujo vuelve
+     * al catálogo dentro de un registro ya libre, no reconecta con una cita).
+     */
     fun onToggleModoLibre() {
         _uiState.update {
+            val activandoLibre = !it.modoLibre
             it.copy(
-                modoLibre = !it.modoLibre,
+                modoLibre = activandoLibre,
                 actividadId = null,
                 actividadNombre = null,
                 descripcionLibre = if (it.modoLibre) "" else it.descripcionLibre,
+                programacionId = if (activandoLibre) null else it.programacionId,
                 // Texto libre por definición no es del catálogo — no hay nada que
                 // comparar contra el cronograma.
                 citaSugerida = null,
@@ -553,11 +588,26 @@ class CapturaViewModel @Inject constructor(
 
     /**
      * Reglas idénticas a `valid(step)` del diseño ya ajustado con el backend (sin
-     * "Otro"). En modo edición, el paso 4 exige el motivo (≥15 caracteres) en vez de
-     * la foto — no se editan fotos, ver decisión en el plan de implementación.
+     * "Otro"), ramificadas por `citaMode` igual que el mockup: en modo cita el wizard
+     * tiene 3 pasos (Cita/Resultado/Evidencia) y no se valida estación/actividad/tipo
+     * de mantenimiento — esos ya vienen fijos de la cita, no se digitan. En modo libre
+     * (como hoy) son 4 pasos (Contexto/Actividad/Resultado/Evidencia). En modo edición,
+     * el último paso exige el motivo (≥15 caracteres) en vez de la foto — no se editan
+     * fotos, ver decisión en el plan de implementación. (`esEdicion` nunca coincide con
+     * `citaMode`: `cargarParaEditar` no fija `programacionId` en este ViewModel, así
+     * que una edición siempre cae en la rama de 4 pasos de abajo.)
      */
     fun esPasoValido(step: Int): Boolean {
         val s = _uiState.value
+        if (s.citaMode) {
+            return when (step) {
+                1 -> s.fecha.isNotBlank() && s.tipoActividad.isNotBlank()
+                2 -> s.resultado.isNotBlank() && s.observaciones.isNotBlank()
+                3 -> if (s.esEdicion) s.motivoEdicion.trim().length >= 15
+                     else (s.resultado == "CONFORME" || s.fotos.isNotEmpty())
+                else -> true
+            }
+        }
         return when (step) {
             1 -> s.estacionId != null && s.fecha.isNotBlank()
             2 -> s.tipoActividad.isNotBlank() && s.tipoMantenimiento.isNotBlank() &&
@@ -572,7 +622,7 @@ class CapturaViewModel @Inject constructor(
     fun onSiguiente() {
         val s = _uiState.value
         if (!esPasoValido(s.currentStep)) return
-        if (s.currentStep < 4) {
+        if (s.currentStep < s.nSteps) {
             _uiState.update { it.copy(currentStep = it.currentStep + 1) }
         } else if (s.esEdicion) {
             guardarEdicion()
@@ -592,7 +642,7 @@ class CapturaViewModel @Inject constructor(
 
     private fun guardar() {
         val s = _uiState.value
-        if (!esPasoValido(4) || s.estacionId == null) return
+        if (!esPasoValido(s.nSteps) || s.estacionId == null) return
 
         _uiState.update { it.copy(isSaving = true) }
         viewModelScope.launch {
@@ -629,7 +679,7 @@ class CapturaViewModel @Inject constructor(
     private fun guardarEdicion() {
         val s = _uiState.value
         val id = s.editandoId ?: return
-        if (!esPasoValido(4)) return
+        if (!esPasoValido(s.nSteps)) return
 
         _uiState.update { it.copy(isSaving = true, errorEdicion = null) }
         viewModelScope.launch {

@@ -16,9 +16,11 @@ import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestaci
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.ObtenerPendientesUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.EstadoCita
 import io.mockk.MockKAnnotations
+import io.mockk.Runs
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.impl.annotations.MockK
+import io.mockk.just
 import io.mockk.unmockkAll
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -336,7 +338,136 @@ class CapturaViewModelTest {
         assertEquals(citaDeLaOtraActividad, estado.citaSugerida)
     }
 
-    // ---- Validación de pasos del wizard ----
+    // ---- citaMode: 3 pasos y bloqueo de datos que ya define el cronograma ----
+
+    @Test
+    fun `citaMode es true solo cuando hay programacionId y no esta en modo libre`() = runTest {
+        createViewModel()
+        assertFalse(viewModel.uiState.value.citaMode)
+        assertEquals(4, viewModel.uiState.value.nSteps)
+
+        viewModel.cargarDesdeCita(
+            programacionId = 100L, estacionId = estacion.id, actividadId = actividad.id,
+            esInspeccion = true, vencida = false
+        )
+
+        assertTrue(viewModel.uiState.value.citaMode)
+        assertEquals(3, viewModel.uiState.value.nSteps)
+    }
+
+    @Test
+    fun `onToggleModoLibre desde una cita limpia programacionId — cierra el hueco senalado en el fix anterior`() = runTest {
+        createViewModel()
+        viewModel.cargarDesdeCita(
+            programacionId = 100L, estacionId = estacion.id, actividadId = actividad.id,
+            esInspeccion = true, vencida = false
+        )
+        assertEquals(100L, viewModel.uiState.value.programacionId)
+        assertTrue(viewModel.uiState.value.citaMode)
+
+        viewModel.onToggleModoLibre()
+
+        val estado = viewModel.uiState.value
+        assertNull(estado.programacionId)
+        assertTrue(estado.modoLibre)
+        assertFalse(estado.citaMode)
+        assertEquals(4, estado.nSteps)
+    }
+
+    @Test
+    fun `onToggleModoLibre fuera de modo cita no tiene programacionId que limpiar y sigue funcionando igual`() = runTest {
+        createViewModel()
+        // Flujo libre normal (sin cita): activar y desactivar modo libre no debe verse
+        // afectado por el fix — programacionId ya era null y se mantiene null.
+        viewModel.onToggleModoLibre()
+        assertTrue(viewModel.uiState.value.modoLibre)
+        assertNull(viewModel.uiState.value.programacionId)
+
+        viewModel.onToggleModoLibre()
+        assertFalse(viewModel.uiState.value.modoLibre)
+        assertNull(viewModel.uiState.value.programacionId)
+    }
+
+    @Test
+    fun `paso 1 en modo cita solo exige fecha y tipo de actividad realizada`() = runTest {
+        createViewModel()
+        // cargarDesdeCita ya deja tipoActividad prellenado segun esInspeccion (regla
+        // existente de openCita()) y fecha viene con LocalDate.now() por defecto —
+        // el paso 1 en modo cita ya queda valido sin digitar nada mas.
+        viewModel.cargarDesdeCita(
+            programacionId = 100L, estacionId = estacion.id, actividadId = actividad.id,
+            esInspeccion = true, vencida = false
+        )
+        assertEquals("INSPECCION", viewModel.uiState.value.tipoActividad)
+        assertTrue(viewModel.esPasoValido(1))
+
+        // Pero si el tecnico corrige el tipo de actividad realizada (no coincidio
+        // exactamente con lo previsto), el paso sigue siendo valido mientras haya algo elegido.
+        viewModel.onTipoActividadChange("MANTENIMIENTO")
+        assertTrue(viewModel.esPasoValido(1))
+
+        // No hay forma real desde la UI de dejar tipoActividad en blanco en modo cita
+        // (cargarDesdeCita siempre lo prellena) — pero la regla de esPasoValido(1) en
+        // si misma exige que no este vacio, cubierto indirectamente arriba.
+    }
+
+    @Test
+    fun `paso 2 en modo cita es el resultado (no hay paso de actividad separado)`() = runTest {
+        createViewModel()
+        viewModel.cargarDesdeCita(
+            programacionId = 100L, estacionId = estacion.id, actividadId = actividad.id,
+            esInspeccion = true, vencida = false
+        )
+        assertFalse(viewModel.esPasoValido(2))
+
+        viewModel.onResultadoChange("CONFORME")
+        assertFalse(viewModel.esPasoValido(2))
+
+        viewModel.onObservacionesChange("Todo en orden")
+        assertTrue(viewModel.esPasoValido(2))
+    }
+
+    @Test
+    fun `paso 3 en modo cita es la evidencia, igual regla que el ultimo paso en modo libre`() = runTest {
+        createViewModel()
+        viewModel.cargarDesdeCita(
+            programacionId = 100L, estacionId = estacion.id, actividadId = actividad.id,
+            esInspeccion = true, vencida = false
+        )
+        viewModel.onResultadoChange("CON_HALLAZGOS")
+        assertFalse(viewModel.esPasoValido(3))
+
+        viewModel.onResultadoChange("CONFORME")
+        assertTrue(viewModel.esPasoValido(3))
+    }
+
+    @Test
+    fun `onSiguiente en modo cita avanza solo 3 pasos y despues guarda`() = runTest {
+        coEvery { guardarEjecucionLocalUseCase(any(), any()) } just Runs
+        createViewModel()
+        viewModel.cargarDesdeCita(
+            programacionId = 100L, estacionId = estacion.id, actividadId = actividad.id,
+            esInspeccion = true, vencida = false
+        )
+        viewModel.onTipoActividadChange("INSPECCION")
+
+        viewModel.onSiguiente()
+        assertEquals(2, viewModel.uiState.value.currentStep)
+
+        viewModel.onResultadoChange("CONFORME")
+        viewModel.onObservacionesChange("Todo en orden")
+        viewModel.onSiguiente()
+        assertEquals(3, viewModel.uiState.value.currentStep)
+
+        // CONFORME no exige foto — el 3er "Siguiente" guarda en vez de avanzar a un paso 4 que no existe.
+        viewModel.onSiguiente()
+        advanceUntilIdle()
+
+        assertEquals(3, viewModel.uiState.value.currentStep)
+        assertTrue(viewModel.uiState.value.saveCompleted)
+    }
+
+    // ---- Validación de pasos del wizard (modo libre — sin cambios respecto a como estaba) ----
 
     @Test
     fun `paso 1 requiere estacion seleccionada`() = runTest {

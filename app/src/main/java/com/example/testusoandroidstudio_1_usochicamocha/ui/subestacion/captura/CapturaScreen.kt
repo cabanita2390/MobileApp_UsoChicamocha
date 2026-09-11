@@ -44,7 +44,6 @@ import androidx.core.content.FileProvider
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.ActividadCatalogo
-import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.ConnectionStatusTopBar
 import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.L_ACT
 import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.L_MANT
 import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.L_MOT
@@ -163,30 +162,21 @@ fun CapturaScreen(
                                 else -> "Inspección y mantenimiento"
                             }
                         )
-                        SubestacionType.ScreenSubtitle(
-                            when {
-                                uiState.saveCompleted -> ""
-                                uiState.esEdicion -> "Con motivo de edición registrado"
-                                uiState.programacionId != null -> "Cita del cronograma"
-                                else -> "Fuera del cronograma"
-                            }
-                        )
                     }
                     if (!uiState.saveCompleted && (uiState.esEdicion || uiState.programacionId != null)) {
                         Text(
-                            if (uiState.esEdicion) "✎ editando" else "✓ prellenado",
+                            if (uiState.esEdicion) "editando" else "prellenado",
                             color = if (uiState.esEdicion) SubestacionColors.Red else SubestacionColors.Green,
                             fontWeight = FontWeight.Bold, fontSize = 11.sp,
                             modifier = Modifier.padding(end = 10.dp)
                         )
                     }
-                    ConnectionStatusTopBar(isConnected = networkStatus)
                     SubestacionSyncIconButton(onClick = onNavigateToCola)
                 }
                 if (!uiState.saveCompleted) {
                     Column(Modifier.fillMaxWidth().padding(20.dp, 4.dp, 20.dp, 12.dp)) {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            repeat(4) { i ->
+                            repeat(uiState.nSteps) { i ->
                                 Box(
                                     Modifier
                                         .weight(1f)
@@ -198,7 +188,7 @@ fun CapturaScreen(
                         }
                         Spacer(Modifier.height(9.dp))
                         Text(
-                            "PASO ${uiState.currentStep} DE 4 · ${uiState.stepName}",
+                            "PASO ${uiState.currentStep} DE ${uiState.nSteps} · ${uiState.stepName}",
                             color = SubestacionColors.Purple, fontWeight = FontWeight.ExtraBold,
                             fontSize = 11.5.sp, letterSpacing = 0.4.sp
                         )
@@ -211,7 +201,7 @@ fun CapturaScreen(
             Surface(color = SubestacionColors.ScreenBackground, shadowElevation = 8.dp) {
                 Column(Modifier.padding(20.dp, 12.dp, 20.dp, 20.dp)) {
                     val puedeAvanzar = viewModel.esPasoValido(uiState.currentStep)
-                    val bloqueadoPorRed = uiState.esEdicion && uiState.currentStep == 4 && !networkStatus
+                    val bloqueadoPorRed = uiState.esEdicion && uiState.currentStep == uiState.nSteps && !networkStatus
                     if (bloqueadoPorRed) {
                         SubestacionType.Hint("Necesitas conexión para guardar los cambios.", color = SubestacionColors.Red, modifier = Modifier.padding(bottom = 8.dp))
                     }
@@ -219,7 +209,7 @@ fun CapturaScreen(
                         SubestacionType.Hint(uiState.errorEdicion!!, color = SubestacionColors.Red, modifier = Modifier.padding(bottom = 8.dp))
                     }
                     val label = when {
-                        uiState.currentStep < 4 -> "Continuar"
+                        uiState.currentStep < uiState.nSteps -> "Continuar"
                         !puedeAvanzar && uiState.esEdicion -> "Falta el motivo de la edición"
                         !puedeAvanzar -> "Falta al menos una fotografía"
                         uiState.isSaving -> "Guardando…"
@@ -276,6 +266,20 @@ fun CapturaScreen(
             } else if (uiState.cargandoEdicion) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(color = SubestacionColors.Purple)
+                }
+            } else if (uiState.citaMode) {
+                // Modo cita (3 pasos): la estación/actividad/disciplina/tipo de
+                // mantenimiento ya vienen fijos de la cita — no hay paso "Actividad"
+                // separado, PasoCita reemplaza a Contexto+Actividad en uno solo.
+                when (uiState.currentStep) {
+                    1 -> PasoCita(uiState, viewModel)
+                    2 -> PasoResultado(uiState, viewModel)
+                    else -> PasoEvidencia(
+                        uiState = uiState,
+                        onTakePhoto = { cameraPermissionLauncher.launch(Manifest.permission.CAMERA) },
+                        onPickPhoto = { pickImageLauncher.launch("image/*") },
+                        onRemovePhoto = { viewModel.onFotoRemovida(it) }
+                    )
                 }
             } else when (uiState.currentStep) {
                 1 -> PasoContexto(uiState, viewModel)
@@ -364,64 +368,111 @@ private fun PeriodoDropdown(
     }
 }
 
+/** Campo tipo dropdown para Disciplina — mismo estilo (caja blanca, borde morado,
+ * flecha a la derecha) que el resto de los campos del paso Contexto (Estación, Fecha),
+ * en vez de la fila de chips que no coincidía con el mockup. */
+@Composable
+private fun DisciplinaField(valorSeleccionado: String, onSeleccionar: (String) -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .clip(SubestacionShapes.Input)
+                .background(Color.White)
+                .border(1.5.dp, SubestacionColors.PurpleBorder, SubestacionShapes.Input)
+                .clickable { expanded = true }
+                .padding(16.dp, 15.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                nombreDisciplina(valorSeleccionado), color = SubestacionColors.TextPrimary,
+                fontWeight = FontWeight.SemiBold, fontSize = 15.sp
+            )
+            Icon(
+                Icons.Filled.ArrowDropDown, contentDescription = "Elegir disciplina",
+                tint = SubestacionColors.TextSecondary, modifier = Modifier.size(20.dp)
+            )
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            DISCIPLINAS.forEach { (valor, label) ->
+                DropdownMenuItem(text = { Text(label) }, onClick = { onSeleccionar(valor); expanded = false })
+            }
+        }
+    }
+}
+
+/** Campo de Fecha de ejecución (date picker) — usado por el paso Contexto en modo
+ * libre y por PasoCita en modo cita (misma fecha editable en ambos modos). */
+@Composable
+private fun FechaEjecucionField(fecha: String, onFechaChange: (String) -> Unit) {
+    val context = LocalContext.current
+    Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+        SubestacionType.SectionLabel("Fecha de ejecución")
+        SubInput(
+            value = fecha,
+            icono = Icons.Filled.CalendarMonth,
+            onClick = {
+                val (y, m, d) = fecha.split("-").map { it.toInt() }
+                DatePickerDialog(context, { _, year, month, day ->
+                    onFechaChange("%04d-%02d-%02d".format(year, month + 1, day))
+                }, y, m - 1, d).apply {
+                    datePicker.maxDate = Calendar.getInstance().timeInMillis
+                }.show()
+            }
+        )
+    }
+}
+
+/** Mes/semana de ejecución (dropdowns) + hint de ajuste manual — mismo bloque
+ * editable en modo libre (paso Contexto) y en modo cita (PasoCita). */
+@Composable
+private fun PeriodoEjecucionSection(uiState: CapturaUiState, viewModel: CapturaViewModel) {
+    val ajustado = uiState.periodoAjustadoManualmente
+    val bg = if (ajustado) SubestacionColors.AmberBg else SubestacionColors.PurpleSurface
+    val bd = if (ajustado) SubestacionColors.AmberBorder else SubestacionColors.PurpleBorder
+    Column {
+        Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                Text("MES DE EJECUCIÓN", color = SubestacionColors.TextTertiary, fontWeight = FontWeight.SemiBold, fontSize = 9.5.sp, letterSpacing = 0.7.sp)
+                PeriodoDropdown(
+                    textoMostrado = nombreMes(uiState.mesEjecucion),
+                    bg = bg, bd = bd,
+                    opciones = (1..12).map { it to nombreMes(it) },
+                    onSeleccionar = { viewModel.onMesManualChange(it) }
+                )
+            }
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                Text("SEMANA DE EJECUCIÓN", color = SubestacionColors.TextTertiary, fontWeight = FontWeight.SemiBold, fontSize = 9.5.sp, letterSpacing = 0.7.sp)
+                PeriodoDropdown(
+                    textoMostrado = "Semana ${uiState.semanaEjecucion}",
+                    bg = bg, bd = bd,
+                    opciones = (1..4).map { it to "Semana $it" },
+                    onSeleccionar = { viewModel.onSemanaManualChange(it) }
+                )
+            }
+        }
+        Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+            SubestacionType.Hint(
+                if (ajustado) "Ajustados a mano — no coinciden con la fecha." else "Se llenan solos con la fecha; cámbialos si el período de reporte es otro.",
+                color = if (ajustado) SubestacionColors.Amber else SubestacionColors.TextQuaternary
+            )
+            if (ajustado) {
+                Text(
+                    "Volver al cálculo", color = SubestacionColors.Purple, fontWeight = FontWeight.Bold, fontSize = 11.sp,
+                    modifier = Modifier.clickable { viewModel.onRestablecerPeriodoAuto() }
+                )
+            }
+        }
+    }
+}
+
 @Composable
 private fun PasoContexto(uiState: CapturaUiState, viewModel: CapturaViewModel) {
-    val context = LocalContext.current
     LazyColumn(Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        item {
-            Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                SubestacionType.SectionLabel("Fecha de ejecución")
-                SubInput(
-                    value = uiState.fecha,
-                    icono = Icons.Filled.CalendarMonth,
-                    onClick = {
-                        val (y, m, d) = uiState.fecha.split("-").map { it.toInt() }
-                        DatePickerDialog(context, { _, year, month, day ->
-                            viewModel.onFechaChange("%04d-%02d-%02d".format(year, month + 1, day))
-                        }, y, m - 1, d).apply {
-                            datePicker.maxDate = Calendar.getInstance().timeInMillis
-                        }.show()
-                    }
-                )
-            }
-        }
-        item {
-            val ajustado = uiState.periodoAjustadoManualmente
-            val bg = if (ajustado) SubestacionColors.AmberBg else SubestacionColors.PurpleSurface
-            val bd = if (ajustado) SubestacionColors.AmberBorder else SubestacionColors.PurpleBorder
-            Row(horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                    Text("MES DE EJECUCIÓN", color = SubestacionColors.TextTertiary, fontWeight = FontWeight.SemiBold, fontSize = 9.5.sp, letterSpacing = 0.7.sp)
-                    PeriodoDropdown(
-                        textoMostrado = nombreMes(uiState.mesEjecucion),
-                        bg = bg, bd = bd,
-                        opciones = (1..12).map { it to nombreMes(it) },
-                        onSeleccionar = { viewModel.onMesManualChange(it) }
-                    )
-                }
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                    Text("SEMANA DE EJECUCIÓN", color = SubestacionColors.TextTertiary, fontWeight = FontWeight.SemiBold, fontSize = 9.5.sp, letterSpacing = 0.7.sp)
-                    PeriodoDropdown(
-                        textoMostrado = "Semana ${uiState.semanaEjecucion}",
-                        bg = bg, bd = bd,
-                        opciones = (1..4).map { it to "Semana $it" },
-                        onSeleccionar = { viewModel.onSemanaManualChange(it) }
-                    )
-                }
-            }
-            Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                SubestacionType.Hint(
-                    if (ajustado) "Ajustados a mano — no coinciden con la fecha." else "Se llenan solos con la fecha; cámbialos si el período de reporte es otro.",
-                    color = if (ajustado) SubestacionColors.Amber else SubestacionColors.TextQuaternary
-                )
-                if (ajustado) {
-                    Text(
-                        "Volver al cálculo", color = SubestacionColors.Purple, fontWeight = FontWeight.Bold, fontSize = 11.sp,
-                        modifier = Modifier.clickable { viewModel.onRestablecerPeriodoAuto() }
-                    )
-                }
-            }
-        }
+        item { FechaEjecucionField(uiState.fecha, viewModel::onFechaChange) }
+        item { PeriodoEjecucionSection(uiState, viewModel) }
         item {
             SubestacionType.SectionLabel("Estación", modifier = Modifier.padding(bottom = 7.dp))
             // Mismo selector de lista que al crear un registro nuevo — ya llega con la
@@ -434,13 +485,10 @@ private fun PasoContexto(uiState: CapturaUiState, viewModel: CapturaViewModel) {
         }
         item {
             SubestacionType.SectionLabel("Disciplina", modifier = Modifier.padding(bottom = 7.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                DISCIPLINAS.forEach { (valor, label) ->
-                    ChipOption(
-                        label, null, uiState.disciplinaSeleccionada == valor, Modifier.weight(1f)
-                    ) { viewModel.onDisciplinaSeleccionada(valor) }
-                }
-            }
+            DisciplinaField(
+                valorSeleccionado = uiState.disciplinaSeleccionada,
+                onSeleccionar = { viewModel.onDisciplinaSeleccionada(it) }
+            )
             SubestacionType.Hint(
                 "El catálogo de abajo es el de ${nombreDisciplina(uiState.disciplinaSeleccionada)}.",
                 modifier = Modifier.padding(top = 7.dp)
@@ -506,26 +554,32 @@ private fun ChipOption(label: String, sub: String?, seleccionado: Boolean, modif
     }
 }
 
+/** Chips de tipo de actividad (Inspección/Mantenimiento/No programado) — usado por
+ * el paso Actividad en modo libre ("Tipo de actividad") y por PasoCita en modo cita
+ * ("Tipo de actividad realizada"), donde es lo único de esta sección que se captura. */
+@Composable
+private fun TipoActividadSection(uiState: CapturaUiState, viewModel: CapturaViewModel, titulo: String = "Tipo de actividad") {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        SubestacionType.SectionLabel(titulo)
+        val opciones = listOf(
+            Triple("INSPECCION", "Inspección", "Se revisa y se reporta"),
+            Triple("MANTENIMIENTO", "Mantenimiento", "Se interviene el activo"),
+            Triple("NO_PROGRAMADO", "No programado", "Fuera del cronograma")
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            opciones.take(2).forEach { (valor, label, sub) ->
+                ChipOption(label, sub, uiState.tipoActividad == valor, Modifier.weight(1f)) { viewModel.onTipoActividadChange(valor) }
+            }
+        }
+        val (valor, label, sub) = opciones[2]
+        ChipOption(label, sub, uiState.tipoActividad == valor, Modifier.fillMaxWidth(0.5f)) { viewModel.onTipoActividadChange(valor) }
+    }
+}
+
 @Composable
 private fun PasoActividad(uiState: CapturaUiState, viewModel: CapturaViewModel) {
     LazyColumn(Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        item {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                SubestacionType.SectionLabel("Tipo de actividad")
-                val opciones = listOf(
-                    Triple("INSPECCION", "Inspección", "Se revisa y se reporta"),
-                    Triple("MANTENIMIENTO", "Mantenimiento", "Se interviene el activo"),
-                    Triple("NO_PROGRAMADO", "No programado", "Fuera del cronograma")
-                )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    opciones.take(2).forEach { (valor, label, sub) ->
-                        ChipOption(label, sub, uiState.tipoActividad == valor, Modifier.weight(1f)) { viewModel.onTipoActividadChange(valor) }
-                    }
-                }
-                val (valor, label, sub) = opciones[2]
-                ChipOption(label, sub, uiState.tipoActividad == valor, Modifier.fillMaxWidth(0.5f)) { viewModel.onTipoActividadChange(valor) }
-            }
-        }
+        item { TipoActividadSection(uiState, viewModel) }
         item {
             Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
                 SubestacionType.SectionLabel("Tipo de mantenimiento")
@@ -640,6 +694,105 @@ private fun PasoActividad(uiState: CapturaUiState, viewModel: CapturaViewModel) 
                 }
             }
         }
+    }
+}
+
+/** Un dato fijo de la cita, mostrado como chip de solo lectura dentro de la tarjeta
+ * "Del cronograma" de PasoCita — mismo look que ChipOption pero sin `clickable`. */
+@Composable
+private fun LockedChip(etiqueta: String, valor: String, danger: Boolean = false, modifier: Modifier = Modifier) {
+    val bg = if (danger) SubestacionColors.Red else SubestacionColors.PurpleSurface
+    val fg = if (danger) Color.White else SubestacionColors.TextPrimary
+    Column(
+        modifier
+            .clip(SubestacionShapes.Chip)
+            .background(bg)
+            .padding(12.dp, 10.dp)
+    ) {
+        Text(
+            etiqueta, color = if (danger) Color.White.copy(alpha = 0.78f) else SubestacionColors.TextTertiary,
+            fontWeight = FontWeight.SemiBold, fontSize = 9.sp, letterSpacing = 0.5.sp
+        )
+        Text(valor, color = fg, fontWeight = FontWeight.ExtraBold, fontSize = 12.5.sp, modifier = Modifier.padding(top = 2.dp))
+    }
+}
+
+/**
+ * Paso 1 en modo cita: reemplaza a Contexto+Actividad cuando el registro viene de una
+ * cita real del cronograma (`citaMode`). Estación, actividad, disciplina y tipo de
+ * mantenimiento se muestran fijos — no hay selector para ninguno de los dos, porque
+ * ya los definió el cronograma; tocarlos aquí fue justo lo que causó el bug de campo
+ * que `onActividadSeleccionada`/`onToggleModoLibre` ya corrigen (una cita marcada
+ * "cumplida" sin serlo). Lo único capturable en este paso es fecha/mes/semana de
+ * ejecución (reutilizando `FechaEjecucionField`/`PeriodoEjecucionSection`, igual que
+ * en modo libre) y el tipo de actividad realmente realizada (`TipoActividadSection`,
+ * mismos chips que en modo libre).
+ *
+ * Nota: la tarjeta no incluye un chip de "mes programado" separado del mes de
+ * ejecución de abajo — el nav graph actual (`cargarDesdeCita`) no trae el mes/año
+ * original de la cita, solo estación/actividad/si está vencida, así que no hay una
+ * fuente de datos distinta que mostrar ahí sin inventarla.
+ */
+@Composable
+private fun PasoCita(uiState: CapturaUiState, viewModel: CapturaViewModel) {
+    LazyColumn(Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        item {
+            Column(
+                Modifier.fillMaxWidth().clip(SubestacionShapes.CardLarge).background(Color.White)
+                    .border(1.5.dp, SubestacionColors.PurpleBorderLight, SubestacionShapes.CardLarge)
+            ) {
+                Box(Modifier.fillMaxWidth().background(SubestacionColors.SectionHeaderBackground).padding(16.dp, 13.dp)) {
+                    SubestacionType.SectionLabel("Del cronograma")
+                }
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Column {
+                        Text(
+                            uiState.estacionNombre.ifBlank { "—" },
+                            color = SubestacionColors.TextPrimary, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp
+                        )
+                        Text(
+                            uiState.actividadNombre ?: "—",
+                            color = SubestacionColors.TextSecondary, fontWeight = FontWeight.SemiBold, fontSize = 13.sp,
+                            modifier = Modifier.padding(top = 2.dp)
+                        )
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        LockedChip("DISCIPLINA", nombreDisciplina(uiState.disciplinaSeleccionada))
+                        LockedChip(
+                            "MANTENIM.",
+                            L_MANT[uiState.tipoMantenimiento] ?: uiState.tipoMantenimiento,
+                            danger = uiState.tipoMantenimiento == "CORRECTIVO"
+                        )
+                    }
+                    Row(
+                        Modifier.fillMaxWidth().clip(SubestacionShapes.Input).background(SubestacionColors.SectionHeaderBackground)
+                            .padding(14.dp, 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(Modifier.weight(1f)) {
+                            Text("RESPONSABLE · USUARIO EN SESIÓN", color = SubestacionColors.TextTertiary, fontWeight = FontWeight.SemiBold, fontSize = 9.sp, letterSpacing = 0.6.sp)
+                            Text(
+                                uiState.responsableNombre.ifBlank { "Usuario en sesión" },
+                                color = SubestacionColors.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp,
+                                modifier = Modifier.padding(top = 2.dp)
+                            )
+                        }
+                        Text("🔒", fontSize = 13.sp, color = SubestacionColors.TextQuaternary)
+                    }
+                    SubestacionType.Hint(
+                        "Lo de arriba viene del cronograma y no se digita. Si lo que hiciste no corresponde a esta cita, regístralo como actividad no programada."
+                    )
+                    Text(
+                        "Registrar como actividad no programada",
+                        color = SubestacionColors.Purple, fontWeight = FontWeight.Bold, fontSize = 12.5.sp,
+                        modifier = Modifier.clickable { viewModel.onToggleModoLibre() }
+                    )
+                }
+            }
+        }
+        item { FechaEjecucionField(uiState.fecha, viewModel::onFechaChange) }
+        item { PeriodoEjecucionSection(uiState, viewModel) }
+        item { TipoActividadSection(uiState, viewModel, titulo = "Tipo de actividad realizada") }
     }
 }
 
