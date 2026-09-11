@@ -61,6 +61,16 @@ data class CapturaUiState(
     val semanaEjecucion: Int = semanaDeDia(LocalDate.now().dayOfMonth),
     val periodoAjustadoManualmente: Boolean = false,
 
+    // Selector de disciplina (mockup de Contexto). El MVP solo captura CIVIL — el
+    // catálogo de estaciones/actividades que ya se carga sigue siendo siempre el de
+    // Civil, esto es solo el control visual. Elegir ELECTRICO/ELECTROMECANICO no
+    // cambia este valor (ver `onDisciplinaSeleccionada`): dispara un aviso de "en
+    // desarrollo" y el estado real se queda en CIVIL.
+    val disciplinaSeleccionada: String = "CIVIL",
+    val mostrarAlertaDisciplinaEnDesarrollo: Boolean = false,
+    /** Qué disciplina no disponible tocó el técnico — para mostrarla por nombre en el diálogo. */
+    val disciplinaSeleccionadaPendiente: String? = null,
+
     // Paso 2 — Actividad
     val tipoActividad: String = "",
     val tipoMantenimiento: String = "",
@@ -397,6 +407,31 @@ class CapturaViewModel @Inject constructor(
         viewModelScope.launch { cargarPendientesParaSugerencia() }
     }
 
+    /**
+     * Selector de disciplina del paso Contexto (mockup). Solo CIVIL está habilitada en
+     * el MVP (`captura_movil_habilitada=FALSE` en backend para las otras dos) — elegir
+     * ELECTRICO/ELECTROMECANICO no debe dejar seleccionar esa disciplina de verdad
+     * (el catálogo cargado y lo que se envía a las rutas de substation siguen siendo
+     * CIVIL), así que el estado se queda en CIVIL y solo se activa el flag para que la
+     * UI muestre el diálogo de aviso.
+     */
+    fun onDisciplinaSeleccionada(disciplina: String) {
+        if (disciplina == "CIVIL") {
+            _uiState.update {
+                it.copy(disciplinaSeleccionada = "CIVIL", mostrarAlertaDisciplinaEnDesarrollo = false, disciplinaSeleccionadaPendiente = null)
+            }
+        } else {
+            _uiState.update { it.copy(mostrarAlertaDisciplinaEnDesarrollo = true, disciplinaSeleccionadaPendiente = disciplina) }
+        }
+    }
+
+    /** Cierra el aviso de "disciplina en desarrollo" — la disciplina real ya se quedó en CIVIL. */
+    fun onAlertaDisciplinaEnDesarrolloCerrada() {
+        _uiState.update {
+            it.copy(disciplinaSeleccionada = "CIVIL", mostrarAlertaDisciplinaEnDesarrollo = false, disciplinaSeleccionadaPendiente = null)
+        }
+    }
+
     fun onMesManualChange(mes: Int) {
         _uiState.update { it.copy(mesEjecucion = mes, periodoAjustadoManualmente = true) }
         actualizarCitaSugeridaPorActividad()
@@ -442,8 +477,37 @@ class CapturaViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Si el registro venía prellenado de una cita del cronograma (`programacionId` no
+     * nulo, ver `cargarDesdeCita`) y el técnico elige una actividad DISTINTA a la de
+     * esa cita, hay que desvincular (`programacionId = null`) — si no, el registro se
+     * seguiría enviando ligado a la cita vieja y esta quedaría marcada "cumplida" sin
+     * serlo de verdad (bug reportado en campo: se cambió de actividad a mitad de la
+     * captura y la cita original del cronograma quedó falsamente resuelta).
+     *
+     * Tras desvincular, se reutiliza el mismo mecanismo de "modo libre" para revisar
+     * si existe una cita real que sí corresponda a la nueva actividad+estación+mes+año
+     * — si la hay, se ofrece confirmarla (`citaSugerida`, igual que en modo libre); si
+     * no, el registro queda como actividad no programada, que es el comportamiento
+     * correcto.
+     *
+     * No aplica si es la misma actividad que ya tenía la cita (no hay nada que
+     * desvincular) ni en la primera selección sin `programacionId` previo (flujo
+     * normal). El flujo de edición (`cargarParaEditar`) nunca fija `programacionId`
+     * en este ViewModel — por diseño esa pantalla no permite tocarlo — así que esta
+     * función es un no-op para ese campo cuando se llama durante una edición.
+     */
     fun onActividadSeleccionada(actividad: ActividadCatalogo) {
-        _uiState.update { it.copy(actividadId = actividad.id, actividadNombre = actividad.nombre) }
+        val previo = _uiState.value
+        val cambioDeActividadConCitaVinculada =
+            previo.programacionId != null && previo.actividadId != actividad.id
+        _uiState.update {
+            it.copy(
+                actividadId = actividad.id,
+                actividadNombre = actividad.nombre,
+                programacionId = if (cambioDeActividadConCitaVinculada) null else it.programacionId
+            )
+        }
         viewModelScope.launch {
             cargarPendientesParaSugerencia()
             actualizarCitaSugeridaPorActividad()

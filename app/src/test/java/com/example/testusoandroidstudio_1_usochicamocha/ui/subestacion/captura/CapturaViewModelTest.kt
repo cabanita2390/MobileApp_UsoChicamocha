@@ -264,6 +264,78 @@ class CapturaViewModelTest {
         assertNull(estado.citaSugerida)
     }
 
+    // ---- Desvinculación de la cita al cambiar de actividad (bug de campo: se
+    // marcaba "cumplida" la cita original aunque en realidad se hizo otra actividad) ----
+
+    @Test
+    fun `cambiar de actividad prellenada desde una cita desvincula programacionId`() = runTest {
+        createViewModel()
+        viewModel.cargarDesdeCita(
+            programacionId = 100L, estacionId = estacion.id, actividadId = actividad.id,
+            esInspeccion = true, vencida = false
+        )
+
+        val otraActividad = ActividadCatalogo(id = 999L, nombre = "Otra actividad cualquiera")
+        viewModel.onActividadSeleccionada(otraActividad)
+        advanceUntilIdle()
+
+        val estado = viewModel.uiState.value
+        assertNull(estado.programacionId)
+        assertEquals(otraActividad.id, estado.actividadId)
+    }
+
+    @Test
+    fun `reseleccionar la misma actividad de la cita no desvincula nada`() = runTest {
+        createViewModel()
+        viewModel.cargarDesdeCita(
+            programacionId = 100L, estacionId = estacion.id, actividadId = actividad.id,
+            esInspeccion = true, vencida = false
+        )
+
+        viewModel.onActividadSeleccionada(actividad)
+        advanceUntilIdle()
+
+        assertEquals(100L, viewModel.uiState.value.programacionId)
+    }
+
+    @Test
+    fun `primera seleccion de actividad sin cita previa no desvincula nada (sigue null)`() = runTest {
+        createViewModel()
+
+        viewModel.onActividadSeleccionada(actividad)
+        advanceUntilIdle()
+
+        assertNull(viewModel.uiState.value.programacionId)
+        assertEquals(actividad.id, viewModel.uiState.value.actividadId)
+    }
+
+    @Test
+    fun `cambiar de actividad prellenada desde una cita sugiere la cita real que corresponde a la nueva actividad`() = runTest {
+        // Segunda cita del cronograma: misma estación, otra actividad, mismo mes/año.
+        val otraActividad = ActividadCatalogo(id = 30L, nombre = "Inspección de cerramiento")
+        val citaDeLaOtraActividad = citaCoincide.copy(
+            programacionId = 200L, actividadId = otraActividad.id, actividadNombre = otraActividad.nombre
+        )
+        coEvery { obtenerPendientesUseCase(any(), any()) } returns Result.success(
+            listOf(citaCoincide, citaDeLaOtraActividad)
+        )
+        createViewModel()
+        viewModel.cargarDesdeCita(
+            programacionId = citaCoincide.programacionId, estacionId = estacion.id,
+            actividadId = actividad.id, esInspeccion = true, vencida = false
+        )
+        advanceUntilIdle()
+        viewModel.onTipoActividadChange("INSPECCION")
+        viewModel.onTipoMantenimientoChange("PREVENTIVO")
+
+        viewModel.onActividadSeleccionada(otraActividad)
+        advanceUntilIdle()
+
+        val estado = viewModel.uiState.value
+        assertNull(estado.programacionId)
+        assertEquals(citaDeLaOtraActividad, estado.citaSugerida)
+    }
+
     // ---- Validación de pasos del wizard ----
 
     @Test

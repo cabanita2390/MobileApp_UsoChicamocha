@@ -59,6 +59,15 @@ import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.theme.das
 import java.io.File
 import java.util.Calendar
 
+/** Las 3 disciplinas del selector de Contexto — solo CIVIL está habilitada en el MVP. */
+private val DISCIPLINAS = listOf(
+    "CIVIL" to "Civil",
+    "ELECTRICO" to "Eléctrico",
+    "ELECTROMECANICO" to "Electromecánico"
+)
+
+private fun nombreDisciplina(valor: String): String = DISCIPLINAS.firstOrNull { it.first == valor }?.second ?: valor
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CapturaScreen(
@@ -422,6 +431,38 @@ private fun PasoContexto(uiState: CapturaUiState, viewModel: CapturaViewModel) {
                 estacionSeleccionadaId = uiState.estacionId,
                 onEstacionSeleccionada = { viewModel.onEstacionSeleccionada(it) }
             )
+        }
+        item {
+            SubestacionType.SectionLabel("Disciplina", modifier = Modifier.padding(bottom = 7.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                DISCIPLINAS.forEach { (valor, label) ->
+                    ChipOption(
+                        label, null, uiState.disciplinaSeleccionada == valor, Modifier.weight(1f)
+                    ) { viewModel.onDisciplinaSeleccionada(valor) }
+                }
+            }
+            SubestacionType.Hint(
+                "El catálogo de abajo es el de ${nombreDisciplina(uiState.disciplinaSeleccionada)}.",
+                modifier = Modifier.padding(top = 7.dp)
+            )
+            if (uiState.mostrarAlertaDisciplinaEnDesarrollo) {
+                AlertDialog(
+                    onDismissRequest = { viewModel.onAlertaDisciplinaEnDesarrolloCerrada() },
+                    title = { Text("Disciplina en desarrollo") },
+                    text = {
+                        Text(
+                            "Aún estamos desarrollando la captura para " +
+                                "${nombreDisciplina(uiState.disciplinaSeleccionadaPendiente ?: "")}. " +
+                                "Por ahora solo está disponible Civil."
+                        )
+                    },
+                    confirmButton = {
+                        TextButton(onClick = { viewModel.onAlertaDisciplinaEnDesarrolloCerrada() }) {
+                            Text("Entendido")
+                        }
+                    }
+                )
+            }
         }
         item {
             Row(
