@@ -1,5 +1,6 @@
 package com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.captura
 
+import android.annotation.SuppressLint
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -44,6 +45,7 @@ import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.theme.Sub
  * para no cambiarles el estilo a esas pantallas — es un componente propio de
  * Subestaciones.
  */
+@SuppressLint("UnusedBoxWithConstraintsScope")
 @Composable
 fun EstacionPickerField(
     estaciones: List<EstacionCatalogo>,

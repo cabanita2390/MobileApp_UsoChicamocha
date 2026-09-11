@@ -90,7 +90,7 @@ fun CronogramaScreen(
                 OutlinedTextField(
                     value = uiState.query,
                     onValueChange = { viewModel.onQueryChange(it) },
-                    placeholder = { Text("Buscar estación o actividad…") },
+                    placeholder = { Text("Buscar…") },
                     singleLine = true,
                     shape = SubestacionShapes.Input,
                     colors = OutlinedTextFieldDefaults.colors(
