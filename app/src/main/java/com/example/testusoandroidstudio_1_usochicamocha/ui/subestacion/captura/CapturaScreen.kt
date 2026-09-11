@@ -67,6 +67,12 @@ private val DISCIPLINAS = listOf(
 
 private fun nombreDisciplina(valor: String): String = DISCIPLINAS.firstOrNull { it.first == valor }?.second ?: valor
 
+/** Iniciales para el avatar circular del responsable (ej. "Hilson Puerto" -> "HP"),
+ * igual que el `respIni` del mockup. */
+private fun initialesDe(nombre: String): String =
+    nombre.trim().split(Regex("\\s+")).filter { it.isNotBlank() }
+        .take(2).mapNotNull { it.firstOrNull()?.uppercaseChar() }.joinToString("")
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CapturaScreen(
@@ -517,8 +523,18 @@ private fun PasoContexto(uiState: CapturaUiState, viewModel: CapturaViewModel) {
             Row(
                 Modifier.fillMaxWidth().clip(SubestacionShapes.Input).background(SubestacionColors.SectionHeaderBackground)
                     .border(1.5.dp, SubestacionColors.PurpleBorderLight, SubestacionShapes.Input).padding(16.dp, 14.dp),
-                verticalAlignment = Alignment.CenterVertically
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                Box(
+                    Modifier.size(38.dp).clip(CircleShape).background(SubestacionColors.Purple),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        initialesDe(uiState.responsableNombre.ifBlank { "Usuario en sesión" }),
+                        color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 13.sp
+                    )
+                }
                 Column(Modifier.weight(1f)) {
                     Text("RESPONSABLE · USUARIO EN SESIÓN", color = SubestacionColors.TextTertiary, fontWeight = FontWeight.SemiBold, fontSize = 9.5.sp, letterSpacing = 0.7.sp)
                     Text(
@@ -744,19 +760,19 @@ private fun PasoCita(uiState: CapturaUiState, viewModel: CapturaViewModel) {
                 Modifier.fillMaxWidth().clip(SubestacionShapes.CardLarge).background(Color.White)
                     .border(1.5.dp, SubestacionColors.PurpleBorderLight, SubestacionShapes.CardLarge)
             ) {
-                Box(Modifier.fillMaxWidth().background(SubestacionColors.SectionHeaderBackground).padding(16.dp, 13.dp)) {
-                    SubestacionType.SectionLabel("Del cronograma")
-                }
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Column {
+                Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                        Text(
+                            "DEL CRONOGRAMA", color = SubestacionColors.Purple, fontWeight = FontWeight.ExtraBold,
+                            fontSize = 9.5.sp, letterSpacing = 1.2.sp, modifier = Modifier.padding(bottom = 6.dp)
+                        )
                         Text(
                             uiState.estacionNombre.ifBlank { "—" },
                             color = SubestacionColors.TextPrimary, fontWeight = FontWeight.ExtraBold, fontSize = 16.sp
                         )
                         Text(
                             uiState.actividadNombre ?: "—",
-                            color = SubestacionColors.TextSecondary, fontWeight = FontWeight.SemiBold, fontSize = 13.sp,
-                            modifier = Modifier.padding(top = 2.dp)
+                            color = SubestacionColors.TextSecondary, fontWeight = FontWeight.SemiBold, fontSize = 13.sp
                         )
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -772,27 +788,28 @@ private fun PasoCita(uiState: CapturaUiState, viewModel: CapturaViewModel) {
                     }
                     Row(
                         Modifier.fillMaxWidth().clip(SubestacionShapes.Input).background(SubestacionColors.SectionHeaderBackground)
-                            .padding(14.dp, 12.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                            .padding(12.dp, 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        Column(Modifier.weight(1f)) {
-                            Text("RESPONSABLE · USUARIO EN SESIÓN", color = SubestacionColors.TextTertiary, fontWeight = FontWeight.SemiBold, fontSize = 9.sp, letterSpacing = 0.6.sp)
+                        Box(
+                            Modifier.size(30.dp).clip(CircleShape).background(Color.White),
+                            contentAlignment = Alignment.Center
+                        ) {
                             Text(
-                                uiState.responsableNombre.ifBlank { "Usuario en sesión" },
-                                color = SubestacionColors.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp,
-                                modifier = Modifier.padding(top = 2.dp)
+                                initialesDe(uiState.responsableNombre.ifBlank { "Usuario en sesión" }),
+                                color = SubestacionColors.Purple, fontWeight = FontWeight.ExtraBold, fontSize = 10.sp
                             )
                         }
-                        Text("🔒", fontSize = 13.sp, color = SubestacionColors.TextQuaternary)
+                        Column(Modifier.weight(1f)) {
+                            Text("RESPONSABLE", color = SubestacionColors.TextTertiary, fontWeight = FontWeight.SemiBold, fontSize = 8.5.sp, letterSpacing = 0.6.sp)
+                            Text(
+                                uiState.responsableNombre.ifBlank { "Usuario en sesión" },
+                                color = SubestacionColors.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 12.5.sp
+                            )
+                        }
+                        Text("🔒", fontSize = 12.sp, color = SubestacionColors.TextQuaternary)
                     }
-                    SubestacionType.Hint(
-                        "Lo de arriba viene del cronograma y no se digita. Si lo que hiciste no corresponde a esta cita, regístralo como actividad no programada."
-                    )
-                    Text(
-                        "Registrar como actividad no programada",
-                        color = SubestacionColors.Purple, fontWeight = FontWeight.Bold, fontSize = 12.5.sp,
-                        modifier = Modifier.clickable { viewModel.onToggleModoLibre() }
-                    )
                 }
             }
         }
