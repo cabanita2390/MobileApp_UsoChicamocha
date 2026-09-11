@@ -50,7 +50,8 @@ object DatabaseModule {
                 AppDatabase.MIGRATION_42_43,
                 AppDatabase.MIGRATION_43_44,
                 AppDatabase.MIGRATION_44_45,
-                AppDatabase.MIGRATION_45_46
+                AppDatabase.MIGRATION_45_46,
+                AppDatabase.MIGRATION_46_47
             )
             .build()
     }
@@ -134,4 +135,8 @@ object DatabaseModule {
     @Provides
     @Singleton
     fun provideEjecucionDetalleCacheDao(db: AppDatabase): EjecucionDetalleCacheDao = db.ejecucionDetalleCacheDao()
+
+    @Provides
+    @Singleton
+    fun provideEjecucionNoProgramadaCacheDao(db: AppDatabase): EjecucionNoProgramadaCacheDao = db.ejecucionNoProgramadaCacheDao()
 }

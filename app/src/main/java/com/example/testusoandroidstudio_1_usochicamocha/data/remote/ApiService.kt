@@ -26,6 +26,7 @@ import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.Ejecucio
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.EjecucionResponseDto
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.EstacionDto
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.EvidenciaSubestacionDto
+import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.PageDto
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.ProgramacionDto
 import okhttp3.MultipartBody
 import retrofit2.Response
@@ -191,4 +192,21 @@ interface ApiService {
         @Query("mes") mes: Int? = null,
         @Query("disciplina") disciplina: String
     ): Response<List<CumplimientoDto>>
+
+    /**
+     * Listado de ejecuciones (SubstationController.listarEjecuciones). estacionId null =
+     * todas las estaciones. Usado con esProgramada=false para traer las actividades
+     * "no previstas" (sin cita de cronograma) que alimentan la pestaña Realizadas de
+     * Pendientes — v_mant_cumplimiento nunca las trae porque arranca desde
+     * mant_programacion.
+     */
+    @GET("v1/substation/ejecuciones")
+    suspend fun getEjecucionesSubestacion(
+        @Query("estacionId") estacionId: Long? = null,
+        @Query("fechaInicio") fechaInicio: String? = null,
+        @Query("fechaFin") fechaFin: String? = null,
+        @Query("esProgramada") esProgramada: Boolean? = null,
+        @Query("page") page: Int? = null,
+        @Query("size") size: Int? = null
+    ): Response<PageDto<EjecucionResponseDto>>
 }

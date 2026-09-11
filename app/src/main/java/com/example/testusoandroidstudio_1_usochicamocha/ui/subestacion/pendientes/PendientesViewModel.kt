@@ -6,7 +6,9 @@ import androidx.lifecycle.viewModelScope
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.CitaProgramada
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.ObtenerCumplimientoAnioLocalUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.ObtenerEjecucionPorProgramacionUseCase
+import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.ObtenerEjecucionesNoProgramadasAnioLocalUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.SincronizarCumplimientoAnioUseCase
+import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.SincronizarEjecucionesNoProgramadasAnioUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.CitaUi
 import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.EstadoCita
 import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.estadoDeCita
@@ -15,6 +17,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -42,6 +45,8 @@ data class PendientesUiState(
 class PendientesViewModel @Inject constructor(
     private val obtenerCumplimientoAnioLocalUseCase: ObtenerCumplimientoAnioLocalUseCase,
     private val sincronizarCumplimientoAnioUseCase: SincronizarCumplimientoAnioUseCase,
+    private val obtenerEjecucionesNoProgramadasAnioLocalUseCase: ObtenerEjecucionesNoProgramadasAnioLocalUseCase,
+    private val sincronizarEjecucionesNoProgramadasAnioUseCase: SincronizarEjecucionesNoProgramadasAnioUseCase,
     private val obtenerEjecucionPorProgramacionUseCase: ObtenerEjecucionPorProgramacionUseCase,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
@@ -73,9 +78,11 @@ class PendientesViewModel @Inject constructor(
     }
 
     /**
-     * Suscribe al caché local del año en curso (Room, offline-first) y dispara un
-     * refresco en segundo plano contra el backend — best-effort: si falla (sin red),
-     * la pantalla se queda con lo último cacheado en vez de quedar vacía/rota.
+     * Suscribe al caché local del año en curso (Room, offline-first) — combina las citas
+     * programadas (mant_cumplimiento_cache) con las ejecuciones NO programadas
+     * (mant_ejecucion_no_programada_cache) para que "Realizadas" muestre ambas — y dispara un
+     * refresco en segundo plano contra el backend de las dos fuentes: best-effort, si falla
+     * (sin red), la pantalla se queda con lo último cacheado en vez de quedar vacía/rota.
      */
     fun cargar() {
         val hoy = LocalDate.now()
@@ -83,26 +90,31 @@ class PendientesViewModel @Inject constructor(
 
         localJob?.cancel()
         localJob = viewModelScope.launch {
-            obtenerCumplimientoAnioLocalUseCase(hoy.year, hoy.monthValue).collect { citas ->
-                citasCrudas = citas
-                _uiState.update { it.copy(isLoading = false, grupos = agrupar(citas, it.filtro)) }
-            }
+            combine(
+                obtenerCumplimientoAnioLocalUseCase(hoy.year, hoy.monthValue),
+                obtenerEjecucionesNoProgramadasAnioLocalUseCase(hoy.year, hoy.monthValue)
+            ) { programadas, noProgramadas -> programadas + noProgramadas }
+                .collect { citas ->
+                    citasCrudas = citas
+                    _uiState.update { it.copy(isLoading = false, grupos = agrupar(citas, it.filtro)) }
+                }
         }
 
         viewModelScope.launch {
-            sincronizarCumplimientoAnioUseCase(hoy.year, hoy.monthValue)
-                .onFailure { e ->
-                    _uiState.update {
-                        if (citasCrudas.isEmpty()) {
-                            it.copy(isLoading = false, error = e.message ?: "Sin conexión. No hay datos guardados de pendientes.")
-                        } else {
-                            it.copy(error = null)
-                        }
+            val resultadoCumplimiento = sincronizarCumplimientoAnioUseCase(hoy.year, hoy.monthValue)
+            val resultadoNoProgramadas = sincronizarEjecucionesNoProgramadasAnioUseCase(hoy.year)
+            val error = resultadoCumplimiento.exceptionOrNull() ?: resultadoNoProgramadas.exceptionOrNull()
+            if (error != null) {
+                _uiState.update {
+                    if (citasCrudas.isEmpty()) {
+                        it.copy(isLoading = false, error = error.message ?: "Sin conexión. No hay datos guardados de pendientes.")
+                    } else {
+                        it.copy(error = null)
                     }
                 }
-                .onSuccess {
-                    _uiState.update { it.copy(error = null) }
-                }
+            } else {
+                _uiState.update { it.copy(error = null) }
+            }
         }
     }
 

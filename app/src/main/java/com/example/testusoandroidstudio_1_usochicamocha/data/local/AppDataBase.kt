@@ -41,11 +41,13 @@ import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.EstacionC
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.ActividadCacheDao
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.CumplimientoCacheDao
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.EjecucionDetalleCacheDao
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.EjecucionNoProgramadaCacheDao
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.EjecucionEntity
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.EstacionCacheEntity
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.ActividadCacheEntity
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.CumplimientoCacheEntity
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.EjecucionDetalleCacheEntity
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.EjecucionNoProgramadaCacheEntity
 
 @TypeConverters(DateTimeConverters::class)
 @Database(
@@ -69,9 +71,10 @@ import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.Ejecuc
         com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.EstacionCacheEntity::class,
         com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.ActividadCacheEntity::class,
         com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.CumplimientoCacheEntity::class,
-        com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.EjecucionDetalleCacheEntity::class
+        com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.EjecucionDetalleCacheEntity::class,
+        com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.EjecucionNoProgramadaCacheEntity::class
     ],
-    version = 46,
+    version = 47,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -764,6 +767,32 @@ abstract class AppDatabase : RoomDatabase() {
                 """.trimIndent())
             }
         }
+
+        /**
+         * Migración 46 → 47: agrega `mant_ejecucion_no_programada_cache` — caché de
+         * ejecuciones NO programadas (sin cita de cronograma, `esProgramada=false`) de todas
+         * las estaciones. Antes de esta migración, una actividad civil "no prevista" que sí
+         * se había registrado en el servidor nunca aparecía en la pestaña "Realizadas" de
+         * Pendientes, porque esa pestaña solo leía `mant_cumplimiento_cache`
+         * (alimentado por v_mant_cumplimiento, que arranca desde mant_programacion y por
+         * diseño nunca incluye ejecuciones sin programacionId). Ver
+         * EjecucionNoProgramadaCacheEntity y GET /api/v1/substation/ejecuciones
+         * (estacionId ahora opcional, + filtro esProgramada opcional en el backend).
+         */
+        val MIGRATION_46_47 = object : Migration(46, 47) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("""
+                    CREATE TABLE IF NOT EXISTS `mant_ejecucion_no_programada_cache` (
+                        `ejecucionId` INTEGER PRIMARY KEY NOT NULL,
+                        `anio` INTEGER NOT NULL,
+                        `mes` INTEGER NOT NULL,
+                        `estacionId` INTEGER NOT NULL,
+                        `estacionNombre` TEXT NOT NULL,
+                        `actividadNombre` TEXT NOT NULL
+                    )
+                """.trimIndent())
+            }
+        }
     }
     abstract fun formDao(): FormDao
     abstract fun machineDao(): MachineDao
@@ -785,4 +814,5 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun actividadCacheDao(): ActividadCacheDao
     abstract fun cumplimientoCacheDao(): CumplimientoCacheDao
     abstract fun ejecucionDetalleCacheDao(): EjecucionDetalleCacheDao
+    abstract fun ejecucionNoProgramadaCacheDao(): EjecucionNoProgramadaCacheDao
 }

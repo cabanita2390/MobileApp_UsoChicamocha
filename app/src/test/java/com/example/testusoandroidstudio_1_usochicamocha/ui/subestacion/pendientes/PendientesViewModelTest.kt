@@ -4,7 +4,9 @@ import androidx.lifecycle.SavedStateHandle
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.CitaProgramada
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.ObtenerCumplimientoAnioLocalUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.ObtenerEjecucionPorProgramacionUseCase
+import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.ObtenerEjecucionesNoProgramadasAnioLocalUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.SincronizarCumplimientoAnioUseCase
+import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.SincronizarEjecucionesNoProgramadasAnioUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.EstadoCita
 import io.mockk.MockKAnnotations
 import io.mockk.coEvery
@@ -30,7 +32,9 @@ import java.time.LocalDate
  * `PendientesViewModel` — filtro inicial leído del `SavedStateHandle` (arreglo de esta
  * sesión: antes dependía de un efecto de pantalla que podía pisar un cambio manual de
  * chip; ahora se lee una sola vez al construir), agrupación/orden por mes más reciente
- * primero, y el sufijo "MES EN CURSO"/"MES CERRADO" agregado esta sesión. Offline-first
+ * primero, y el sufijo "MES EN CURSO"/"MES CERRADO" agregado esta sesión. También combina
+ * la fuente de citas programadas con `ObtenerEjecucionesNoProgramadasAnioLocalUseCase`
+ * (ejecuciones sin cita de cronograma) para que "Realizadas" muestre ambas. Offline-first
  * (agregado esta sesión): la UI se alimenta del caché local en Room
  * (`ObtenerCumplimientoAnioLocalUseCase`), el backend solo refresca ese caché en segundo
  * plano (`SincronizarCumplimientoAnioUseCase`) sin bloquear ni vaciar la pantalla si falla.
@@ -44,6 +48,10 @@ class PendientesViewModelTest {
     lateinit var obtenerCumplimientoAnioLocalUseCase: ObtenerCumplimientoAnioLocalUseCase
     @MockK
     lateinit var sincronizarCumplimientoAnioUseCase: SincronizarCumplimientoAnioUseCase
+    @MockK
+    lateinit var obtenerEjecucionesNoProgramadasAnioLocalUseCase: ObtenerEjecucionesNoProgramadasAnioLocalUseCase
+    @MockK
+    lateinit var sincronizarEjecucionesNoProgramadasAnioUseCase: SincronizarEjecucionesNoProgramadasAnioUseCase
     @MockK
     lateinit var obtenerEjecucionPorProgramacionUseCase: ObtenerEjecucionPorProgramacionUseCase
     @MockK
@@ -65,6 +73,23 @@ class PendientesViewModelTest {
             cumple = cumple
         )
 
+    /** Ejecución NO programada ya modelada como CitaProgramada sintética (ver EjecucionNoProgramadaCacheEntity.toDomain). */
+    private fun ejecucionNoProgramada(anio: Int, mes: Int, ejecucionId: Long, estacionId: Long = 1L) =
+        CitaProgramada(
+            programacionId = -ejecucionId,
+            anio = anio,
+            mes = mes,
+            estacionId = estacionId,
+            estacionNombre = "Duitama",
+            estacionTipo = "",
+            actividadId = -1L,
+            actividadNombre = "Atención de imprevisto",
+            ejecutado = 1,
+            cumple = true,
+            esProgramada = false,
+            ejecucionId = ejecucionId
+        )
+
     @Before
     fun setUp() {
         MockKAnnotations.init(this)
@@ -72,6 +97,8 @@ class PendientesViewModelTest {
         every { savedStateHandle.get<String>("filtroInicial") } returns null
         every { obtenerCumplimientoAnioLocalUseCase(any(), any()) } returns flowOf(emptyList())
         coEvery { sincronizarCumplimientoAnioUseCase(any(), any()) } returns Result.success(Unit)
+        every { obtenerEjecucionesNoProgramadasAnioLocalUseCase(any(), any()) } returns flowOf(emptyList())
+        coEvery { sincronizarEjecucionesNoProgramadasAnioUseCase(any()) } returns Result.success(Unit)
     }
 
     @After
@@ -83,6 +110,8 @@ class PendientesViewModelTest {
     private fun createViewModel() = PendientesViewModel(
         obtenerCumplimientoAnioLocalUseCase,
         sincronizarCumplimientoAnioUseCase,
+        obtenerEjecucionesNoProgramadasAnioLocalUseCase,
+        sincronizarEjecucionesNoProgramadasAnioUseCase,
         obtenerEjecucionPorProgramacionUseCase,
         savedStateHandle
     )
@@ -157,6 +186,24 @@ class PendientesViewModelTest {
         assertEquals(haceUnMes.monthValue, grupos[0].mes)
         assertEquals(haceDosMeses.year, grupos[1].anio)
         assertEquals(haceDosMeses.monthValue, grupos[1].mes)
+    }
+
+    @Test
+    fun `Realizadas incluye ejecuciones no programadas junto con las citas programadas cumplidas`() = runTest {
+        val citaEjecutada = cita(anio = hoy.year, mes = hoy.monthValue, cumple = true)
+        val noProgramada = ejecucionNoProgramada(anio = hoy.year, mes = hoy.monthValue, ejecucionId = 42L)
+        every { obtenerCumplimientoAnioLocalUseCase(any(), any()) } returns flowOf(listOf(citaEjecutada))
+        every { obtenerEjecucionesNoProgramadasAnioLocalUseCase(any(), any()) } returns flowOf(listOf(noProgramada))
+
+        val vm = createViewModel()
+        advanceUntilIdle()
+        vm.onFiltroChange(FiltroPendientes.REALIZADAS)
+
+        val realizadas = vm.uiState.value.grupos.flatMap { it.citas }
+        assertEquals(2, realizadas.size)
+        assertTrue(realizadas.all { it.estado == EstadoCita.EJECUTADA })
+        assertTrue(realizadas.any { it.cita.esProgramada && it.cita.ejecucionId == null })
+        assertTrue(realizadas.any { !it.cita.esProgramada && it.cita.ejecucionId == 42L })
     }
 
     @Test

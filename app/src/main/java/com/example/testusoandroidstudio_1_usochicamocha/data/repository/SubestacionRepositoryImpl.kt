@@ -7,6 +7,7 @@ import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.Actividad
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.CumplimientoCacheDao
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.EjecucionDao
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.EjecucionDetalleCacheDao
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.EjecucionNoProgramadaCacheDao
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.EstacionCacheDao
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.ImageDao
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.ImageEntity
@@ -17,6 +18,7 @@ import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.Ejecucio
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.EjecucionRequestDto
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.toDomain
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.toEntity
+import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.toNoProgramadaCacheEntity
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.ActividadCatalogo
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.CitaProgramada
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.Ejecucion
@@ -33,6 +35,7 @@ import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
 import java.io.File
+import java.time.LocalDate
 import javax.inject.Inject
 
 class SubestacionRepositoryImpl @Inject constructor(
@@ -43,7 +46,8 @@ class SubestacionRepositoryImpl @Inject constructor(
     private val imageDao: ImageDao,
     private val apiService: ApiService,
     private val cumplimientoCacheDao: CumplimientoCacheDao,
-    private val ejecucionDetalleCacheDao: EjecucionDetalleCacheDao
+    private val ejecucionDetalleCacheDao: EjecucionDetalleCacheDao,
+    private val ejecucionNoProgramadaCacheDao: EjecucionNoProgramadaCacheDao
 ) : SubestacionRepository {
 
     companion object {
@@ -342,6 +346,46 @@ class SubestacionRepositoryImpl @Inject constructor(
             if (result.isFailure) return result
         }
         return Result.success(Unit)
+    }
+
+    // --- Ejecuciones NO programadas cacheadas (offline-first: pestaña "Realizadas" de Pendientes) ---
+
+    override fun getEjecucionesNoProgramadasLocalDelAnioFlow(anio: Int, mesActual: Int): Flow<List<CitaProgramada>> {
+        return ejecucionNoProgramadaCacheDao.getDelAnioFlow(anio, mesActual).map { entities -> entities.map { it.toDomain() } }
+    }
+
+    /**
+     * Trae TODAS las páginas del año en una sola pasada (size grande: el volumen esperado de
+     * actividades "no previstas" es bajo — unas pocas por mes por estación, ver contexto del
+     * bug) en vez de paginar de verdad, para no complicar el caché con estado de paginación.
+     */
+    override suspend fun sincronizarEjecucionesNoProgramadasDelAnio(anio: Int): Result<Unit> {
+        return try {
+            val desde = LocalDate.of(anio, 1, 1)
+            val hasta = LocalDate.of(anio, 12, 31)
+            val response = apiService.getEjecucionesSubestacion(
+                estacionId = null,
+                fechaInicio = desde.toString(),
+                fechaFin = hasta.toString(),
+                esProgramada = false,
+                page = 0,
+                size = 500
+            )
+            if (response.isSuccessful && response.body() != null) {
+                val entidades = response.body()!!.content
+                    // Defensivo: si el backend no filtró (esProgramada quedó fuera del query
+                    // por alguna razón), no se cachean ejecuciones programadas por error.
+                    .filter { !it.esProgramada }
+                    .map { it.toNoProgramadaCacheEntity() }
+                ejecucionNoProgramadaCacheDao.reemplazarAnio(anio, entidades)
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Error al sincronizar ejecuciones no programadas: ${response.code()}"))
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ Exception sincronizando ejecuciones no programadas $anio", e)
+            Result.failure(e)
+        }
     }
 
     // --- Detalle de ejecución cacheado bajo demanda (offline-first: pantalla Detalle) ---

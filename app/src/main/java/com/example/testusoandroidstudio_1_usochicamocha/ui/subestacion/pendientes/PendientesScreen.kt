@@ -165,11 +165,22 @@ fun PendientesScreen(
                                         citaUi.cita.actividadNombre.startsWith("Inspecci", ignoreCase = true),
                                         citaUi.estado == EstadoCita.VENCIDA
                                     )
-                                    EstadoCita.EJECUTADA -> viewModel.resolverDetalle(
-                                        citaUi.cita.programacionId,
-                                        onResuelto = { id -> onNavigateToDetalle(id) },
-                                        onError = { msg -> scope.launch { snackbarHostState.showSnackbar(msg) } }
-                                    )
+                                    // Una ejecución no programada ya trae su propio ejecucionId (no
+                                    // tiene programacionId real: ver CitaProgramada/EjecucionNoProgramadaCacheEntity),
+                                    // así que puede navegar directo a Detalle sin el paso de
+                                    // "resolver por programación" que sí necesitan las citas del cronograma.
+                                    EstadoCita.EJECUTADA -> {
+                                        val ejecucionId = citaUi.cita.ejecucionId
+                                        if (ejecucionId != null) {
+                                            onNavigateToDetalle(ejecucionId)
+                                        } else {
+                                            viewModel.resolverDetalle(
+                                                citaUi.cita.programacionId,
+                                                onResuelto = { id -> onNavigateToDetalle(id) },
+                                                onError = { msg -> scope.launch { snackbarHostState.showSnackbar(msg) } }
+                                            )
+                                        }
+                                    }
                                     EstadoCita.PROGRAMADA -> Unit
                                 }
                             }
@@ -194,6 +205,12 @@ private fun PendienteRow(citaUi: CitaUi, onClick: () -> Unit) {
         Column {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 EstadoPill(etiquetaDeEstado(citaUi.estado), tono.pillBg, tono.pillFg)
+                // Actividad civil hecha fuera de cronograma (sin cita asociada) — se
+                // distingue de una cita programada cumplida, que es el caso normal.
+                if (!citaUi.cita.esProgramada) {
+                    Spacer(Modifier.width(6.dp))
+                    EstadoPill("No programada", SubestacionColors.ChipBg, SubestacionColors.TextQuaternary)
+                }
                 Spacer(Modifier.width(8.dp))
                 Text(
                     citaUi.cita.estacionNombre,

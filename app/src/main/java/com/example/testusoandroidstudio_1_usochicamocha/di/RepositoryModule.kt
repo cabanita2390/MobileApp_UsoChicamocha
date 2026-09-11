@@ -97,9 +97,10 @@ object RepositoryModule {
         imageDao: ImageDao,
         apiService: ApiService,
         cumplimientoCacheDao: CumplimientoCacheDao,
-        ejecucionDetalleCacheDao: EjecucionDetalleCacheDao
+        ejecucionDetalleCacheDao: EjecucionDetalleCacheDao,
+        ejecucionNoProgramadaCacheDao: EjecucionNoProgramadaCacheDao
     ): SubestacionRepository = SubestacionRepositoryImpl(
         context, ejecucionDao, estacionCacheDao, actividadCacheDao, imageDao, apiService,
-        cumplimientoCacheDao, ejecucionDetalleCacheDao
+        cumplimientoCacheDao, ejecucionDetalleCacheDao, ejecucionNoProgramadaCacheDao
     )
 }

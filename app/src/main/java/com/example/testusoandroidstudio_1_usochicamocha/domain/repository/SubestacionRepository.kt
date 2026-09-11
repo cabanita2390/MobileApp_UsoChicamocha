@@ -64,6 +64,18 @@ interface SubestacionRepository {
     /** Refresca el caché de los meses 1..mesActual del año (usado por Pendientes/Home y el sync periódico). */
     suspend fun sincronizarCumplimientoDelAnio(anio: Int, mesActual: Int): Result<Unit>
 
+    // --- Ejecuciones NO programadas cacheadas (offline-first: pestaña "Realizadas" de Pendientes) ---
+
+    /**
+     * Para Pendientes: ejecuciones sin cita de cronograma (esProgramada=false) del año hasta
+     * `mesActual`, de todas las estaciones, leídas de Room. v_mant_cumplimiento nunca las
+     * trae (arranca desde mant_programacion), así que necesitan esta fuente aparte.
+     */
+    fun getEjecucionesNoProgramadasLocalDelAnioFlow(anio: Int, mesActual: Int): Flow<List<CitaProgramada>>
+
+    /** Refresca el caché de ejecuciones no programadas del año completo (best-effort, no bloquea la UI). */
+    suspend fun sincronizarEjecucionesNoProgramadasDelAnio(anio: Int): Result<Unit>
+
     // --- Detalle de ejecución cacheado bajo demanda (offline-first: pantalla Detalle) ---
 
     /** null = todavía no se ha consultado (con éxito) esta ejecución desde este dispositivo. */

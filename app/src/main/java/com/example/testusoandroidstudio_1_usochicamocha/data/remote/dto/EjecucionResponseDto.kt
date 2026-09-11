@@ -1,6 +1,7 @@
 package com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto
 
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.EjecucionEntity
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.EjecucionNoProgramadaCacheEntity
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.EdicionDetalle
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.EjecucionDetalle
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.EvidenciaDetalle
@@ -93,5 +94,23 @@ fun EjecucionResponseDto.toDomain(): EjecucionDetalle {
         evidencias = evidencias.map { EvidenciaDetalle(it.id, it.rutaArchivo, it.nombreOriginal, it.subidoEn) },
         evidenciaPendiente = evidenciaPendiente,
         ediciones = ediciones.map { EdicionDetalle(it.usuario, it.motivo, it.editadoEn) }
+    )
+}
+
+/**
+ * Para el caché de "Realizadas" (ver EjecucionNoProgramadaCacheEntity): `anio` se deriva de
+ * `fecha` (formato ISO "yyyy-MM-dd" del backend) porque EjecucionResponse no trae un campo
+ * de año explícito; `mes` usa `mesEjecucion` (el campo pensado para "en qué mes cuenta" un
+ * registro tardío, igual que en CumplimientoDto). El nombre a mostrar prioriza la actividad
+ * del catálogo y cae a la descripción libre cuando no vino de una cita/catálogo.
+ */
+fun EjecucionResponseDto.toNoProgramadaCacheEntity(): EjecucionNoProgramadaCacheEntity {
+    return EjecucionNoProgramadaCacheEntity(
+        ejecucionId = id,
+        anio = fecha.substring(0, 4).toInt(),
+        mes = mesEjecucion,
+        estacionId = estacionId,
+        estacionNombre = estacionNombre,
+        actividadNombre = actividadNombre ?: descripcionLibre ?: "Actividad no catalogada"
     )
 }
