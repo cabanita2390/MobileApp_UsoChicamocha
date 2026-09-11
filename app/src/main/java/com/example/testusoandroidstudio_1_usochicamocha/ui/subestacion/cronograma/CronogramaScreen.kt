@@ -47,7 +47,7 @@ fun CronogramaScreen(
     networkStatus: Boolean,
     viewModel: CronogramaViewModel = hiltViewModel(),
     onNavigateBack: () -> Unit,
-    onNavigateToCaptura: (programacionId: Long, estacionId: Long, actividadId: Long, esInspeccion: Boolean, vencida: Boolean) -> Unit,
+    onNavigateToCaptura: (programacionId: Long, estacionId: Long, actividadId: Long, esInspeccion: Boolean, vencida: Boolean, mes: Int) -> Unit,
     onNavigateToDetalle: (ejecucionId: Long) -> Unit,
     onNavigateToCapturaLibre: () -> Unit = {},
     onNavigateToCola: () -> Unit = {}
@@ -180,7 +180,8 @@ fun CronogramaScreen(
                                         citaUi.cita.estacionId,
                                         citaUi.cita.actividadId,
                                         citaUi.cita.actividadNombre.startsWith("Inspecci", ignoreCase = true),
-                                        citaUi.estado == EstadoCita.VENCIDA
+                                        citaUi.estado == EstadoCita.VENCIDA,
+                                        citaUi.cita.mes
                                     )
                                     EstadoCita.EJECUTADA -> viewModel.resolverDetalle(
                                         citaUi.cita.programacionId,

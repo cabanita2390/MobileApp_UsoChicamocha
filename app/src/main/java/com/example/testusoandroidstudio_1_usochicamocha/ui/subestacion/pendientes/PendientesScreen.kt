@@ -40,7 +40,7 @@ fun PendientesScreen(
     networkStatus: Boolean,
     viewModel: PendientesViewModel = hiltViewModel(),
     onNavigateBack: () -> Unit,
-    onNavigateToCaptura: (programacionId: Long, estacionId: Long, actividadId: Long, esInspeccion: Boolean, vencida: Boolean) -> Unit,
+    onNavigateToCaptura: (programacionId: Long, estacionId: Long, actividadId: Long, esInspeccion: Boolean, vencida: Boolean, mes: Int) -> Unit,
     onNavigateToDetalle: (ejecucionId: Long) -> Unit,
     onNavigateToCola: () -> Unit = {}
 ) {
@@ -163,7 +163,8 @@ fun PendientesScreen(
                                         citaUi.cita.estacionId,
                                         citaUi.cita.actividadId,
                                         citaUi.cita.actividadNombre.startsWith("Inspecci", ignoreCase = true),
-                                        citaUi.estado == EstadoCita.VENCIDA
+                                        citaUi.estado == EstadoCita.VENCIDA,
+                                        citaUi.cita.mes
                                     )
                                     // Una ejecución no programada ya trae su propio ejecucionId (no
                                     // tiene programacionId real: ver CitaProgramada/EjecucionNoProgramadaCacheEntity),

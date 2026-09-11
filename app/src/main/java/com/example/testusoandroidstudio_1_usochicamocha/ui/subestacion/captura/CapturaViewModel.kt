@@ -44,6 +44,9 @@ import kotlin.math.min
 data class CapturaUiState(
     val currentStep: Int = 1,
     val programacionId: Long? = null,
+    // Mes (1-12) en que el cronograma programó esta cita — solo para mostrarlo en la
+    // tarjeta "Del cronograma" de PasoCita, no se usa para nada más.
+    val mesProgramado: Int? = null,
 
     // Modo edición (M6) — corrige una ejecución ya sincronizada, requiere red y un
     // motivo de al menos 15 caracteres. Estación/disciplina/programacionId no se tocan.
@@ -250,7 +253,8 @@ class CapturaViewModel @Inject constructor(
         estacionId: Long,
         actividadId: Long,
         esInspeccion: Boolean,
-        vencida: Boolean
+        vencida: Boolean,
+        mesProgramado: Int = -1
     ) {
         if (programacionId <= 0L) return
         val nombreEstacion = _uiState.value.estaciones.find { it.id == estacionId }?.nombre
@@ -264,7 +268,8 @@ class CapturaViewModel @Inject constructor(
                 actividadNombre = nombreActividad ?: it.actividadNombre,
                 modoLibre = false,
                 tipoActividad = if (esInspeccion) "INSPECCION" else "MANTENIMIENTO",
-                tipoMantenimiento = if (vencida) "CORRECTIVO" else "PREVENTIVO"
+                tipoMantenimiento = if (vencida) "CORRECTIVO" else "PREVENTIVO",
+                mesProgramado = if (mesProgramado in 1..12) mesProgramado else null
             )
         }
     }

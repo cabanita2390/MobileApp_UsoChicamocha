@@ -294,11 +294,15 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                     composable(
-                        route = "subestaciones_captura?programacionId={programacionId}&estacionId={estacionId}&actividadId={actividadId}&esInspeccion={esInspeccion}&vencida={vencida}&editandoId={editandoId}&motivoEdicion={motivoEdicion}&libre={libre}",
+                        route = "subestaciones_captura?programacionId={programacionId}&estacionId={estacionId}&actividadId={actividadId}&esInspeccion={esInspeccion}&vencida={vencida}&mes={mes}&editandoId={editandoId}&motivoEdicion={motivoEdicion}&libre={libre}",
                         arguments = listOf(
                             androidx.navigation.navArgument("programacionId") {
                                 type = androidx.navigation.NavType.LongType
                                 defaultValue = -1L
+                            },
+                            androidx.navigation.navArgument("mes") {
+                                type = androidx.navigation.NavType.IntType
+                                defaultValue = -1
                             },
                             androidx.navigation.navArgument("estacionId") {
                                 type = androidx.navigation.NavType.LongType
@@ -337,6 +341,7 @@ class MainActivity : ComponentActivity() {
                             actividadId = backStackEntry.arguments?.getLong("actividadId") ?: -1L,
                             esInspeccion = backStackEntry.arguments?.getBoolean("esInspeccion") ?: false,
                             vencida = backStackEntry.arguments?.getBoolean("vencida") ?: false,
+                            mes = backStackEntry.arguments?.getInt("mes") ?: -1,
                             editandoId = backStackEntry.arguments?.getLong("editandoId") ?: -1L,
                             motivoEdicionInicial = (backStackEntry.arguments?.getString("motivoEdicion") ?: "")
                                 .let { runCatching { java.net.URLDecoder.decode(it, "UTF-8") }.getOrDefault(it) },
@@ -362,9 +367,9 @@ class MainActivity : ComponentActivity() {
                             onNavigateBack = {
                                 navController.popBackStack()
                             },
-                            onNavigateToCaptura = { programacionId, estacionId, actividadId, esInspeccion, vencida ->
+                            onNavigateToCaptura = { programacionId, estacionId, actividadId, esInspeccion, vencida, mes ->
                                 navController.navigate(
-                                    "subestaciones_captura?programacionId=$programacionId&estacionId=$estacionId&actividadId=$actividadId&esInspeccion=$esInspeccion&vencida=$vencida"
+                                    "subestaciones_captura?programacionId=$programacionId&estacionId=$estacionId&actividadId=$actividadId&esInspeccion=$esInspeccion&vencida=$vencida&mes=$mes"
                                 )
                             },
                             onNavigateToDetalle = { ejecucionId ->
@@ -393,9 +398,9 @@ class MainActivity : ComponentActivity() {
                             onNavigateBack = {
                                 navController.popBackStack()
                             },
-                            onNavigateToCaptura = { programacionId, estacionId, actividadId, esInspeccion, vencida ->
+                            onNavigateToCaptura = { programacionId, estacionId, actividadId, esInspeccion, vencida, mes ->
                                 navController.navigate(
-                                    "subestaciones_captura?programacionId=$programacionId&estacionId=$estacionId&actividadId=$actividadId&esInspeccion=$esInspeccion&vencida=$vencida"
+                                    "subestaciones_captura?programacionId=$programacionId&estacionId=$estacionId&actividadId=$actividadId&esInspeccion=$esInspeccion&vencida=$vencida&mes=$mes"
                                 )
                             },
                             onNavigateToDetalle = { ejecucionId ->

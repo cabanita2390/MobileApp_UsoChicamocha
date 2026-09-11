@@ -76,6 +76,7 @@ fun CapturaScreen(
     actividadId: Long = -1L,
     esInspeccion: Boolean = false,
     vencida: Boolean = false,
+    mes: Int = -1,
     editandoId: Long = -1L,
     motivoEdicionInicial: String = "",
     libre: Boolean = false,
@@ -90,7 +91,7 @@ fun CapturaScreen(
 
     LaunchedEffect(programacionId) {
         if (programacionId > 0L) {
-            viewModel.cargarDesdeCita(programacionId, estacionId, actividadId, esInspeccion, vencida)
+            viewModel.cargarDesdeCita(programacionId, estacionId, actividadId, esInspeccion, vencida, mes)
         }
     }
     LaunchedEffect(libre) {
@@ -701,16 +702,18 @@ private fun PasoActividad(uiState: CapturaUiState, viewModel: CapturaViewModel) 
  * "Del cronograma" de PasoCita — mismo look que ChipOption pero sin `clickable`. */
 @Composable
 private fun LockedChip(etiqueta: String, valor: String, danger: Boolean = false, modifier: Modifier = Modifier) {
-    val bg = if (danger) SubestacionColors.Red else SubestacionColors.PurpleSurface
-    val fg = if (danger) Color.White else SubestacionColors.TextPrimary
+    val bg = if (danger) SubestacionColors.RedBg else SubestacionColors.PurpleSurface
+    val bd = if (danger) SubestacionColors.RedBorder else Color.Transparent
+    val fg = if (danger) SubestacionColors.Red else SubestacionColors.TextPrimary
     Column(
         modifier
             .clip(SubestacionShapes.Chip)
             .background(bg)
+            .border(1.dp, bd, SubestacionShapes.Chip)
             .padding(12.dp, 10.dp)
     ) {
         Text(
-            etiqueta, color = if (danger) Color.White.copy(alpha = 0.78f) else SubestacionColors.TextTertiary,
+            etiqueta, color = if (danger) SubestacionColors.Red else SubestacionColors.TextTertiary,
             fontWeight = FontWeight.SemiBold, fontSize = 9.sp, letterSpacing = 0.5.sp
         )
         Text(valor, color = fg, fontWeight = FontWeight.ExtraBold, fontSize = 12.5.sp, modifier = Modifier.padding(top = 2.dp))
@@ -728,10 +731,10 @@ private fun LockedChip(etiqueta: String, valor: String, danger: Boolean = false,
  * en modo libre) y el tipo de actividad realmente realizada (`TipoActividadSection`,
  * mismos chips que en modo libre).
  *
- * Nota: la tarjeta no incluye un chip de "mes programado" separado del mes de
- * ejecución de abajo — el nav graph actual (`cargarDesdeCita`) no trae el mes/año
- * original de la cita, solo estación/actividad/si está vencida, así que no hay una
- * fuente de datos distinta que mostrar ahí sin inventarla.
+ * La tarjeta incluye un chip "MES" con el mes que el cronograma programó para esta
+ * cita (`mesProgramado`, viajando desde Cronograma/Pendientes por la ruta de
+ * navegación) — deliberadamente separado del mes de ejecución editable de abajo,
+ * para que se note si el técnico está registrando algo fuera de tiempo.
  */
 @Composable
 private fun PasoCita(uiState: CapturaUiState, viewModel: CapturaViewModel) {
@@ -763,6 +766,9 @@ private fun PasoCita(uiState: CapturaUiState, viewModel: CapturaViewModel) {
                             L_MANT[uiState.tipoMantenimiento] ?: uiState.tipoMantenimiento,
                             danger = uiState.tipoMantenimiento == "CORRECTIVO"
                         )
+                        uiState.mesProgramado?.let { mes ->
+                            LockedChip("MES", nombreMes(mes))
+                        }
                     }
                     Row(
                         Modifier.fillMaxWidth().clip(SubestacionShapes.Input).background(SubestacionColors.SectionHeaderBackground)
