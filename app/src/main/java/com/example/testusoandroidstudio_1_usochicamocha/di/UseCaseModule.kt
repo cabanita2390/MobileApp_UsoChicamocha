@@ -106,7 +106,10 @@ object UseCaseModule {
 
     @Provides
     @Singleton
-    fun provideSyncPendingImagesUseCase(repo: FormRepository): SyncPendingImagesUseCase = SyncPendingImagesUseCase(repo)
+    fun provideSyncPendingImagesUseCase(
+        repo: FormRepository,
+        subestacionRepo: SubestacionRepository
+    ): SyncPendingImagesUseCase = SyncPendingImagesUseCase(repo, subestacionRepo)
 
     @Provides
     @Singleton

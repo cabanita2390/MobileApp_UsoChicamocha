@@ -68,7 +68,8 @@ class FormRepositoryImpl @Inject constructor(
                 ImageEntity(
                     formUUID = form.UUID,
                     localUri = uri,
-                    isSynced = false
+                    isSynced = false,
+                    tipo = ImageEntity.TIPO_FORM
                 )
             }
             imageDao.insertImages(imageEntities)

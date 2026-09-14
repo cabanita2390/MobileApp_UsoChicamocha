@@ -15,6 +15,8 @@ import com.example.testusoandroidstudio_1_usochicamocha.domain.repository.FormRe
 import com.example.testusoandroidstudio_1_usochicamocha.domain.repository.MachineOilChangeRepository
 import com.example.testusoandroidstudio_1_usochicamocha.domain.repository.MachineRepository
 import com.example.testusoandroidstudio_1_usochicamocha.domain.repository.OilRepository
+import com.example.testusoandroidstudio_1_usochicamocha.domain.repository.SubestacionRepository
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.ImageEntity
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.pojo.ImageForSync
 import com.example.testusoandroidstudio_1_usochicamocha.util.AppLogger
 import io.mockk.*
@@ -41,6 +43,8 @@ class SyncAllUseCaseTest {
 
     private lateinit var oilRepository: OilRepository
 
+    private lateinit var subestacionRepository: SubestacionRepository
+
     private lateinit var logger: AppLogger
 
     private lateinit var context: Context
@@ -61,6 +65,7 @@ class SyncAllUseCaseTest {
         machineOilChangeRepository = mockk(relaxed = true)
         machineRepository = mockk(relaxed = true)
         oilRepository = mockk(relaxed = true)
+        subestacionRepository = mockk(relaxed = true)
         logger = mockk(relaxed = true)
         context = mockk(relaxed = true)
         workManager = mockk(relaxed = true)
@@ -75,7 +80,7 @@ class SyncAllUseCaseTest {
         syncMachineOilChangeFormsUseCase = SyncMachineOilChangeFormsUseCase(machineOilChangeRepository)
         syncMachinesUseCase = SyncMachinesUseCase(machineRepository, logger)
         syncOilsUseCase = SyncOilsUseCase(oilRepository, logger)
-        syncPendingImagesUseCase = SyncPendingImagesUseCase(formRepository)
+        syncPendingImagesUseCase = SyncPendingImagesUseCase(formRepository, subestacionRepository)
         triggerImageSyncUseCase = TriggerImageSyncUseCase(context)
 
         // Mock WorkManager
@@ -87,9 +92,9 @@ class SyncAllUseCaseTest {
     fun `test image sync operations with pending images`() = runTest {
         // Mock image sync operations
         val sampleImages = listOf(
-            ImageForSync(localId = 1, serverId = 1001L, localUri = "/storage/image1.jpg"),
-            ImageForSync(localId = 2, serverId = 1002L, localUri = "/storage/image2.jpg"),
-            ImageForSync(localId = 3, serverId = 1003L, localUri = "/storage/image3.jpg")
+            ImageForSync(localId = 1, serverId = 1001L, localUri = "/storage/image1.jpg", tipo = ImageEntity.TIPO_FORM),
+            ImageForSync(localId = 2, serverId = 1002L, localUri = "/storage/image2.jpg", tipo = ImageEntity.TIPO_FORM),
+            ImageForSync(localId = 3, serverId = 1003L, localUri = "/storage/image3.jpg", tipo = ImageEntity.TIPO_FORM)
         )
         
         // Mock repository responses for image sync
@@ -130,9 +135,9 @@ class SyncAllUseCaseTest {
     fun `test image sync operations with partial failures`() = runTest {
         // Mock image sync operations with mixed results
         val sampleImages = listOf(
-            ImageForSync(localId = 1, serverId = 1001L, localUri = "/storage/image1.jpg"),
-            ImageForSync(localId = 2, serverId = 1002L, localUri = "/storage/image2.jpg"),
-            ImageForSync(localId = 3, serverId = 1003L, localUri = "/storage/image3.jpg")
+            ImageForSync(localId = 1, serverId = 1001L, localUri = "/storage/image1.jpg", tipo = ImageEntity.TIPO_FORM),
+            ImageForSync(localId = 2, serverId = 1002L, localUri = "/storage/image2.jpg", tipo = ImageEntity.TIPO_FORM),
+            ImageForSync(localId = 3, serverId = 1003L, localUri = "/storage/image3.jpg", tipo = ImageEntity.TIPO_FORM)
         )
         
         coEvery { formRepository.getPendingImagesForSync() } returns flowOf(sampleImages)
@@ -437,8 +442,8 @@ class SyncAllUseCaseTest {
 
         // Mock image sync with some pending images
         val pendingImages = listOf(
-            ImageForSync(localId = 1, serverId = 1001L, localUri = "/storage/workflow_image1.jpg"),
-            ImageForSync(localId = 2, serverId = 1002L, localUri = "/storage/workflow_image2.jpg")
+            ImageForSync(localId = 1, serverId = 1001L, localUri = "/storage/workflow_image1.jpg", tipo = ImageEntity.TIPO_FORM),
+            ImageForSync(localId = 2, serverId = 1002L, localUri = "/storage/workflow_image2.jpg", tipo = ImageEntity.TIPO_FORM)
         )
         coEvery { formRepository.getPendingImagesForSync() } returns flowOf(pendingImages)
         coEvery { formRepository.syncImage(any(), any()) } returns Result.success(Unit)

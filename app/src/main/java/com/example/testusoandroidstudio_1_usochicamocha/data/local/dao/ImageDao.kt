@@ -29,11 +29,15 @@ interface ImageDao {
      * AÑADIDO (subestaciones): 3er LEFT JOIN a pending_mant_ejecucion, mismo patrón
      * que vehiculo_inspections — solo sube evidencia una vez que su ejecución padre
      * ya tiene serverId.
+     * AÑADIDO: se incluye pi.tipo para que SyncPendingImagesUseCase sepa a qué
+     * repositorio/endpoint despachar cada fila (antes todas se enviaban al endpoint
+     * de inspección de vehículo sin importar su origen real — ver ImageEntity.tipo).
      */
     @Query("""
         SELECT
             pi.localId,
             pi.localUri,
+            pi.tipo,
             COALESCE(pf.serverId, vi.serverId, ej.serverId) as serverId
         FROM pending_images pi
         LEFT JOIN pending_forms pf ON pi.formUUID = pf.UUID

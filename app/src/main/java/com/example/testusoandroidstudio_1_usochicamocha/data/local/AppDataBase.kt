@@ -74,7 +74,7 @@ import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.Ejecuc
         com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.EjecucionDetalleCacheEntity::class,
         com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.EjecucionNoProgramadaCacheEntity::class
     ],
-    version = 47,
+    version = 48,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -791,6 +791,28 @@ abstract class AppDatabase : RoomDatabase() {
                         `actividadNombre` TEXT NOT NULL
                     )
                 """.trimIndent())
+            }
+        }
+
+        /**
+         * Migración 47 → 48: agrega `pending_images.tipo` (FORM/SUBESTACION). Antes de esta
+         * columna, `SyncPendingImagesUseCase` no tenía forma de distinguir de dónde venía
+         * cada fila de `pending_images` y enviaba TODAS a `v1/inspection/{id}/image` — para
+         * las fotos de evidencia de Subestaciones (join agregado en MIGRATION_46_47 vía
+         * pending_mant_ejecucion) eso subía la foto al endpoint de inspección de vehículo
+         * usando el id de la ejecución como si fuera un id de inspección, en vez de
+         * `v1/substation/ejecuciones/{id}/evidencia`. Las filas existentes se marcan 'FORM'
+         * por DEFAULT: no hay usuarios en producción todavía (módulo Subestaciones aún en
+         * construcción), así que no hace falta backfill real.
+         */
+        val MIGRATION_47_48 = object : Migration(47, 48) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL(
+                    "ALTER TABLE `pending_images` ADD COLUMN `tipo` TEXT NOT NULL DEFAULT 'FORM'"
+                )
+                database.execSQL(
+                    "UPDATE `pending_images` SET `tipo` = 'SUBESTACION' WHERE `ejecucionUUID` IS NOT NULL"
+                )
             }
         }
     }

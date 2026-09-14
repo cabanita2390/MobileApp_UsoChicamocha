@@ -1,8 +1,10 @@
 package com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.form
 
 import android.util.Log
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.ImageEntity
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.pojo.ImageForSync
 import com.example.testusoandroidstudio_1_usochicamocha.domain.repository.FormRepository
+import com.example.testusoandroidstudio_1_usochicamocha.domain.repository.SubestacionRepository
 import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 
@@ -10,9 +12,17 @@ import javax.inject.Inject
  * Caso de uso con la única responsabilidad de sincronizar las imágenes pendientes.
  * Se encarga de la orquestación: obtener imágenes, intentar subirlas y marcarlas como completadas.
  * IMPLEMENTA CONTROL DE CONCURRENCIA: marca imágenes como 'syncing' para evitar duplicación.
+ *
+ * Despacha cada imagen al repositorio/endpoint correcto según [ImageForSync.tipo]: antes
+ * TODAS las filas de `pending_images` (formularios, vehículos, ejecuciones de subestación)
+ * se enviaban a `FormRepository.syncImage` → `v1/inspection/{id}/image`, lo que para las
+ * evidencias de Subestaciones subía la foto al endpoint equivocado usando el id de la
+ * ejecución como si fuera un id de inspección de vehículo. `markImage*` sigue yendo por
+ * `formRepository` porque son simples pasos a `ImageDao`, sin lógica específica de dominio.
  */
 class SyncPendingImagesUseCase @Inject constructor(
-    private val formRepository: FormRepository
+    private val formRepository: FormRepository,
+    private val subestacionRepository: SubestacionRepository
 ) {
     // La función invoke permite que la clase sea llamada como si fuera una función.
     suspend operator fun invoke(): Result<Unit> {
@@ -45,7 +55,11 @@ class SyncPendingImagesUseCase @Inject constructor(
             var successCount = 0
             for (image in imagesToProcess) {
                 try {
-                    val syncResult = formRepository.syncImage(image.serverId, image.localUri)
+                    val syncResult = if (image.tipo == ImageEntity.TIPO_SUBESTACION) {
+                        subestacionRepository.syncEvidencia(image.serverId, image.localUri)
+                    } else {
+                        formRepository.syncImage(image.serverId, image.localUri)
+                    }
                     if (syncResult.isSuccess) {
                         // 4. Si la subida es exitosa, la marcamos como synced
                         formRepository.markImageAsSynced(image.localId)

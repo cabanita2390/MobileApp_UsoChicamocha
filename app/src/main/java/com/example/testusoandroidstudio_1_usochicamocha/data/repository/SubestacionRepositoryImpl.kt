@@ -74,7 +74,8 @@ class SubestacionRepositoryImpl @Inject constructor(
                 ImageEntity(
                     ejecucionUUID = ejecucion.uuidCliente,
                     localUri = uri,
-                    isSynced = false
+                    isSynced = false,
+                    tipo = ImageEntity.TIPO_SUBESTACION
                 )
             }
             imageDao.insertImages(imageEntities)

@@ -7,6 +7,7 @@ package com.example.testusoandroidstudio_1_usochicamocha.data.local.pojo
 data class ImageForSync(
     val localId: Int,
     val serverId: Long,
-    val localUri: String
+    val localUri: String,
+    val tipo: String
 )
 
