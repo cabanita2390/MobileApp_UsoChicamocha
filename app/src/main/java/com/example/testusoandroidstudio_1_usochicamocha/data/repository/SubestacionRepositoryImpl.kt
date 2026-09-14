@@ -62,7 +62,9 @@ class SubestacionRepositoryImpl @Inject constructor(
     }
 
     override fun getEjecucionesCola(): Flow<List<Ejecucion>> {
-        return ejecucionDao.getColaFlow().map { filas -> filas.map { it.entity.toDomain().copy(fotosCount = it.fotosCount) } }
+        return ejecucionDao.getColaFlow().map { filas ->
+            filas.map { it.entity.toDomain().copy(fotosCount = it.fotosCount, fotosSincronizadas = it.fotosSincronizadas) }
+        }
     }
 
     override suspend fun saveEjecucionLocally(ejecucion: Ejecucion, imageUris: List<String>) {

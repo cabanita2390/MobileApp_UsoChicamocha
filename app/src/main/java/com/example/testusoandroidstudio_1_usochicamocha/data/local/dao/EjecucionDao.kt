@@ -11,7 +11,8 @@ import kotlinx.coroutines.flow.Flow
 /** Fila de `getColaFlow()` con el conteo de fotos ya resuelto por SQL (subquery a `pending_images`). */
 data class EjecucionConFotos(
     @Embedded val entity: EjecucionEntity,
-    val fotosCount: Int
+    val fotosCount: Int,
+    val fotosSincronizadas: Int
 )
 
 @Dao
@@ -51,14 +52,25 @@ interface EjecucionDao {
 
     /**
      * Para la pantalla Cola: a diferencia de `getPendingFlow()` (usada por el worker
-     * y el badge del header, que solo necesitan "qué falta subir"), esta SÍ incluye
-     * los registros con `isSyncing=1` — así el técnico ve "Enviando…" en vez de que
-     * el registro desaparezca de la lista mientras se sube.
+     * y el badge del header, que solo necesitan "qué falta subir" del registro en sí),
+     * esta SÍ incluye los registros con `isSyncing=1` — así el técnico ve "Enviando…"
+     * en vez de que el registro desaparezca de la lista mientras se sube.
+     *
+     * AÑADIDO: un registro también se queda en la cola si su ejecución YA sincronizó
+     * pero todavía le faltan fotos por subir (`EXISTS ... i.isSynced = 0`) — mismo
+     * patrón que `FormDao.getPendingFormsWithImageCount()` (HAVING con OR). Antes de
+     * esto, en cuanto `mant_ejecucion` sincronizaba el registro desaparecía de la cola
+     * sin importar si su evidencia seguía pendiente/reintentando, dejando al técnico
+     * sin ninguna señal de que faltaba algo. `fotosSincronizadas` viaja junto a
+     * `fotosCount` para poder mostrar "X/Y fotos" en vez de solo el total.
      */
     @Query("""
-        SELECT e.*, (SELECT COUNT(*) FROM pending_images i WHERE i.ejecucionUUID = e.uuidCliente) AS fotosCount
+        SELECT e.*,
+            (SELECT COUNT(*) FROM pending_images i WHERE i.ejecucionUUID = e.uuidCliente) AS fotosCount,
+            (SELECT COUNT(*) FROM pending_images i WHERE i.ejecucionUUID = e.uuidCliente AND i.isSynced = 1) AS fotosSincronizadas
         FROM pending_mant_ejecucion e
         WHERE e.isSynced = 0
+           OR EXISTS (SELECT 1 FROM pending_images i WHERE i.ejecucionUUID = e.uuidCliente AND i.isSynced = 0)
         ORDER BY e.fecha DESC
     """)
     fun getColaFlow(): Flow<List<EjecucionConFotos>>

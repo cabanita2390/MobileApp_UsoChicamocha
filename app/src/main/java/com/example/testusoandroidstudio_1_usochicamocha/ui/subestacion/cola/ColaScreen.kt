@@ -153,9 +153,14 @@ private fun EstadoSyncBanner(networkStatus: Boolean, pendientesCount: Int) {
 
 @Composable
 private fun ColaItem(ejecucion: Ejecucion) {
+    // El registro (mant_ejecucion) y sus fotos (pending_images) sincronizan por separado
+    // — el registro puede quedar "Enviado" mientras alguna foto todavía se sube/reintenta.
+    // Sin esto, el técnico veía "confirmado" sin forma de saber que faltaba una foto.
+    val fotosPendientes = ejecucion.fotosCount > ejecucion.fotosSincronizadas
     val (etiqueta, pillBg, pillFg) = when {
         ejecucion.syncFallido -> Triple("Error", SubestacionColors.RedBg, SubestacionColors.Red)
         ejecucion.isSyncing -> Triple("Enviando", SubestacionColors.PurpleSurface, SubestacionColors.Purple)
+        ejecucion.isSynced && fotosPendientes -> Triple("Fotos pendientes", SubestacionColors.AmberBg, SubestacionColors.Amber)
         ejecucion.isSynced -> Triple("Enviado", SubestacionColors.GreenBg, SubestacionColors.Green)
         else -> Triple("En cola", SubestacionColors.AmberBg, SubestacionColors.Amber)
     }
@@ -164,8 +169,14 @@ private fun ColaItem(ejecucion: Ejecucion) {
     val textoEstado = when {
         ejecucion.syncFallido -> "falló, se reintenta solo"
         ejecucion.isSyncing -> "subiendo ahora…"
+        ejecucion.isSynced && fotosPendientes -> "registro guardado, subiendo fotos…"
         ejecucion.isSynced -> "confirmado por el servidor"
         else -> "en cola, esperando señal"
+    }
+    val textoFotos = if (ejecucion.fotosCount > 0) {
+        "${ejecucion.fotosSincronizadas}/${ejecucion.fotosCount} foto(s)"
+    } else {
+        "sin fotos"
     }
     Column(
         Modifier
@@ -190,8 +201,10 @@ private fun ColaItem(ejecucion: Ejecucion) {
         )
         Spacer(Modifier.height(9.dp))
         SubestacionType.Hint(
-            "${ejecucion.fotosCount} foto(s) · $textoEstado",
-            color = if (ejecucion.syncFallido) SubestacionColors.Red else SubestacionColors.TextQuaternary
+            "$textoFotos · $textoEstado",
+            color = if (ejecucion.syncFallido) SubestacionColors.Red
+                else if (fotosPendientes) SubestacionColors.Amber
+                else SubestacionColors.TextQuaternary
         )
     }
 }

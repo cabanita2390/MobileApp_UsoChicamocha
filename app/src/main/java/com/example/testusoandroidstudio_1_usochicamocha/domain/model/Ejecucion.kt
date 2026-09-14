@@ -28,8 +28,10 @@ data class Ejecucion(
     val isSynced: Boolean = false,
     val isSyncing: Boolean = false,
     val syncFallido: Boolean = false,
-    /** Solo poblado por `SubestacionRepository.getColaFlow()` (para el detalle de la Cola) — 0 en el resto de usos. */
-    val fotosCount: Int = 0
+    /** Solo poblado por `SubestacionRepository.getEjecucionesCola()` (para el detalle de la Cola) — 0 en el resto de usos. */
+    val fotosCount: Int = 0,
+    /** Ídem `fotosCount`: cuántas de esas fotos ya confirmó el servidor. */
+    val fotosSincronizadas: Int = 0
 )
 
 fun Ejecucion.toEntity(): EjecucionEntity {
