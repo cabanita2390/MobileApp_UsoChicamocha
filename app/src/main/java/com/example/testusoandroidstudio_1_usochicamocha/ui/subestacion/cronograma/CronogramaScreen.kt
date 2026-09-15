@@ -298,10 +298,10 @@ private fun MesSelector(anio: Int, mes: Int, onSeleccionar: (Int, Int) -> Unit) 
             )
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            val hoy = remember { YearMonth.now() }
-            // 6 meses hacia atrás y 3 hacia adelante — el mock mostraba 4 meses fijos
-            // de su propia demo, acá se genera una ventana real alrededor de hoy.
-            (-6..3).map { offset -> hoy.plusMonths(offset.toLong()) }.forEach { ym ->
+            // Los 12 meses del año que se está viendo (no una ventana móvil relativa a
+            // hoy) — el cronograma es anual, así que enero y diciembre deben poder
+            // elegirse igual que cualquier otro mes.
+            (1..12).map { m -> YearMonth.of(anio, m) }.forEach { ym ->
                 DropdownMenuItem(
                     text = { Text("${nombreMes(ym.monthValue)} ${ym.year}") },
                     onClick = {

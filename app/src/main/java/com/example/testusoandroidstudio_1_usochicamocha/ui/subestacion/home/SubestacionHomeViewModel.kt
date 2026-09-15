@@ -4,8 +4,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.TokenManager
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.ObtenerCumplimientoAnioLocalUseCase
+import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.ObtenerEjecucionesNoProgramadasAnioLocalUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.ObtenerEstacionesCacheUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.SincronizarCumplimientoAnioUseCase
+import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.SincronizarEjecucionesNoProgramadasAnioUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.EstadoCita
 import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.estadoDeCita
 import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.nombreMes
@@ -13,6 +15,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -43,6 +46,8 @@ data class SubestacionHomeUiState(
 class SubestacionHomeViewModel @Inject constructor(
     private val obtenerCumplimientoAnioLocalUseCase: ObtenerCumplimientoAnioLocalUseCase,
     private val sincronizarCumplimientoAnioUseCase: SincronizarCumplimientoAnioUseCase,
+    private val obtenerEjecucionesNoProgramadasAnioLocalUseCase: ObtenerEjecucionesNoProgramadasAnioLocalUseCase,
+    private val sincronizarEjecucionesNoProgramadasAnioUseCase: SincronizarEjecucionesNoProgramadasAnioUseCase,
     private val obtenerEstacionesCacheUseCase: ObtenerEstacionesCacheUseCase,
     private val tokenManager: TokenManager
 ) : ViewModel() {
@@ -79,17 +84,21 @@ class SubestacionHomeViewModel @Inject constructor(
 
         localJob?.cancel()
         localJob = viewModelScope.launch {
-            obtenerCumplimientoAnioLocalUseCase(hoy.year, hoy.monthValue).collect { citas ->
+            combine(
+                obtenerCumplimientoAnioLocalUseCase(hoy.year, hoy.monthValue),
+                obtenerEjecucionesNoProgramadasAnioLocalUseCase(hoy.year, hoy.monthValue)
+            ) { programadas, noProgramadas -> programadas to noProgramadas }
+                .collect { (citas, noProgramadas) ->
                 val conEstado = citas.map { it to estadoDeCita(it, hoy) }
                 val delMes = conEstado.filter { it.first.anio == hoy.year && it.first.mes == hoy.monthValue }
                 val ejecutadasDelMes = delMes.count { it.second == EstadoCita.EJECUTADA }
                 val pendientesDelMes = delMes.count { it.second == EstadoCita.PENDIENTE }
                 val vencidas = conEstado.count { it.second == EstadoCita.VENCIDA }
                 val programadasDelMes = delMes.size
-                // Mock: realizadasResumen cuenta TODAS las ejecutadas, no solo las del
-                // mes en curso — el caché de cumplimiento ya trae todo el año hasta el mes
-                // actual, así que basta con no filtrar por delMes acá.
-                val realizadasCount = conEstado.count { it.second == EstadoCita.EJECUTADA }
+                // Total real de actividades ejecutadas: citas del cronograma cumplidas +
+                // actividades no programadas (ambas son trabajo ya realizado) — antes solo
+                // contaba las citas del cronograma, dejando fuera todo lo ad-hoc.
+                val realizadasCount = conEstado.count { it.second == EstadoCita.EJECUTADA } + noProgramadas.size
                 _uiState.update {
                     it.copy(
                         isLoading = false,
@@ -113,6 +122,9 @@ class SubestacionHomeViewModel @Inject constructor(
         viewModelScope.launch {
             sincronizarCumplimientoAnioUseCase(hoy.year, hoy.monthValue)
                 .onFailure { _uiState.update { it.copy(isLoading = false) } }
+        }
+        viewModelScope.launch {
+            sincronizarEjecucionesNoProgramadasAnioUseCase(hoy.year)
         }
     }
 }

@@ -4,8 +4,10 @@ import com.example.testusoandroidstudio_1_usochicamocha.data.local.TokenManager
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.CitaProgramada
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.EstacionCatalogo
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.ObtenerCumplimientoAnioLocalUseCase
+import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.ObtenerEjecucionesNoProgramadasAnioLocalUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.ObtenerEstacionesCacheUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.SincronizarCumplimientoAnioUseCase
+import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.SincronizarEjecucionesNoProgramadasAnioUseCase
 import io.mockk.MockKAnnotations
 import io.mockk.coEvery
 import io.mockk.every
@@ -30,7 +32,9 @@ import java.time.LocalDate
  * tarjetas de navegación (agregados esta sesión: antes eran texto fijo, el mock
  * siempre muestra números reales). `pendientes` mezcla vencidas + pendientes del mes
  * (backlog completo), `realizadasCount` cuenta TODO el año hasta el mes actual (no
- * solo el mes en curso), `estacionesTotal` viene del catálogo cacheado. Offline-first
+ * solo el mes en curso) MÁS las actividades no programadas (ad-hoc, sin cita de
+ * cronograma) — antes solo contaba citas del cronograma cumplidas, dejando fuera
+ * ese trabajo real. `estacionesTotal` viene del catálogo cacheado. Offline-first
  * (agregado esta sesión): los KPIs se alimentan del caché local en Room
  * (`ObtenerCumplimientoAnioLocalUseCase`), el backend solo refresca ese caché en segundo
  * plano (`SincronizarCumplimientoAnioUseCase`).
@@ -44,6 +48,10 @@ class SubestacionHomeViewModelTest {
     lateinit var obtenerCumplimientoAnioLocalUseCase: ObtenerCumplimientoAnioLocalUseCase
     @MockK
     lateinit var sincronizarCumplimientoAnioUseCase: SincronizarCumplimientoAnioUseCase
+    @MockK
+    lateinit var obtenerEjecucionesNoProgramadasAnioLocalUseCase: ObtenerEjecucionesNoProgramadasAnioLocalUseCase
+    @MockK
+    lateinit var sincronizarEjecucionesNoProgramadasAnioUseCase: SincronizarEjecucionesNoProgramadasAnioUseCase
     @MockK
     lateinit var obtenerEstacionesCacheUseCase: ObtenerEstacionesCacheUseCase
     @MockK
@@ -68,6 +76,8 @@ class SubestacionHomeViewModelTest {
         every { tokenManager.getUsername() } returns flowOf("tecnico.test")
         every { obtenerCumplimientoAnioLocalUseCase(any(), any()) } returns flowOf(emptyList())
         coEvery { sincronizarCumplimientoAnioUseCase(any(), any()) } returns Result.success(Unit)
+        every { obtenerEjecucionesNoProgramadasAnioLocalUseCase(any(), any()) } returns flowOf(emptyList())
+        coEvery { sincronizarEjecucionesNoProgramadasAnioUseCase(any()) } returns Result.success(Unit)
     }
 
     @After
@@ -79,6 +89,8 @@ class SubestacionHomeViewModelTest {
     private fun createViewModel() = SubestacionHomeViewModel(
         obtenerCumplimientoAnioLocalUseCase,
         sincronizarCumplimientoAnioUseCase,
+        obtenerEjecucionesNoProgramadasAnioLocalUseCase,
+        sincronizarEjecucionesNoProgramadasAnioUseCase,
         obtenerEstacionesCacheUseCase,
         tokenManager
     )
@@ -126,6 +138,23 @@ class SubestacionHomeViewModelTest {
         advanceUntilIdle()
 
         assertEquals(2, vm.uiState.value.realizadasCount)
+    }
+
+    @Test
+    fun `realizadasCount suma tambien las actividades no programadas`() = runTest {
+        every { obtenerCumplimientoAnioLocalUseCase(any(), any()) } returns flowOf(
+            listOf(cita(hoy.year, hoy.monthValue, actividadId = 1L, cumple = true)) // 1 EJECUTADA de cronograma
+        )
+        every { obtenerEjecucionesNoProgramadasAnioLocalUseCase(any(), any()) } returns flowOf(
+            listOf(
+                cita(hoy.year, hoy.monthValue, actividadId = 2L, cumple = true),
+                cita(hoy.year, hoy.monthValue, actividadId = 3L, cumple = true)
+            ) // 2 actividades ad-hoc, sin cita de cronograma
+        )
+        val vm = createViewModel()
+        advanceUntilIdle()
+
+        assertEquals(3, vm.uiState.value.realizadasCount)
     }
 
     @Test
