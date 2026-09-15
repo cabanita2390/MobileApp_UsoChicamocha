@@ -44,10 +44,17 @@ import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.theme.Sub
 import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.theme.SubestacionSyncIconButton
 import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.theme.SubestacionType
 
-/** URL completa de una evidencia: el backend sirve las rutas de /uploads fuera de /api (ver WebConfig del backend). */
+/**
+ * URL completa de una evidencia: el backend sirve las rutas de /uploads fuera de /api
+ * (ver WebConfig del backend). Desde V40, EvidenciaStorageService ya guarda
+ * rutaArchivo con el prefijo "/uploads/" incluido (antes no lo traía) — se acepta
+ * cualquiera de los dos formatos para no romper con evidencia cacheada localmente
+ * en Room desde antes de ese fix.
+ */
 private fun urlEvidencia(rutaArchivo: String): String {
     val raiz = BuildConfig.BASE_URL.substringBefore("/api")
-    return "$raiz/uploads/$rutaArchivo"
+    val ruta = if (rutaArchivo.startsWith("/uploads/")) rutaArchivo else "/uploads/$rutaArchivo"
+    return "$raiz$ruta"
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
