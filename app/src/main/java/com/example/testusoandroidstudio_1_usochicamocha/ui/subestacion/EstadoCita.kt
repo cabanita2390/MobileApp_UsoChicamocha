@@ -10,9 +10,12 @@ import java.time.YearMonth
 /**
  * Estado visual de una cita del cronograma, derivado en el cliente (el backend solo
  * expone `cumple`/`ejecutado`) — mismo cálculo que usaba el mock del diseño:
- * mes futuro → PROGRAMADA; mes actual → EJECUTADA si cumple, si no PENDIENTE;
- * mes pasado → EJECUTADA si cumple, si no VENCIDA. Compartido entre Cronograma y
- * Pendientes para no duplicar la regla.
+ * cumple → EJECUTADA (sin importar el mes: una cita futura ya registrada, por ejemplo
+ * desde "Registrar algo que no está en el cronograma" o adelantando trabajo de campo,
+ * cuenta como ejecutada); si no cumple, mes futuro → PROGRAMADA; mes actual → PENDIENTE;
+ * mes pasado → VENCIDA. Compartido entre Cronograma y Pendientes para no duplicar la
+ * regla. `cumple` se revisa antes que el mes — antes lo hacía después, así que una cita
+ * de mes futuro ya registrada se seguía mostrando como "Programada / Sin registrar".
  */
 enum class EstadoCita { PENDIENTE, VENCIDA, EJECUTADA, PROGRAMADA }
 
@@ -22,8 +25,8 @@ fun estadoDeCita(cita: CitaProgramada, hoy: LocalDate = LocalDate.now()): Estado
     val citaYearMonth = YearMonth.of(cita.anio, cita.mes)
     val actual = YearMonth.of(hoy.year, hoy.monthValue)
     return when {
-        citaYearMonth > actual -> EstadoCita.PROGRAMADA
         cita.cumple -> EstadoCita.EJECUTADA
+        citaYearMonth > actual -> EstadoCita.PROGRAMADA
         citaYearMonth == actual -> EstadoCita.PENDIENTE
         else -> EstadoCita.VENCIDA
     }

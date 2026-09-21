@@ -175,7 +175,7 @@ fun CronogramaScreen(
                         items(grupo.citas, key = { "cita_${it.cita.programacionId}" }) { citaUi ->
                             CitaRow(citaUi) {
                                 when (citaUi.estado) {
-                                    EstadoCita.PENDIENTE, EstadoCita.VENCIDA -> onNavigateToCaptura(
+                                    EstadoCita.PENDIENTE, EstadoCita.VENCIDA, EstadoCita.PROGRAMADA -> onNavigateToCaptura(
                                         citaUi.cita.programacionId,
                                         citaUi.cita.estacionId,
                                         citaUi.cita.actividadId,
@@ -188,9 +188,6 @@ fun CronogramaScreen(
                                         onResuelto = { id -> onNavigateToDetalle(id) },
                                         onError = { msg -> scope.launch { snackbarHostState.showSnackbar(msg) } }
                                     )
-                                    EstadoCita.PROGRAMADA -> scope.launch {
-                                        snackbarHostState.showSnackbar("Todavía no toca — es de un mes futuro")
-                                    }
                                 }
                             }
                         }
