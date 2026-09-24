@@ -112,7 +112,7 @@ fun HomeScreen(
                         onClick = onNavigateToMotos
                     )
                     InspectionCategoryCard(
-                        title = "Subestaciones",
+                        title = "Estaciones de Bombeo",
                         subtitle = "Mantenimiento civil de\nestaciones",
                         icon = Icons.Filled.Construction,
                         onClick = onNavigateToSubestaciones
@@ -139,7 +139,7 @@ fun HomeScreen(
                         onClick = onNavigateToMotos
                     )
                     InspectionCategoryCard(
-                        title = "Subestaciones",
+                        title = "Estaciones de Bombeo",
                         subtitle = "Mantenimiento civil de\nestaciones",
                         icon = Icons.Filled.Construction,
                         onClick = onNavigateToSubestaciones
@@ -166,7 +166,7 @@ fun HomeScreen(
                         onClick = onNavigateToMotos
                     )
                     InspectionCategoryCard(
-                        title = "Subestaciones",
+                        title = "Estaciones de Bombeo",
                         subtitle = "Mantenimiento civil de\nestaciones",
                         icon = Icons.Filled.Construction,
                         onClick = onNavigateToSubestaciones
