@@ -225,6 +225,22 @@ class MaquinariaCambioAceiteViewModel @Inject constructor(
                 return@launch
             }
 
+            // Antes un horómetro vacío/no numérico se guardaba como 0 y el back lo
+            // rechazaba al sincronizar, dejando el formulario atascado en pendientes.
+            val horometro = state.currentHourMeter.trim().toIntOrNull()
+            if (horometro == null || horometro <= 0) {
+                _uiState.update { it.copy(error = "Ingrese el horómetro al momento del cambio (número entero mayor a 0).") }
+                return@launch
+            }
+
+            // Mismo problema: un promedio vacío se guardaba como 0, y con intervalo 0 el
+            // próximo cambio queda en el mismo horómetro → alerta de cambio inmediata.
+            val promedioHoras = state.averageHoursChange.trim().toIntOrNull()
+            if (promedioHoras == null || promedioHoras <= 0) {
+                _uiState.update { it.copy(error = "Ingrese el promedio de horas para el próximo cambio (número entero mayor a 0).") }
+                return@launch
+            }
+
             val form = MachineOilChangeForm(
                 id = state.editingFormId ?: 0, // Usar ID existente si se edita, o 0 para nuevo (Room autogenera)
                 machineId = state.selectedMachine.id,
@@ -232,8 +248,8 @@ class MaquinariaCambioAceiteViewModel @Inject constructor(
                 brand = state.selectedOil.name,
                 brandId = state.selectedOil.id,
                 quantity = state.quantity.toDoubleOrNull() ?: 0.0,
-                currentHourMeter = state.currentHourMeter.toIntOrNull() ?: 0,
-                averageHoursChange = state.averageHoursChange.toIntOrNull() ?: 0,
+                currentHourMeter = horometro,
+                averageHoursChange = promedioHoras,
                 type = state.machineOilChangeType,
                 isSynced = false,
                 isSyncing = false,
