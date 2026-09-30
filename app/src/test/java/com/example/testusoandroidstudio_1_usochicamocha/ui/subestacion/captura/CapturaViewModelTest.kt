@@ -4,6 +4,7 @@ import android.content.Context
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.TokenManager
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.ActividadCatalogo
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.CitaProgramada
+import com.example.testusoandroidstudio_1_usochicamocha.domain.model.Ejecucion
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.EjecucionDetalle
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.EjecucionEdicion
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.EstacionCatalogo
@@ -465,6 +466,41 @@ class CapturaViewModelTest {
 
         assertEquals(3, viewModel.uiState.value.currentStep)
         assertTrue(viewModel.uiState.value.saveCompleted)
+    }
+
+    @Test
+    fun `modo cita sugiere el tipo de mantenimiento pero el tecnico puede cambiarlo`() = runTest {
+        var guardada: Ejecucion? = null
+        coEvery { guardarEjecucionLocalUseCase(any(), any()) } answers { guardada = firstArg() }
+        createViewModel()
+        viewModel.cargarDesdeCita(
+            programacionId = 100L, estacionId = estacion.id, actividadId = actividad.id,
+            esInspeccion = false, vencida = false
+        )
+        assertEquals("PREVENTIVO", viewModel.uiState.value.tipoMantenimiento)
+
+        // Se encontró un daño y se reparó: el técnico lo marca como correctivo.
+        viewModel.onTipoMantenimientoChange("CORRECTIVO")
+        viewModel.onSiguiente()
+        viewModel.onResultadoChange("CONFORME")
+        viewModel.onObservacionesChange("Se reparó la puerta")
+        viewModel.onSiguiente()
+        viewModel.onSiguiente()
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.saveCompleted)
+        assertEquals("CORRECTIVO", guardada?.tipoMantenimiento)
+        assertEquals(100L, guardada?.programacionId)
+    }
+
+    @Test
+    fun `modo cita vencida sugiere correctivo`() = runTest {
+        createViewModel()
+        viewModel.cargarDesdeCita(
+            programacionId = 100L, estacionId = estacion.id, actividadId = actividad.id,
+            esInspeccion = false, vencida = true
+        )
+        assertEquals("CORRECTIVO", viewModel.uiState.value.tipoMantenimiento)
     }
 
     // ---- Validación de pasos del wizard (modo libre — sin cambios respecto a como estaba) ----

@@ -249,7 +249,9 @@ class CapturaViewModel @Inject constructor(
      * ruta de navegación en vez de forzar al wizard a re-consultarlas). Replica
      * `openCita()` del diseño: tipoActividad = INSPECCION si el nombre de la
      * actividad empieza con "Inspecci", si no MANTENIMIENTO; tipoMantenimiento =
-     * CORRECTIVO si la cita está vencida, si no PREVENTIVO.
+     * CORRECTIVO si la cita está vencida, si no PREVENTIVO. Ambos son solo la
+     * sugerencia inicial: el técnico puede cambiarlos en PasoCita (el backend acepta
+     * cualquier tipo en un registro de cita).
      */
     fun cargarDesdeCita(
         programacionId: Long,

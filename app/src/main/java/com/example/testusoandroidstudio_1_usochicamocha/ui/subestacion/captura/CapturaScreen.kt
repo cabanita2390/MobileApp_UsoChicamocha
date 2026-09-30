@@ -585,7 +585,13 @@ private fun ChipOption(label: String, sub: String?, seleccionado: Boolean, modif
  * el paso Actividad en modo libre ("Tipo de actividad") y por PasoCita en modo cita
  * ("Tipo de actividad realizada"), donde es lo único de esta sección que se captura. */
 @Composable
-private fun TipoActividadSection(uiState: CapturaUiState, viewModel: CapturaViewModel, titulo: String = "Tipo de actividad") {
+private fun TipoActividadSection(
+    uiState: CapturaUiState,
+    viewModel: CapturaViewModel,
+    titulo: String = "Tipo de actividad",
+    // En una cita del cronograma "No programado · Fuera del cronograma" no aplica.
+    conNoProgramado: Boolean = true
+) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         SubestacionType.SectionLabel(titulo)
         val opciones = listOf(
@@ -598,8 +604,46 @@ private fun TipoActividadSection(uiState: CapturaUiState, viewModel: CapturaView
                 ChipOption(label, sub, uiState.tipoActividad == valor, Modifier.weight(1f)) { viewModel.onTipoActividadChange(valor) }
             }
         }
-        val (valor, label, sub) = opciones[2]
-        ChipOption(label, sub, uiState.tipoActividad == valor, Modifier.fillMaxWidth(0.5f)) { viewModel.onTipoActividadChange(valor) }
+        if (conNoProgramado) {
+            val (valor, label, sub) = opciones[2]
+            ChipOption(label, sub, uiState.tipoActividad == valor, Modifier.fillMaxWidth(0.5f)) { viewModel.onTipoActividadChange(valor) }
+        }
+    }
+}
+
+private val OPCIONES_MANT_LIBRE = listOf(
+    "PREVENTIVO" to "Preventivo", "CORRECTIVO" to "Correctivo", "PREDICTIVO" to "Predictivo", "NO_PROGRAMADO" to "No programado"
+)
+
+/** En una cita del cronograma "No programado" no aplica: el registro sí estaba programado. */
+private val OPCIONES_MANT_CITA = listOf("PREVENTIVO" to "Preventivo", "CORRECTIVO" to "Correctivo", "PREDICTIVO" to "Predictivo")
+
+/** Chips de tipo de mantenimiento — paso Actividad (registro libre) y PasoCita (modo cita). */
+@Composable
+private fun TipoMantenimientoSection(
+    uiState: CapturaUiState,
+    viewModel: CapturaViewModel,
+    opciones: List<Pair<String, String>>,
+    ayuda: String? = null
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+        SubestacionType.SectionLabel("Tipo de mantenimiento")
+        opciones.chunked(2).forEach { fila ->
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                fila.forEach { (valor, label) ->
+                    val on = uiState.tipoMantenimiento == valor
+                    val danger = valor == "CORRECTIVO"
+                    val bg = if (on) (if (danger) SubestacionColors.Red else SubestacionColors.Purple) else SubestacionColors.ChipBg
+                    val fg = if (on) Color.White else SubestacionColors.TextPrimary
+                    val bd = if (on) bg else SubestacionColors.ChipBorder
+                    Box(
+                        Modifier.clip(SubestacionShapes.Chip).background(bg).border(2.dp, bd, SubestacionShapes.Chip)
+                            .clickable { viewModel.onTipoMantenimientoChange(valor) }.padding(17.dp, 14.dp)
+                    ) { Text(label, color = fg, fontWeight = FontWeight.Bold, fontSize = 13.5.sp) }
+                }
+            }
+        }
+        if (ayuda != null) SubestacionType.Hint(ayuda)
     }
 }
 
@@ -607,27 +651,7 @@ private fun TipoActividadSection(uiState: CapturaUiState, viewModel: CapturaView
 private fun PasoActividad(uiState: CapturaUiState, viewModel: CapturaViewModel) {
     LazyColumn(Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item { TipoActividadSection(uiState, viewModel) }
-        item {
-            Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                SubestacionType.SectionLabel("Tipo de mantenimiento")
-                val opcionesMant = listOf("PREVENTIVO" to "Preventivo", "CORRECTIVO" to "Correctivo", "PREDICTIVO" to "Predictivo", "NO_PROGRAMADO" to "No programado")
-                opcionesMant.chunked(2).forEach { fila ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        fila.forEach { (valor, label) ->
-                            val on = uiState.tipoMantenimiento == valor
-                            val danger = valor == "CORRECTIVO"
-                            val bg = if (on) (if (danger) SubestacionColors.Red else SubestacionColors.Purple) else SubestacionColors.ChipBg
-                            val fg = if (on) Color.White else SubestacionColors.TextPrimary
-                            val bd = if (on) bg else SubestacionColors.ChipBorder
-                            Box(
-                                Modifier.clip(SubestacionShapes.Chip).background(bg).border(2.dp, bd, SubestacionShapes.Chip)
-                                    .clickable { viewModel.onTipoMantenimientoChange(valor) }.padding(17.dp, 14.dp)
-                            ) { Text(label, color = fg, fontWeight = FontWeight.Bold, fontSize = 13.5.sp) }
-                        }
-                    }
-                }
-            }
-        }
+        item { TipoMantenimientoSection(uiState, viewModel, OPCIONES_MANT_LIBRE) }
         if (uiState.actividadBloqueada) {
             item {
                 CampoFijo(
@@ -815,11 +839,6 @@ private fun PasoCita(uiState: CapturaUiState, viewModel: CapturaViewModel) {
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         LockedChip("DISCIPLINA", nombreDisciplina(uiState.disciplinaSeleccionada))
-                        LockedChip(
-                            "MANTENIM.",
-                            L_MANT[uiState.tipoMantenimiento] ?: uiState.tipoMantenimiento,
-                            danger = uiState.tipoMantenimiento == "CORRECTIVO"
-                        )
                         uiState.mesProgramado?.let { mes ->
                             LockedChip("MES", nombreMes(mes))
                         }
@@ -853,7 +872,13 @@ private fun PasoCita(uiState: CapturaUiState, viewModel: CapturaViewModel) {
         }
         item { FechaEjecucionField(uiState.fecha, viewModel::onFechaChange) }
         item { PeriodoEjecucionSection(uiState, viewModel) }
-        item { TipoActividadSection(uiState, viewModel, titulo = "Tipo de actividad realizada") }
+        item { TipoActividadSection(uiState, viewModel, titulo = "Tipo de actividad realizada", conNoProgramado = false) }
+        item {
+            TipoMantenimientoSection(
+                uiState, viewModel, OPCIONES_MANT_CITA,
+                ayuda = "Sugerido: correctivo si la cita está vencida, preventivo si no. Cámbialo si se hizo otro tipo."
+            )
+        }
     }
 }
 
