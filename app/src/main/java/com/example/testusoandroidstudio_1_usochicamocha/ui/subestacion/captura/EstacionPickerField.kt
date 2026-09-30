@@ -35,6 +35,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.EstacionCatalogo
+import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.frecuenciaLabel
 import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.theme.SubestacionColors
 import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.theme.SubestacionShapes
 
@@ -115,7 +116,7 @@ fun EstacionPickerField(
                                 )
                                 Text(
                                     "${if (estacion.tipo == "BOMBEO") "Bombeo" else "Complementaria"} · ${
-                                        if (estacion.frecuenciaBase == "TRIMESTRAL") "Trimestral" else "Anual"
+                                        frecuenciaLabel(estacion.frecuenciaBase)
                                     }",
                                     color = SubestacionColors.TextTertiary, fontWeight = FontWeight.SemiBold, fontSize = 10.5.sp,
                                     modifier = Modifier.padding(top = 2.dp)

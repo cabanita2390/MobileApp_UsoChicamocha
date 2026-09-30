@@ -59,6 +59,13 @@ val L_ACT = mapOf("INSPECCION" to "Inspección", "MANTENIMIENTO" to "Mantenimien
 val L_MANT = mapOf("PREVENTIVO" to "Preventivo", "CORRECTIVO" to "Correctivo", "PREDICTIVO" to "Predictivo", "NO_PROGRAMADO" to "No programado")
 val L_RES = mapOf("CONFORME" to "Conforme", "CON_HALLAZGOS" to "Con hallazgos", "REQUIERE_INTERVENCION" to "Requiere intervención")
 val L_MOT = mapOf("NO_PROGRAMADO" to "No programado", "OTRO" to "Otro")
+val L_FREC = mapOf(
+    "MENSUAL" to "Mensual", "BIMESTRAL" to "Bimestral", "TRIMESTRAL" to "Trimestral",
+    "SEMESTRAL" to "Semestral", "ANUAL" to "Anual"
+)
+
+/** Frecuencia base de la estación en español; un código desconocido se muestra tal cual. */
+fun frecuenciaLabel(codigo: String?): String = codigo?.let { L_FREC[it] ?: it } ?: ""
 
 private val NOMBRES_MES = listOf(
     "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",

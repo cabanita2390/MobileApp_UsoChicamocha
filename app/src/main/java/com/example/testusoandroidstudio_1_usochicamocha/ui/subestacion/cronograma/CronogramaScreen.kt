@@ -26,6 +26,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.ConnectionStatusTopBar
 import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.CitaUi
 import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.EstadoCita
+import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.frecuenciaLabel
 import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.colorDeEstado
 import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.etiquetaDeEstado
 import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.nombreMes
@@ -163,7 +164,7 @@ fun CronogramaScreen(
                                         val frec = grupo.estacionFrecuencia
                                         if (frec != null) {
                                             append(" · ")
-                                            append(if (frec == "TRIMESTRAL") "Trimestral" else "Anual")
+                                            append(frecuenciaLabel(frec))
                                         }
                                     },
                                     color = SubestacionColors.TextMeta,
