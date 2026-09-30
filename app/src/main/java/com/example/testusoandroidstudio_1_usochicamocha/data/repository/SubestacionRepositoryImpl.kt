@@ -14,6 +14,7 @@ import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.ImageE
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.toCacheEntity
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.toDomain
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.ApiService
+import com.example.testusoandroidstudio_1_usochicamocha.data.remote.mensajeErrorBackend
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.EjecucionEditRequestDto
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.EjecucionRequestDto
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.toDomain
@@ -310,7 +311,14 @@ class SubestacionRepositoryImpl @Inject constructor(
             if (response.isSuccessful && response.body() != null) {
                 Result.success(response.body()!!.toDomain())
             } else {
-                Result.failure(Exception("Error al editar la ejecución: ${response.code()}"))
+                Result.failure(
+                    Exception(
+                        mensajeErrorBackend(
+                            response.errorBody()?.string(),
+                            generico = "Error al editar la ejecución: ${response.code()}"
+                        )
+                    )
+                )
             }
         } catch (e: Exception) {
             Result.failure(e)
