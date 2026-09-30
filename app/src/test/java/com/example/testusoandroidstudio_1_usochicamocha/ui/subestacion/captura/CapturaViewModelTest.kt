@@ -595,6 +595,77 @@ class CapturaViewModelTest {
         assertEquals(detalle.actividadId, edicionEnviada?.actividadId)
     }
 
+    // ---- MOV-02: registro de cita en edición ----
+
+    @Test
+    fun `editar un registro de cita bloquea la actividad y el paso a registro libre`() = runTest {
+        coEvery { obtenerDetalleEjecucionUseCase(any()) } returns Result.success(detalleFixture())
+        createViewModel()
+        viewModel.cargarParaEditar(1L)
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.actividadBloqueada)
+        viewModel.onToggleModoLibre()
+        viewModel.onActividadSeleccionada(actividad.copy(id = actividad.id + 1, nombre = "Otra"))
+        advanceUntilIdle()
+
+        val estado = viewModel.uiState.value
+        assertFalse(estado.modoLibre)
+        assertEquals(actividad.id, estado.actividadId)
+        assertEquals(actividad.nombre, estado.actividadNombre)
+    }
+
+    @Test
+    fun `editar un registro libre deja cambiar la actividad como hoy`() = runTest {
+        coEvery { obtenerDetalleEjecucionUseCase(any()) } returns Result.success(
+            detalleFixture().copy(esProgramada = false, actividadId = null, actividadNombre = null, descripcionLibre = "Arreglo puntual")
+        )
+        createViewModel()
+        viewModel.cargarParaEditar(1L)
+        advanceUntilIdle()
+
+        assertFalse(viewModel.uiState.value.actividadBloqueada)
+        assertTrue(viewModel.uiState.value.modoLibre)
+        viewModel.onToggleModoLibre()
+        viewModel.onActividadSeleccionada(actividad)
+        advanceUntilIdle()
+        assertEquals(actividad.id, viewModel.uiState.value.actividadId)
+    }
+
+    @Test
+    fun `en edicion la estacion queda fija porque el backend no la recibe`() = runTest {
+        coEvery { obtenerDetalleEjecucionUseCase(any()) } returns Result.success(detalleFixture())
+        createViewModel()
+        viewModel.cargarParaEditar(1L)
+        advanceUntilIdle()
+
+        viewModel.onEstacionSeleccionada(estacion.copy(id = estacion.id + 1, nombre = "Otra"))
+        assertEquals(estacion.id, viewModel.uiState.value.estacionId)
+    }
+
+    @Test
+    fun `al editar, el periodo solo se marca ajustado a mano si no coincide con la fecha`() = runTest {
+        coEvery { obtenerDetalleEjecucionUseCase(any()) } returns Result.success(
+            detalleFixture().copy(fecha = "2026-09-17", mesEjecucion = 9, semanaEjecucion = 3)
+        )
+        createViewModel()
+        viewModel.cargarParaEditar(1L)
+        advanceUntilIdle()
+        assertFalse(viewModel.uiState.value.periodoAjustadoManualmente)
+    }
+
+    @Test
+    fun `al editar, un periodo distinto al de la fecha se conserva como ajustado a mano`() = runTest {
+        coEvery { obtenerDetalleEjecucionUseCase(any()) } returns Result.success(
+            detalleFixture().copy(fecha = "2026-09-17", mesEjecucion = 8, semanaEjecucion = 4)
+        )
+        createViewModel()
+        viewModel.cargarParaEditar(1L)
+        advanceUntilIdle()
+        assertTrue(viewModel.uiState.value.periodoAjustadoManualmente)
+        assertEquals(8, viewModel.uiState.value.mesEjecucion)
+    }
+
     private fun detalleFixture() = EjecucionDetalle(
         id = 1L,
         fecha = hoy.toString(),

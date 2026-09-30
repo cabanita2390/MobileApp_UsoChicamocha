@@ -54,6 +54,9 @@ data class CapturaUiState(
     val cargandoEdicion: Boolean = false,
     val motivoEdicion: String = "",
     val errorEdicion: String? = null,
+    // MOV-02 (D1): un registro que viene de una cita conserva su actividad — el backend
+    // rechaza el cambio. En edición se muestra fija y no se puede pasar a registro libre.
+    val actividadBloqueada: Boolean = false,
 
     // Paso 1 — Contexto
     val fecha: String = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE),
@@ -293,10 +296,14 @@ class CapturaViewModel @Inject constructor(
                             estacionNombre = d.estacionNombre,
                             mesEjecucion = d.mesEjecucion,
                             semanaEjecucion = d.semanaEjecucion,
-                            periodoAjustadoManualmente = true,
+                            // Solo "ajustado a mano" si de verdad no coincide con la fecha; si
+                            // coincide, cambiar la fecha al editar vuelve a recalcular mes/semana.
+                            periodoAjustadoManualmente = d.mesEjecucion != mesDeFecha(d.fecha) ||
+                                d.semanaEjecucion != semanaDeFecha(d.fecha),
                             tipoActividad = d.tipoActividad,
                             tipoMantenimiento = d.tipoMantenimiento,
                             modoLibre = d.actividadId == null,
+                            actividadBloqueada = d.esProgramada && d.actividadId != null,
                             actividadId = d.actividadId,
                             actividadNombre = d.actividadNombre,
                             descripcionLibre = d.descripcionLibre ?: "",
@@ -374,7 +381,7 @@ class CapturaViewModel @Inject constructor(
         val s = _uiState.value
         val estacionId = s.estacionId
         val actividadId = s.actividadId
-        if (estacionId == null || actividadId == null) {
+        if (estacionId == null || actividadId == null || s.esEdicion) {
             _uiState.update { it.copy(citaSugerida = null, citaSugeridaEstado = null) }
             return
         }
@@ -428,6 +435,9 @@ class CapturaViewModel @Inject constructor(
     }
 
     fun onEstacionSeleccionada(estacion: EstacionCatalogo) {
+        // La edición no envía la estación (EjecucionEditRequestDto no la tiene): cambiarla
+        // se perdería sin aviso, así que en edición queda fija.
+        if (_uiState.value.esEdicion) return
         // Cambiar de estación invalida cualquier coincidencia previa — se vuelve a
         // calcular cuando el técnico elija una actividad de esta nueva estación.
         _uiState.update { it.copy(estacionId = estacion.id, estacionNombre = estacion.nombre, citaSugerida = null, citaSugeridaEstado = null) }
@@ -501,6 +511,7 @@ class CapturaViewModel @Inject constructor(
      * al catálogo dentro de un registro ya libre, no reconecta con una cita).
      */
     fun onToggleModoLibre() {
+        if (_uiState.value.actividadBloqueada) return
         _uiState.update {
             val activandoLibre = !it.modoLibre
             it.copy(
@@ -539,6 +550,7 @@ class CapturaViewModel @Inject constructor(
      */
     fun onActividadSeleccionada(actividad: ActividadCatalogo) {
         val previo = _uiState.value
+        if (previo.actividadBloqueada) return
         val cambioDeActividadConCitaVinculada =
             previo.programacionId != null && previo.actividadId != actividad.id
         _uiState.update {

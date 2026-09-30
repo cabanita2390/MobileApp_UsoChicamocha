@@ -480,7 +480,17 @@ private fun PasoContexto(uiState: CapturaUiState, viewModel: CapturaViewModel) {
     LazyColumn(Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item { FechaEjecucionField(uiState.fecha, viewModel::onFechaChange) }
         item { PeriodoEjecucionSection(uiState, viewModel) }
-        item {
+        if (uiState.esEdicion) {
+            // La edición no cambia estación ni disciplina (el backend no las recibe):
+            // se muestran fijas en vez de un selector que no tendría efecto.
+            item {
+                CampoFijo(
+                    etiqueta = "Estación y disciplina",
+                    valor = "${uiState.estacionNombre.ifBlank { "—" }} · ${nombreDisciplina(uiState.disciplinaSeleccionada)}",
+                    nota = "No se cambian al editar un registro."
+                )
+            }
+        } else item {
             SubestacionType.SectionLabel("Estación", modifier = Modifier.padding(bottom = 7.dp))
             // Mismo selector de lista que al crear un registro nuevo — ya llega con la
             // estación correcta preseleccionada (resaltada), no hay que escribir nada.
@@ -490,7 +500,7 @@ private fun PasoContexto(uiState: CapturaUiState, viewModel: CapturaViewModel) {
                 onEstacionSeleccionada = { viewModel.onEstacionSeleccionada(it) }
             )
         }
-        item {
+        if (!uiState.esEdicion) item {
             SubestacionType.SectionLabel("Disciplina", modifier = Modifier.padding(bottom = 7.dp))
             DisciplinaField(
                 valorSeleccionado = uiState.disciplinaSeleccionada,
@@ -618,7 +628,15 @@ private fun PasoActividad(uiState: CapturaUiState, viewModel: CapturaViewModel) 
                 }
             }
         }
-        item {
+        if (uiState.actividadBloqueada) {
+            item {
+                CampoFijo(
+                    etiqueta = "Actividad civil",
+                    valor = uiState.actividadNombre ?: "—",
+                    nota = "Registro del cronograma: la actividad no se puede cambiar."
+                )
+            }
+        } else item {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                 SubestacionType.SectionLabel("Actividad civil")
                 Text(
@@ -628,7 +646,9 @@ private fun PasoActividad(uiState: CapturaUiState, viewModel: CapturaViewModel) 
                 )
             }
         }
-        if (uiState.modoLibre) {
+        if (uiState.actividadBloqueada) {
+            // Nada más: la actividad ya se mostró fija arriba.
+        } else if (uiState.modoLibre) {
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
                     SubestacionType.Hint("Se registra como actividad no programada. Describe qué se hizo:")
@@ -733,6 +753,24 @@ private fun LockedChip(etiqueta: String, valor: String, danger: Boolean = false,
             fontWeight = FontWeight.SemiBold, fontSize = 9.sp, letterSpacing = 0.5.sp
         )
         Text(valor, color = fg, fontWeight = FontWeight.ExtraBold, fontSize = 12.5.sp, modifier = Modifier.padding(top = 2.dp))
+    }
+}
+
+/** Dato que no se puede cambiar en este flujo: etiqueta, valor y el porqué, con candado. */
+@Composable
+private fun CampoFijo(etiqueta: String, valor: String, nota: String) {
+    Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+        SubestacionType.SectionLabel(etiqueta)
+        Row(
+            Modifier.fillMaxWidth().clip(SubestacionShapes.Input).background(SubestacionColors.PurpleSurface)
+                .border(1.5.dp, SubestacionColors.PurpleBorderLight, SubestacionShapes.Input).padding(16.dp, 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(valor, color = SubestacionColors.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp, modifier = Modifier.weight(1f))
+            Text("🔒", fontSize = 14.sp, color = SubestacionColors.TextQuaternary)
+        }
+        SubestacionType.Hint(nota)
     }
 }
 
