@@ -335,6 +335,9 @@ class SubestacionRepositoryImpl @Inject constructor(
             }
     }
 
+    override suspend fun getCitaLocal(programacionId: Long): CitaProgramada? =
+        cumplimientoCacheDao.getPorProgramacion(programacionId)?.toDomain()
+
     override fun getCumplimientoLocalDelAnioFlow(anio: Int, mesActual: Int): Flow<List<CitaProgramada>> {
         return cumplimientoCacheDao.getDelAnioFlow(anio, mesActual)
             .combine(ejecucionDao.getConCitaFlow()) { entities, locales ->

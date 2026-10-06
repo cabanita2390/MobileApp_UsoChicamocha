@@ -14,6 +14,7 @@ import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestaci
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.ObtenerActividadesCacheUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.ObtenerDetalleEjecucionUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.ObtenerEstacionesCacheUseCase
+import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.ObtenerCitaLocalUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.ObtenerPendientesUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.EstadoCita
 import io.mockk.MockKAnnotations
@@ -68,6 +69,8 @@ class CapturaViewModelTest {
     @MockK
     lateinit var obtenerPendientesUseCase: ObtenerPendientesUseCase
     @MockK
+    lateinit var obtenerCitaLocalUseCase: ObtenerCitaLocalUseCase
+    @MockK
     lateinit var localSyncCoordinator: LocalSyncCoordinator
     @MockK
     lateinit var tokenManager: TokenManager
@@ -104,6 +107,7 @@ class CapturaViewModelTest {
         every { tokenManager.getUsername() } returns flowOf("tecnico.test")
         coEvery { localSyncCoordinator.coordinateSync(any()) } returns Result.success(Unit)
         coEvery { obtenerPendientesUseCase(any(), any()) } returns Result.success(emptyList())
+        coEvery { obtenerCitaLocalUseCase(any()) } returns null
     }
 
     private fun createViewModel() {
@@ -115,6 +119,7 @@ class CapturaViewModelTest {
             obtenerDetalleEjecucionUseCase,
             editarEjecucionUseCase,
             obtenerPendientesUseCase,
+            obtenerCitaLocalUseCase,
             localSyncCoordinator,
             tokenManager
         )
@@ -265,6 +270,25 @@ class CapturaViewModelTest {
         assertTrue(estado.modoLibre)
         assertNull(estado.actividadId)
         assertNull(estado.citaSugerida)
+    }
+
+    @Test
+    fun `cita de una actividad que ya no esta en el catalogo del movil muestra su nombre`() = runTest {
+        // Actividad con "captura desde el móvil" deshabilitada: sus citas publicadas siguen
+        // llegando, pero la actividad no viene en el catálogo. Antes se mostraba "—".
+        coEvery { obtenerCitaLocalUseCase(100L) } returns CitaProgramada(
+            programacionId = 100L, anio = 2026, mes = 10, estacionId = estacion.id,
+            estacionNombre = "Holanda", estacionTipo = "BOMBEO", actividadId = 555L,
+            actividadNombre = "Compuertas", ejecutado = 0, cumple = false
+        )
+        createViewModel()
+        viewModel.cargarDesdeCita(
+            programacionId = 100L, estacionId = estacion.id, actividadId = 555L,
+            esInspeccion = true, vencida = false
+        )
+        advanceUntilIdle()
+
+        assertEquals("Compuertas", viewModel.uiState.value.actividadNombre)
     }
 
     // ---- Desvinculación de la cita al cambiar de actividad (bug de campo: se

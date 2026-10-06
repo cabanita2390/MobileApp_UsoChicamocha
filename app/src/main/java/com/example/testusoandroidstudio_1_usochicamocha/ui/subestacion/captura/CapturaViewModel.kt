@@ -15,6 +15,7 @@ import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestaci
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.ObtenerActividadesCacheUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.ObtenerDetalleEjecucionUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.ObtenerEstacionesCacheUseCase
+import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.ObtenerCitaLocalUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.ObtenerPendientesUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.EstadoCita
 import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.estadoDeCita
@@ -194,6 +195,7 @@ class CapturaViewModel @Inject constructor(
     private val obtenerDetalleEjecucionUseCase: ObtenerDetalleEjecucionUseCase,
     private val editarEjecucionUseCase: EditarEjecucionUseCase,
     private val obtenerPendientesUseCase: ObtenerPendientesUseCase,
+    private val obtenerCitaLocalUseCase: ObtenerCitaLocalUseCase,
     private val localSyncCoordinator: LocalSyncCoordinator,
     private val tokenManager: com.example.testusoandroidstudio_1_usochicamocha.data.local.TokenManager
 ) : ViewModel() {
@@ -276,6 +278,20 @@ class CapturaViewModel @Inject constructor(
                 tipoMantenimiento = if (vencida) "CORRECTIVO" else "PREVENTIVO",
                 mesProgramado = if (mesProgramado in 1..12) mesProgramado else null
             )
+        }
+        // Una actividad con "captura desde el móvil" deshabilitada no viene en el catálogo,
+        // pero sus citas ya publicadas siguen apareciendo: el nombre sale de la propia cita.
+        if (nombreActividad == null) {
+            viewModelScope.launch {
+                val cita = obtenerCitaLocalUseCase(programacionId) ?: return@launch
+                _uiState.update {
+                    if (it.programacionId != programacionId || !it.actividadNombre.isNullOrBlank()) it
+                    else it.copy(
+                        actividadNombre = cita.actividadNombre,
+                        estacionNombre = it.estacionNombre.ifBlank { cita.estacionNombre }
+                    )
+                }
+            }
         }
     }
 

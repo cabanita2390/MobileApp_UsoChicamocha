@@ -55,6 +55,9 @@ interface SubestacionRepository {
     /** Para Cronograma: un mes puntual, todas las estaciones, leído de Room. */
     fun getCumplimientoLocalPorMesFlow(anio: Int, mes: Int): Flow<List<CitaProgramada>>
 
+    /** Una cita del caché, con los nombres que mandó el servidor (aunque la actividad ya no esté en el catálogo del móvil). */
+    suspend fun getCitaLocal(programacionId: Long): CitaProgramada?
+
     /** Para Pendientes/Home: todo el año hasta `mesActual`, leído de Room. */
     fun getCumplimientoLocalDelAnioFlow(anio: Int, mesActual: Int): Flow<List<CitaProgramada>>
 

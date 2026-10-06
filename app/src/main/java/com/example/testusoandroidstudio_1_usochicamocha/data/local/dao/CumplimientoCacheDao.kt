@@ -20,6 +20,9 @@ interface CumplimientoCacheDao {
     @Query("SELECT * FROM mant_cumplimiento_cache WHERE anio = :anio AND mes = :mes")
     fun getPorMesFlow(anio: Int, mes: Int): Flow<List<CumplimientoCacheEntity>>
 
+    @Query("SELECT * FROM mant_cumplimiento_cache WHERE programacionId = :programacionId LIMIT 1")
+    suspend fun getPorProgramacion(programacionId: Long): CumplimientoCacheEntity?
+
     /** Para Pendientes/Home: todo el año hasta el mes actual (mismo rango que antes armaba `getPendientesDelAnio`). */
     @Query("SELECT * FROM mant_cumplimiento_cache WHERE anio = :anio AND mes <= :mesActual")
     fun getDelAnioFlow(anio: Int, mesActual: Int): Flow<List<CumplimientoCacheEntity>>
