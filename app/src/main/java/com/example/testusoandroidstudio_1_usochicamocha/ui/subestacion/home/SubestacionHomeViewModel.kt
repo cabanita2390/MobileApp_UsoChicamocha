@@ -6,6 +6,7 @@ import com.example.testusoandroidstudio_1_usochicamocha.data.local.TokenManager
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.ObtenerCumplimientoAnioLocalUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.ObtenerEjecucionesNoProgramadasAnioLocalUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.ObtenerEstacionesCacheUseCase
+import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.SincronizarCatalogosSubestacionUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.SincronizarCumplimientoAnioUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.SincronizarEjecucionesNoProgramadasAnioUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.EstadoCita
@@ -49,6 +50,7 @@ class SubestacionHomeViewModel @Inject constructor(
     private val obtenerEjecucionesNoProgramadasAnioLocalUseCase: ObtenerEjecucionesNoProgramadasAnioLocalUseCase,
     private val sincronizarEjecucionesNoProgramadasAnioUseCase: SincronizarEjecucionesNoProgramadasAnioUseCase,
     private val obtenerEstacionesCacheUseCase: ObtenerEstacionesCacheUseCase,
+    private val sincronizarCatalogosSubestacionUseCase: SincronizarCatalogosSubestacionUseCase,
     private val tokenManager: TokenManager
 ) : ViewModel() {
 
@@ -125,6 +127,11 @@ class SubestacionHomeViewModel @Inject constructor(
         }
         viewModelScope.launch {
             sincronizarEjecucionesNoProgramadasAnioUseCase(hoy.year)
+        }
+        // El catálogo solo se pedía al abrir el wizard: en el primer uso Home mostraba
+        // "Las 0 estaciones". Best-effort: sin señal se queda con lo que haya en caché.
+        viewModelScope.launch {
+            sincronizarCatalogosSubestacionUseCase()
         }
     }
 }

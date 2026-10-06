@@ -3,6 +3,7 @@ package com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.home
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.TokenManager
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.CitaProgramada
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.EstacionCatalogo
+import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.SincronizarCatalogosSubestacionUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.ObtenerCumplimientoAnioLocalUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.ObtenerEjecucionesNoProgramadasAnioLocalUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.ObtenerEstacionesCacheUseCase
@@ -10,6 +11,7 @@ import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestaci
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.SincronizarEjecucionesNoProgramadasAnioUseCase
 import io.mockk.MockKAnnotations
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.impl.annotations.MockK
 import io.mockk.unmockkAll
@@ -45,6 +47,8 @@ class SubestacionHomeViewModelTest {
     private val testDispatcher = StandardTestDispatcher()
 
     @MockK
+    lateinit var sincronizarCatalogosSubestacionUseCase: SincronizarCatalogosSubestacionUseCase
+    @MockK
     lateinit var obtenerCumplimientoAnioLocalUseCase: ObtenerCumplimientoAnioLocalUseCase
     @MockK
     lateinit var sincronizarCumplimientoAnioUseCase: SincronizarCumplimientoAnioUseCase
@@ -78,6 +82,7 @@ class SubestacionHomeViewModelTest {
         coEvery { sincronizarCumplimientoAnioUseCase(any(), any()) } returns Result.success(Unit)
         every { obtenerEjecucionesNoProgramadasAnioLocalUseCase(any(), any()) } returns flowOf(emptyList())
         coEvery { sincronizarEjecucionesNoProgramadasAnioUseCase(any()) } returns Result.success(Unit)
+        coEvery { sincronizarCatalogosSubestacionUseCase() } returns Result.success(Unit)
     }
 
     @After
@@ -92,8 +97,17 @@ class SubestacionHomeViewModelTest {
         obtenerEjecucionesNoProgramadasAnioLocalUseCase,
         sincronizarEjecucionesNoProgramadasAnioUseCase,
         obtenerEstacionesCacheUseCase,
+        sincronizarCatalogosSubestacionUseCase,
         tokenManager
     )
+
+    @Test
+    fun `al abrir Home se pide el catalogo para no mostrar 0 estaciones en el primer uso`() = runTest {
+        createViewModel()
+        advanceUntilIdle()
+
+        coVerify { sincronizarCatalogosSubestacionUseCase() }
+    }
 
     @Test
     fun `estacionesTotal refleja el tamano del catalogo cacheado`() = runTest {

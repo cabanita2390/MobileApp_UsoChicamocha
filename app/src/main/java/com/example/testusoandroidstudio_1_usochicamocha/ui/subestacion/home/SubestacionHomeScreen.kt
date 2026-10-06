@@ -109,7 +109,8 @@ fun SubestacionHomeScreen(
 
             SubestacionNavCard(
                 title = "Cronograma del mes",
-                subtitle = "Las ${uiState.estacionesTotal} estaciones · busca o cambia de mes",
+                subtitle = if (uiState.estacionesTotal > 0) "Las ${uiState.estacionesTotal} estaciones · busca o cambia de mes"
+                    else "Busca una estación o cambia de mes",
                 icon = Icons.Filled.CalendarMonth,
                 iconBg = SubestacionColors.PurpleSurface,
                 iconTint = SubestacionColors.Purple,
