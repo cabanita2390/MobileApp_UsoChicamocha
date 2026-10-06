@@ -46,6 +46,9 @@ fun tonoDeEstado(estado: EstadoCita): SubestacionTono = when (estado) {
 
 fun colorDeEstado(estado: EstadoCita): Color = tonoDeEstado(estado).accent
 
+/** Cita registrada en este equipo que todavía no llega al servidor: no hay detalle que abrir. */
+const val MENSAJE_EN_COLA = "Este registro está guardado en el equipo y se enviará al haber señal. El detalle se podrá ver cuando se sincronice."
+
 fun etiquetaDeEstado(estado: EstadoCita): String = when (estado) {
     EstadoCita.EJECUTADA -> "Ejecutada"
     EstadoCita.PENDIENTE -> "Pendiente"

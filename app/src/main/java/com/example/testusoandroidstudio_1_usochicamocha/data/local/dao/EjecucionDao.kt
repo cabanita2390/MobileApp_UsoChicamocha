@@ -51,6 +51,17 @@ interface EjecucionDao {
     fun getPendingFlow(): Flow<List<EjecucionEntity>>
 
     /**
+     * Registros de citas del cronograma hechos en este equipo (enviados o todavía en cola).
+     * El caché de cumplimiento solo cambia cuando vuelve a hablar con el servidor; sin esto,
+     * una cita registrada sin señal seguía "Pendiente" y se podía registrar dos veces.
+     */
+    @Query("SELECT * FROM pending_mant_ejecucion WHERE programacionId IS NOT NULL")
+    fun getConCitaFlow(): Flow<List<EjecucionEntity>>
+
+    @Query("SELECT * FROM pending_mant_ejecucion WHERE programacionId IS NOT NULL")
+    suspend fun getConCita(): List<EjecucionEntity>
+
+    /**
      * Para la pantalla Cola: a diferencia de `getPendingFlow()` (usada por el worker
      * y el badge del header, que solo necesitan "qué falta subir" del registro en sí),
      * esta SÍ incluye los registros con `isSyncing=1` — así el técnico ve "Enviando…"

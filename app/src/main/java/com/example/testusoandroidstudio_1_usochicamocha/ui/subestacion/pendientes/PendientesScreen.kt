@@ -24,6 +24,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.ConnectionStatusTopBar
 import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.CitaUi
 import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.EstadoCita
+import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.MENSAJE_EN_COLA
 import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.etiquetaDeEstado
 import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.tonoDeEstado
 import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.theme.AccentListCard
@@ -172,7 +173,9 @@ fun PendientesScreen(
                                     // "resolver por programación" que sí necesitan las citas del cronograma.
                                     EstadoCita.EJECUTADA -> {
                                         val ejecucionId = citaUi.cita.ejecucionId
-                                        if (ejecucionId != null) {
+                                        if (citaUi.cita.enCola) {
+                                            scope.launch { snackbarHostState.showSnackbar(MENSAJE_EN_COLA) }
+                                        } else if (ejecucionId != null) {
                                             onNavigateToDetalle(ejecucionId)
                                         } else {
                                             viewModel.resolverDetalle(
@@ -234,7 +237,7 @@ private fun PendienteRow(citaUi: CitaUi, onClick: () -> Unit) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 val meta = when (citaUi.estado) {
-                    EstadoCita.EJECUTADA -> "Registro completo"
+                    EstadoCita.EJECUTADA -> if (citaUi.cita.enCola) "Guardado · en cola de envío" else "Registro completo"
                     else -> "${citaUi.cita.mes}/${citaUi.cita.anio}"
                 }
                 SubestacionType.CardMeta(meta)

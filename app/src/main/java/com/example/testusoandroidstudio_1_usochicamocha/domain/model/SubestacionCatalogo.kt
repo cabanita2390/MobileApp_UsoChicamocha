@@ -37,7 +37,9 @@ data class CitaProgramada(
     val ejecutado: Int,
     val cumple: Boolean,
     val esProgramada: Boolean = true,
-    val ejecucionId: Long? = null
+    val ejecucionId: Long? = null,
+    /** Registrada en este equipo pero todavía en la cola de envío (sin id del servidor). */
+    val enCola: Boolean = false
 )
 
 /** Cita "cruda" del cronograma (sin estado de cumplimiento), para precargar el wizard de captura. */

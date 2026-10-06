@@ -26,6 +26,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.ConnectionStatusTopBar
 import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.CitaUi
 import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.EstadoCita
+import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.MENSAJE_EN_COLA
 import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.frecuenciaLabel
 import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.colorDeEstado
 import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.etiquetaDeEstado
@@ -184,11 +185,16 @@ fun CronogramaScreen(
                                         citaUi.estado == EstadoCita.VENCIDA,
                                         citaUi.cita.mes
                                     )
-                                    EstadoCita.EJECUTADA -> viewModel.resolverDetalle(
-                                        citaUi.cita.programacionId,
-                                        onResuelto = { id -> onNavigateToDetalle(id) },
-                                        onError = { msg -> scope.launch { snackbarHostState.showSnackbar(msg) } }
-                                    )
+                                    EstadoCita.EJECUTADA -> when {
+                                        citaUi.cita.enCola ->
+                                            scope.launch { snackbarHostState.showSnackbar(MENSAJE_EN_COLA) }
+                                        citaUi.cita.ejecucionId != null -> onNavigateToDetalle(citaUi.cita.ejecucionId)
+                                        else -> viewModel.resolverDetalle(
+                                            citaUi.cita.programacionId,
+                                            onResuelto = { id -> onNavigateToDetalle(id) },
+                                            onError = { msg -> scope.launch { snackbarHostState.showSnackbar(msg) } }
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -245,7 +251,13 @@ private fun CitaRow(citaUi: CitaUi, onClick: () -> Unit) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                SubestacionType.CardMeta(if (citaUi.estado == EstadoCita.EJECUTADA) "Registro completo con evidencia" else "Sin registrar")
+                SubestacionType.CardMeta(
+                    when {
+                        citaUi.estado != EstadoCita.EJECUTADA -> "Sin registrar"
+                        citaUi.cita.enCola -> "Guardado · en cola de envío"
+                        else -> "Registro completo con evidencia"
+                    }
+                )
                 val cta = when (citaUi.estado) {
                     EstadoCita.EJECUTADA -> "Ver detalle"
                     EstadoCita.VENCIDA -> "Registrar ya"

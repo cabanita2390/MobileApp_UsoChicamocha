@@ -31,6 +31,7 @@ import com.example.testusoandroidstudio_1_usochicamocha.domain.model.toEntity
 import com.example.testusoandroidstudio_1_usochicamocha.domain.repository.SubestacionRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
@@ -263,7 +264,7 @@ class SubestacionRepositoryImpl @Inject constructor(
             }
             todas.addAll(result.getOrDefault(emptyList()))
         }
-        return Result.success(todas)
+        return Result.success(marcarRegistrosLocales(todas, ejecucionDao.getConCita()))
     }
 
     override suspend fun getDetalleEjecucion(id: Long): Result<EjecucionDetalle> {
@@ -328,11 +329,17 @@ class SubestacionRepositoryImpl @Inject constructor(
     // --- Cumplimiento cacheado (offline-first: Cronograma/Pendientes/Home) ---
 
     override fun getCumplimientoLocalPorMesFlow(anio: Int, mes: Int): Flow<List<CitaProgramada>> {
-        return cumplimientoCacheDao.getPorMesFlow(anio, mes).map { entities -> entities.map { it.toDomain() } }
+        return cumplimientoCacheDao.getPorMesFlow(anio, mes)
+            .combine(ejecucionDao.getConCitaFlow()) { entities, locales ->
+                marcarRegistrosLocales(entities.map { it.toDomain() }, locales)
+            }
     }
 
     override fun getCumplimientoLocalDelAnioFlow(anio: Int, mesActual: Int): Flow<List<CitaProgramada>> {
-        return cumplimientoCacheDao.getDelAnioFlow(anio, mesActual).map { entities -> entities.map { it.toDomain() } }
+        return cumplimientoCacheDao.getDelAnioFlow(anio, mesActual)
+            .combine(ejecucionDao.getConCitaFlow()) { entities, locales ->
+                marcarRegistrosLocales(entities.map { it.toDomain() }, locales)
+            }
     }
 
     override suspend fun sincronizarCumplimientoMes(anio: Int, mes: Int): Result<Unit> {
