@@ -3,6 +3,8 @@ package com.example.testusoandroidstudio_1_usochicamocha.util
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.graphics.Matrix
+import android.media.ExifInterface
 import android.net.Uri
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
@@ -23,7 +25,8 @@ object ImageUtils {
     private const val BYTES_OBJETIVO = 400 * 1024
 
     /**
-     * Reduce la foto a [LADO_MAXIMO] px de lado mayor y la guarda como JPEG en el caché.
+     * Reduce la foto a [LADO_MAXIMO] px de lado mayor, la endereza según su orientación
+     * EXIF y la guarda como JPEG en el caché.
      *
      * Se decodifica ya reducida (`inSampleSize`), nunca a resolución completa: una foto de
      * 50 MP ocupa ~200 MB como bitmap. Todo corre en `Dispatchers.IO` para no congelar la
@@ -41,7 +44,12 @@ object ImageUtils {
             val decodificada = context.contentResolver.openInputStream(uri)?.use {
                 BitmapFactory.decodeStream(it, null, opciones)
             } ?: return@withContext null
-            val final = escalarALadoMaximo(decodificada, LADO_MAXIMO)
+            // El JPEG que se escribe no lleva EXIF: sin rotar aquí, una foto tomada con el
+            // teléfono vertical llega acostada a la web.
+            val orientacion = context.contentResolver.openInputStream(uri)?.use {
+                ExifInterface(it).getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
+            } ?: ExifInterface.ORIENTATION_NORMAL
+            val final = enderezar(escalarALadoMaximo(decodificada, LADO_MAXIMO), orientacion)
 
             val salida = ByteArrayOutputStream()
             var calidad = CALIDAD
@@ -71,6 +79,24 @@ object ImageUtils {
             muestra *= 2
         }
         return muestra
+    }
+
+    /** Grados a rotar según la etiqueta EXIF Orientation (solo rotaciones; los espejos no se dan en cámaras). */
+    internal fun gradosDeOrientacion(orientacion: Int): Float = when (orientacion) {
+        ExifInterface.ORIENTATION_ROTATE_90, ExifInterface.ORIENTATION_TRANSPOSE -> 90f
+        ExifInterface.ORIENTATION_ROTATE_180 -> 180f
+        ExifInterface.ORIENTATION_ROTATE_270, ExifInterface.ORIENTATION_TRANSVERSE -> 270f
+        else -> 0f
+    }
+
+    private fun enderezar(bitmap: Bitmap, orientacion: Int): Bitmap {
+        val grados = gradosDeOrientacion(orientacion)
+        if (grados == 0f) return bitmap
+        val rotada = Bitmap.createBitmap(
+            bitmap, 0, 0, bitmap.width, bitmap.height, Matrix().apply { postRotate(grados) }, true
+        )
+        if (rotada !== bitmap) bitmap.recycle()
+        return rotada
     }
 
     private fun escalarALadoMaximo(bitmap: Bitmap, ladoMaximo: Int): Bitmap {

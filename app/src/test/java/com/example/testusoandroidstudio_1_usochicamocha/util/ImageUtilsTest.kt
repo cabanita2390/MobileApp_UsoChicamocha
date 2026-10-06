@@ -20,4 +20,12 @@ class ImageUtilsTest {
     fun `foto pequeña no se reduce`() {
         assertEquals(1, ImageUtils.calcularInSampleSize(1200, 800, 1600))
     }
+
+    @Test
+    fun `foto vertical del teléfono se rota 90 grados`() {
+        // ExifInterface.ORIENTATION_ROTATE_90 = 6, ORIENTATION_ROTATE_270 = 8, NORMAL = 1
+        assertEquals(90f, ImageUtils.gradosDeOrientacion(6), 0f)
+        assertEquals(270f, ImageUtils.gradosDeOrientacion(8), 0f)
+        assertEquals(0f, ImageUtils.gradosDeOrientacion(1), 0f)
+    }
 }
