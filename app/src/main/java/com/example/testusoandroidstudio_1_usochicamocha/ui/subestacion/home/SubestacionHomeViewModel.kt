@@ -87,8 +87,8 @@ class SubestacionHomeViewModel @Inject constructor(
         localJob?.cancel()
         localJob = viewModelScope.launch {
             combine(
-                obtenerCumplimientoAnioLocalUseCase(hoy.year, hoy.monthValue),
-                obtenerEjecucionesNoProgramadasAnioLocalUseCase(hoy.year, hoy.monthValue)
+                obtenerCumplimientoAnioLocalUseCase(hoy.year),
+                obtenerEjecucionesNoProgramadasAnioLocalUseCase(hoy.year)
             ) { programadas, noProgramadas -> programadas to noProgramadas }
                 .collect { (citas, noProgramadas) ->
                 val conEstado = citas.map { it to estadoDeCita(it, hoy) }
@@ -122,7 +122,7 @@ class SubestacionHomeViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
-            sincronizarCumplimientoAnioUseCase(hoy.year, hoy.monthValue)
+            sincronizarCumplimientoAnioUseCase(hoy.year)
                 .onFailure { _uiState.update { it.copy(isLoading = false) } }
         }
         viewModelScope.launch {

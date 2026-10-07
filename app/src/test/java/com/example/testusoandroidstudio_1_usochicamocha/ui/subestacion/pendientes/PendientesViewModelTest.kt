@@ -95,9 +95,9 @@ class PendientesViewModelTest {
         MockKAnnotations.init(this)
         Dispatchers.setMain(testDispatcher)
         every { savedStateHandle.get<String>("filtroInicial") } returns null
-        every { obtenerCumplimientoAnioLocalUseCase(any(), any()) } returns flowOf(emptyList())
-        coEvery { sincronizarCumplimientoAnioUseCase(any(), any()) } returns Result.success(Unit)
-        every { obtenerEjecucionesNoProgramadasAnioLocalUseCase(any(), any()) } returns flowOf(emptyList())
+        every { obtenerCumplimientoAnioLocalUseCase(any()) } returns flowOf(emptyList())
+        coEvery { sincronizarCumplimientoAnioUseCase(any()) } returns Result.success(Unit)
+        every { obtenerEjecucionesNoProgramadasAnioLocalUseCase(any()) } returns flowOf(emptyList())
         coEvery { sincronizarEjecucionesNoProgramadasAnioUseCase(any()) } returns Result.success(Unit)
     }
 
@@ -141,7 +141,7 @@ class PendientesViewModelTest {
         val citaVencida = cita(anio = hoy.minusMonths(2).year, mes = hoy.minusMonths(2).monthValue)
         val citaPendiente = cita(anio = hoy.year, mes = hoy.monthValue)
         val citaEjecutada = cita(anio = hoy.year, mes = hoy.monthValue, actividadId = 2L, cumple = true)
-        every { obtenerCumplimientoAnioLocalUseCase(any(), any()) } returns flowOf(listOf(citaVencida, citaPendiente, citaEjecutada))
+        every { obtenerCumplimientoAnioLocalUseCase(any()) } returns flowOf(listOf(citaVencida, citaPendiente, citaEjecutada))
 
         val vm = createViewModel()
         advanceUntilIdle()
@@ -154,7 +154,7 @@ class PendientesViewModelTest {
     @Test
     fun `onFiltroChange re-agrupa sin volver a pedir datos al backend`() = runTest {
         val citaVencida = cita(anio = hoy.minusMonths(3).year, mes = hoy.minusMonths(3).monthValue)
-        every { obtenerCumplimientoAnioLocalUseCase(any(), any()) } returns flowOf(listOf(citaVencida))
+        every { obtenerCumplimientoAnioLocalUseCase(any()) } returns flowOf(listOf(citaVencida))
 
         val vm = createViewModel()
         advanceUntilIdle()
@@ -170,7 +170,7 @@ class PendientesViewModelTest {
     fun `los grupos quedan ordenados del mes mas reciente al mas antiguo`() = runTest {
         val haceDosMeses = hoy.minusMonths(2)
         val haceUnMes = hoy.minusMonths(1)
-        every { obtenerCumplimientoAnioLocalUseCase(any(), any()) } returns flowOf(
+        every { obtenerCumplimientoAnioLocalUseCase(any()) } returns flowOf(
             listOf(
                 cita(anio = haceDosMeses.year, mes = haceDosMeses.monthValue),
                 cita(anio = haceUnMes.year, mes = haceUnMes.monthValue, actividadId = 2L)
@@ -192,8 +192,8 @@ class PendientesViewModelTest {
     fun `Realizadas incluye ejecuciones no programadas junto con las citas programadas cumplidas`() = runTest {
         val citaEjecutada = cita(anio = hoy.year, mes = hoy.monthValue, cumple = true)
         val noProgramada = ejecucionNoProgramada(anio = hoy.year, mes = hoy.monthValue, ejecucionId = 42L)
-        every { obtenerCumplimientoAnioLocalUseCase(any(), any()) } returns flowOf(listOf(citaEjecutada))
-        every { obtenerEjecucionesNoProgramadasAnioLocalUseCase(any(), any()) } returns flowOf(listOf(noProgramada))
+        every { obtenerCumplimientoAnioLocalUseCase(any()) } returns flowOf(listOf(citaEjecutada))
+        every { obtenerEjecucionesNoProgramadasAnioLocalUseCase(any()) } returns flowOf(listOf(noProgramada))
 
         val vm = createViewModel()
         advanceUntilIdle()
@@ -204,6 +204,25 @@ class PendientesViewModelTest {
         assertTrue(realizadas.all { it.estado == EstadoCita.EJECUTADA })
         assertTrue(realizadas.any { it.cita.esProgramada && it.cita.ejecucionId == null })
         assertTrue(realizadas.any { !it.cita.esProgramada && it.cita.ejecucionId == 42L })
+    }
+
+    @Test
+    fun `Realizadas incluye una cita de un mes futuro ejecutada por adelantado y no la pone en Por hacer`() = runTest {
+        val proximoMes = hoy.plusMonths(1)
+        val adelantada = cita(anio = proximoMes.year, mes = proximoMes.monthValue, cumple = true)
+        val futuraPendiente = cita(anio = proximoMes.year, mes = proximoMes.monthValue, actividadId = 2L)
+        every { obtenerCumplimientoAnioLocalUseCase(any()) } returns flowOf(listOf(adelantada, futuraPendiente))
+
+        val vm = createViewModel()
+        advanceUntilIdle()
+        assertTrue(vm.uiState.value.grupos.isEmpty()) // Por hacer: la futura pendiente no aparece
+
+        vm.onFiltroChange(FiltroPendientes.REALIZADAS)
+
+        val grupos = vm.uiState.value.grupos
+        assertEquals(1, grupos.size)
+        assertEquals(listOf(adelantada), grupos[0].citas.map { it.cita })
+        assertTrue(grupos[0].label.endsWith("MES PRÓXIMO"))
     }
 
     @Test

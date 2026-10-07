@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.LocalDate
+import java.time.YearMonth
 import javax.inject.Inject
 
 enum class FiltroPendientes { POR_HACER, VENCIDAS, REALIZADAS }
@@ -29,7 +30,11 @@ data class MesGrupo(val anio: Int, val mes: Int, val citas: List<CitaUi>) {
     val label: String
         get() {
             val hoy = LocalDate.now()
-            val sufijo = if (anio == hoy.year && mes == hoy.monthValue) "MES EN CURSO" else "MES CERRADO"
+            val sufijo = when {
+                anio == hoy.year && mes == hoy.monthValue -> "MES EN CURSO"
+                YearMonth.of(anio, mes) > YearMonth.from(hoy) -> "MES PRÓXIMO"
+                else -> "MES CERRADO"
+            }
             return "${nombreMes(mes)} $anio · $sufijo"
         }
 }
@@ -91,8 +96,8 @@ class PendientesViewModel @Inject constructor(
         localJob?.cancel()
         localJob = viewModelScope.launch {
             combine(
-                obtenerCumplimientoAnioLocalUseCase(hoy.year, hoy.monthValue),
-                obtenerEjecucionesNoProgramadasAnioLocalUseCase(hoy.year, hoy.monthValue)
+                obtenerCumplimientoAnioLocalUseCase(hoy.year),
+                obtenerEjecucionesNoProgramadasAnioLocalUseCase(hoy.year)
             ) { programadas, noProgramadas -> programadas + noProgramadas }
                 .collect { citas ->
                     citasCrudas = citas
@@ -101,7 +106,7 @@ class PendientesViewModel @Inject constructor(
         }
 
         viewModelScope.launch {
-            val resultadoCumplimiento = sincronizarCumplimientoAnioUseCase(hoy.year, hoy.monthValue)
+            val resultadoCumplimiento = sincronizarCumplimientoAnioUseCase(hoy.year)
             val resultadoNoProgramadas = sincronizarEjecucionesNoProgramadasAnioUseCase(hoy.year)
             val error = resultadoCumplimiento.exceptionOrNull() ?: resultadoNoProgramadas.exceptionOrNull()
             if (error != null) {

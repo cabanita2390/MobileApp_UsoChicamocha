@@ -379,7 +379,7 @@ class SyncDataWorker @AssistedInject constructor(
                         try {
                             val hoy = java.time.LocalDate.now()
                             withTimeout(120000) {
-                                sincronizarCumplimientoAnioUseCase(hoy.year, hoy.monthValue)
+                                sincronizarCumplimientoAnioUseCase(hoy.year)
                             }
                             Log.d("SyncDataWorker", "✅ [$workId] Substation cumplimiento cache synced successfully")
                         } catch (e: Exception) {
@@ -413,7 +413,7 @@ class SyncDataWorker @AssistedInject constructor(
                         try {
                             val hoy = java.time.LocalDate.now()
                             withTimeout(120000) {
-                                sincronizarCumplimientoAnioUseCase(hoy.year, hoy.monthValue)
+                                sincronizarCumplimientoAnioUseCase(hoy.year)
                             }
                             Log.d("SyncDataWorker", "✅ [$workId] Substation cumplimiento cache synced successfully")
                         } catch (e: Exception) {

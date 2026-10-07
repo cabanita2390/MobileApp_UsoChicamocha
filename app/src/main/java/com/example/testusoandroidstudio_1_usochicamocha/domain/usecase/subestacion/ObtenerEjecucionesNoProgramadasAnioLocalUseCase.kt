@@ -6,7 +6,7 @@ import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 
 /**
- * Ejecuciones NO programadas (sin cita de cronograma) del año hasta el mes actual, leídas
+ * Ejecuciones NO programadas (sin cita de cronograma) del año completo, leídas
  * del caché en Room — usada por PendientesViewModel junto con
  * [ObtenerCumplimientoAnioLocalUseCase] para armar la pestaña "Realizadas": esa pestaña
  * necesita tanto las citas programadas cumplidas como las actividades civiles hechas fuera
@@ -16,7 +16,7 @@ import javax.inject.Inject
 class ObtenerEjecucionesNoProgramadasAnioLocalUseCase @Inject constructor(
     private val repository: SubestacionRepository
 ) {
-    operator fun invoke(anio: Int, mesActual: Int): Flow<List<CitaProgramada>> {
-        return repository.getEjecucionesNoProgramadasLocalDelAnioFlow(anio, mesActual)
+    operator fun invoke(anio: Int): Flow<List<CitaProgramada>> {
+        return repository.getEjecucionesNoProgramadasLocalDelAnioFlow(anio)
     }
 }

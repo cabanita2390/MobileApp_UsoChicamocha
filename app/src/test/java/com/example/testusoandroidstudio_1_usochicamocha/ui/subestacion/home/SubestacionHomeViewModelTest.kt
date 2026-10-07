@@ -78,9 +78,9 @@ class SubestacionHomeViewModelTest {
         Dispatchers.setMain(testDispatcher)
         every { obtenerEstacionesCacheUseCase() } returns flowOf(emptyList())
         every { tokenManager.getUsername() } returns flowOf("tecnico.test")
-        every { obtenerCumplimientoAnioLocalUseCase(any(), any()) } returns flowOf(emptyList())
-        coEvery { sincronizarCumplimientoAnioUseCase(any(), any()) } returns Result.success(Unit)
-        every { obtenerEjecucionesNoProgramadasAnioLocalUseCase(any(), any()) } returns flowOf(emptyList())
+        every { obtenerCumplimientoAnioLocalUseCase(any()) } returns flowOf(emptyList())
+        coEvery { sincronizarCumplimientoAnioUseCase(any()) } returns Result.success(Unit)
+        every { obtenerEjecucionesNoProgramadasAnioLocalUseCase(any()) } returns flowOf(emptyList())
         coEvery { sincronizarEjecucionesNoProgramadasAnioUseCase(any()) } returns Result.success(Unit)
         coEvery { sincronizarCatalogosSubestacionUseCase() } returns Result.success(Unit)
     }
@@ -125,7 +125,7 @@ class SubestacionHomeViewModelTest {
     @Test
     fun `pendientes del hero suma vencidas y pendientes del mes, no solo el mes actual`() = runTest {
         val mesPasado = hoy.minusMonths(1)
-        every { obtenerCumplimientoAnioLocalUseCase(any(), any()) } returns flowOf(
+        every { obtenerCumplimientoAnioLocalUseCase(any()) } returns flowOf(
             listOf(
                 cita(hoy.year, hoy.monthValue, actividadId = 1L, cumple = false),   // PENDIENTE (mes actual)
                 cita(mesPasado.year, mesPasado.monthValue, actividadId = 2L, cumple = false) // VENCIDA (mes cerrado)
@@ -142,7 +142,7 @@ class SubestacionHomeViewModelTest {
     @Test
     fun `realizadasCount cuenta ejecutadas de todo el rango, no solo el mes actual`() = runTest {
         val mesPasado = hoy.minusMonths(1)
-        every { obtenerCumplimientoAnioLocalUseCase(any(), any()) } returns flowOf(
+        every { obtenerCumplimientoAnioLocalUseCase(any()) } returns flowOf(
             listOf(
                 cita(hoy.year, hoy.monthValue, actividadId = 1L, cumple = true),        // EJECUTADA este mes
                 cita(mesPasado.year, mesPasado.monthValue, actividadId = 2L, cumple = true) // EJECUTADA mes pasado
@@ -156,10 +156,10 @@ class SubestacionHomeViewModelTest {
 
     @Test
     fun `realizadasCount suma tambien las actividades no programadas`() = runTest {
-        every { obtenerCumplimientoAnioLocalUseCase(any(), any()) } returns flowOf(
+        every { obtenerCumplimientoAnioLocalUseCase(any()) } returns flowOf(
             listOf(cita(hoy.year, hoy.monthValue, actividadId = 1L, cumple = true)) // 1 EJECUTADA de cronograma
         )
-        every { obtenerEjecucionesNoProgramadasAnioLocalUseCase(any(), any()) } returns flowOf(
+        every { obtenerEjecucionesNoProgramadasAnioLocalUseCase(any()) } returns flowOf(
             listOf(
                 cita(hoy.year, hoy.monthValue, actividadId = 2L, cumple = true),
                 cita(hoy.year, hoy.monthValue, actividadId = 3L, cumple = true)
@@ -173,7 +173,7 @@ class SubestacionHomeViewModelTest {
 
     @Test
     fun `porcentaje del hero es ejecutadas sobre programadas del mes actual`() = runTest {
-        every { obtenerCumplimientoAnioLocalUseCase(any(), any()) } returns flowOf(
+        every { obtenerCumplimientoAnioLocalUseCase(any()) } returns flowOf(
             listOf(
                 cita(hoy.year, hoy.monthValue, actividadId = 1L, cumple = true),
                 cita(hoy.year, hoy.monthValue, actividadId = 2L, cumple = false)

@@ -58,23 +58,23 @@ interface SubestacionRepository {
     /** Una cita del caché, con los nombres que mandó el servidor (aunque la actividad ya no esté en el catálogo del móvil). */
     suspend fun getCitaLocal(programacionId: Long): CitaProgramada?
 
-    /** Para Pendientes/Home: todo el año hasta `mesActual`, leído de Room. */
-    fun getCumplimientoLocalDelAnioFlow(anio: Int, mesActual: Int): Flow<List<CitaProgramada>>
+    /** Para Pendientes/Home: el año completo (incluye citas futuras ya ejecutadas), leído de Room. */
+    fun getCumplimientoLocalDelAnioFlow(anio: Int): Flow<List<CitaProgramada>>
 
     /** Refresca el caché de un mes puntual desde el backend (best-effort, no bloquea la UI). */
     suspend fun sincronizarCumplimientoMes(anio: Int, mes: Int): Result<Unit>
 
-    /** Refresca el caché de los meses 1..mesActual del año (usado por Pendientes/Home y el sync periódico). */
-    suspend fun sincronizarCumplimientoDelAnio(anio: Int, mesActual: Int): Result<Unit>
+    /** Refresca el caché de los 12 meses del año (usado por Pendientes/Home y el sync periódico). */
+    suspend fun sincronizarCumplimientoDelAnio(anio: Int): Result<Unit>
 
     // --- Ejecuciones NO programadas cacheadas (offline-first: pestaña "Realizadas" de Pendientes) ---
 
     /**
-     * Para Pendientes: ejecuciones sin cita de cronograma (esProgramada=false) del año hasta
-     * `mesActual`, de todas las estaciones, leídas de Room. v_mant_cumplimiento nunca las
+     * Para Pendientes: ejecuciones sin cita de cronograma (esProgramada=false) del año
+     * completo, de todas las estaciones, leídas de Room. v_mant_cumplimiento nunca las
      * trae (arranca desde mant_programacion), así que necesitan esta fuente aparte.
      */
-    fun getEjecucionesNoProgramadasLocalDelAnioFlow(anio: Int, mesActual: Int): Flow<List<CitaProgramada>>
+    fun getEjecucionesNoProgramadasLocalDelAnioFlow(anio: Int): Flow<List<CitaProgramada>>
 
     /** Refresca el caché de ejecuciones no programadas del año completo (best-effort, no bloquea la UI). */
     suspend fun sincronizarEjecucionesNoProgramadasDelAnio(anio: Int): Result<Unit>

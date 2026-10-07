@@ -16,9 +16,9 @@ interface EjecucionNoProgramadaCacheDao {
     @Query("DELETE FROM mant_ejecucion_no_programada_cache WHERE anio = :anio")
     suspend fun deleteAnio(anio: Int)
 
-    /** Para Pendientes: todo el año hasta el mes actual (mismo rango que CumplimientoCacheDao.getDelAnioFlow). */
-    @Query("SELECT * FROM mant_ejecucion_no_programada_cache WHERE anio = :anio AND mes <= :mesActual")
-    fun getDelAnioFlow(anio: Int, mesActual: Int): Flow<List<EjecucionNoProgramadaCacheEntity>>
+    /** Para Pendientes: el año completo (mismo rango que CumplimientoCacheDao.getDelAnioFlow). */
+    @Query("SELECT * FROM mant_ejecucion_no_programada_cache WHERE anio = :anio")
+    fun getDelAnioFlow(anio: Int): Flow<List<EjecucionNoProgramadaCacheEntity>>
 
     /** Reemplaza el caché del año con la respuesta fresca del backend (mismo criterio que CumplimientoCacheDao.reemplazarMes). */
     @Transaction

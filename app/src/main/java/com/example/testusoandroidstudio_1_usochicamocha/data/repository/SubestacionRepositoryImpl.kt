@@ -338,8 +338,8 @@ class SubestacionRepositoryImpl @Inject constructor(
     override suspend fun getCitaLocal(programacionId: Long): CitaProgramada? =
         cumplimientoCacheDao.getPorProgramacion(programacionId)?.toDomain()
 
-    override fun getCumplimientoLocalDelAnioFlow(anio: Int, mesActual: Int): Flow<List<CitaProgramada>> {
-        return cumplimientoCacheDao.getDelAnioFlow(anio, mesActual)
+    override fun getCumplimientoLocalDelAnioFlow(anio: Int): Flow<List<CitaProgramada>> {
+        return cumplimientoCacheDao.getDelAnioFlow(anio)
             .combine(ejecucionDao.getConCitaFlow()) { entities, locales ->
                 marcarRegistrosLocales(entities.map { it.toDomain() }, locales)
             }
@@ -360,9 +360,12 @@ class SubestacionRepositoryImpl @Inject constructor(
         }
     }
 
-    /** Mismo criterio que la vieja `getPendientesDelAnio`: mes por mes, se aborta en el primer fallo. */
-    override suspend fun sincronizarCumplimientoDelAnio(anio: Int, mesActual: Int): Result<Unit> {
-        for (mes in 1..mesActual) {
+    /**
+     * Mes por mes, se aborta en el primer fallo. Los 12 meses, no solo hasta el actual: una
+     * cita futura ejecutada por adelantado también tiene que llegar a "Realizadas".
+     */
+    override suspend fun sincronizarCumplimientoDelAnio(anio: Int): Result<Unit> {
+        for (mes in 1..12) {
             val result = sincronizarCumplimientoMes(anio, mes)
             if (result.isFailure) return result
         }
@@ -371,8 +374,8 @@ class SubestacionRepositoryImpl @Inject constructor(
 
     // --- Ejecuciones NO programadas cacheadas (offline-first: pestaña "Realizadas" de Pendientes) ---
 
-    override fun getEjecucionesNoProgramadasLocalDelAnioFlow(anio: Int, mesActual: Int): Flow<List<CitaProgramada>> {
-        return ejecucionNoProgramadaCacheDao.getDelAnioFlow(anio, mesActual).map { entities -> entities.map { it.toDomain() } }
+    override fun getEjecucionesNoProgramadasLocalDelAnioFlow(anio: Int): Flow<List<CitaProgramada>> {
+        return ejecucionNoProgramadaCacheDao.getDelAnioFlow(anio).map { entities -> entities.map { it.toDomain() } }
     }
 
     /**
