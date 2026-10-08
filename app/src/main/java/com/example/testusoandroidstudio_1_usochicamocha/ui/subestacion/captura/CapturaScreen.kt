@@ -46,7 +46,6 @@ import coil.compose.AsyncImage
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.ActividadCatalogo
 import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.L_ACT
 import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.L_MANT
-import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.L_MOT
 import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.L_RES
 import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.etiquetaDeEstado
 import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.nombreMes
@@ -588,35 +587,30 @@ private fun ChipOption(label: String, sub: String?, seleccionado: Boolean, modif
 private fun TipoActividadSection(
     uiState: CapturaUiState,
     viewModel: CapturaViewModel,
-    titulo: String = "Tipo de actividad",
-    // En una cita del cronograma "No programado · Fuera del cronograma" no aplica.
-    conNoProgramado: Boolean = true
+    titulo: String = "Tipo de actividad"
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         SubestacionType.SectionLabel(titulo)
+        // Sin "No programado": si el trabajo estaba o no en el cronograma lo decide el sistema
+        // (registro desde una cita = cronograma; sin cita = imprevisto), no el técnico.
         val opciones = listOf(
             Triple("INSPECCION", "Inspección", "Se revisa y se reporta"),
-            Triple("MANTENIMIENTO", "Mantenimiento", "Se interviene el activo"),
-            Triple("NO_PROGRAMADO", "No programado", "Fuera del cronograma")
+            Triple("MANTENIMIENTO", "Mantenimiento", "Se interviene el activo")
         )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            opciones.take(2).forEach { (valor, label, sub) ->
+            opciones.forEach { (valor, label, sub) ->
                 ChipOption(label, sub, uiState.tipoActividad == valor, Modifier.weight(1f)) { viewModel.onTipoActividadChange(valor) }
             }
-        }
-        if (conNoProgramado) {
-            val (valor, label, sub) = opciones[2]
-            ChipOption(label, sub, uiState.tipoActividad == valor, Modifier.fillMaxWidth(0.5f)) { viewModel.onTipoActividadChange(valor) }
         }
     }
 }
 
-private val OPCIONES_MANT_LIBRE = listOf(
-    "PREVENTIVO" to "Preventivo", "CORRECTIVO" to "Correctivo", "PREDICTIVO" to "Predictivo", "NO_PROGRAMADO" to "No programado"
-)
-
-/** En una cita del cronograma "No programado" no aplica: el registro sí estaba programado. */
-private val OPCIONES_MANT_CITA = listOf("PREVENTIVO" to "Preventivo", "CORRECTIVO" to "Correctivo", "PREDICTIVO" to "Predictivo")
+/**
+ * Las mismas en registro libre y en cita. "No programado" ya no se ofrece: un registro sin cita
+ * es imprevisto por sí solo (lo calcula el sistema); los registros viejos con ese valor se siguen
+ * mostrando con su etiqueta (L_MANT).
+ */
+private val OPCIONES_MANT = listOf("PREVENTIVO" to "Preventivo", "CORRECTIVO" to "Correctivo", "PREDICTIVO" to "Predictivo")
 
 /** Chips de tipo de mantenimiento — paso Actividad (registro libre) y PasoCita (modo cita). */
 @Composable
@@ -651,7 +645,7 @@ private fun TipoMantenimientoSection(
 private fun PasoActividad(uiState: CapturaUiState, viewModel: CapturaViewModel) {
     LazyColumn(Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item { TipoActividadSection(uiState, viewModel) }
-        item { TipoMantenimientoSection(uiState, viewModel, OPCIONES_MANT_LIBRE) }
+        item { TipoMantenimientoSection(uiState, viewModel, OPCIONES_MANT) }
         if (uiState.actividadBloqueada) {
             item {
                 CampoFijo(
@@ -872,10 +866,10 @@ private fun PasoCita(uiState: CapturaUiState, viewModel: CapturaViewModel) {
         }
         item { FechaEjecucionField(uiState.fecha, viewModel::onFechaChange) }
         item { PeriodoEjecucionSection(uiState, viewModel) }
-        item { TipoActividadSection(uiState, viewModel, titulo = "Tipo de actividad realizada", conNoProgramado = false) }
+        item { TipoActividadSection(uiState, viewModel, titulo = "Tipo de actividad realizada") }
         item {
             TipoMantenimientoSection(
-                uiState, viewModel, OPCIONES_MANT_CITA,
+                uiState, viewModel, OPCIONES_MANT,
                 ayuda = "Sugerido: correctivo si la cita está vencida, preventivo si no. Cámbialo si se hizo otro tipo."
             )
         }
@@ -1076,8 +1070,9 @@ private fun PasoEvidencia(
                 // la estación/actividad/fecha ya se muestran arriba en el resumen.
                 val origen = when {
                     uiState.esEdicion -> "Corrección de un registro ya sincronizado"
-                    uiState.programacionId != null -> "Prellenado desde el cronograma"
-                    else -> "Registro libre, fuera del cronograma"
+                    // Mismo vocabulario que la web: Cronograma o Imprevisto (lo decide la cita, no el técnico).
+                    uiState.programacionId != null -> "Cronograma · suma al avance"
+                    else -> "Imprevisto · sin cita del cronograma, no suma al avance"
                 }
                 val resumen = buildList {
                     add("Fecha" to uiState.fecha)
@@ -1091,7 +1086,6 @@ private fun PasoEvidencia(
                     add("Tipo actividad" to (L_ACT[uiState.tipoActividad] ?: uiState.tipoActividad))
                     add("Mantenimiento" to (L_MANT[uiState.tipoMantenimiento] ?: uiState.tipoMantenimiento))
                     add("Actividad" to (uiState.actividadNombre ?: uiState.descripcionLibre.ifBlank { "—" }))
-                    if (uiState.modoLibre) add("Motivo" to (L_MOT["NO_PROGRAMADO"] ?: "No programado"))
                     add("Resultado" to (L_RES[uiState.resultado] ?: uiState.resultado))
                     add("Observaciones" to uiState.observaciones.ifBlank { "Sin observaciones" })
                     if (!uiState.esEdicion) add("Fotografías" to "${uiState.fotos.size} adjunta(s)")

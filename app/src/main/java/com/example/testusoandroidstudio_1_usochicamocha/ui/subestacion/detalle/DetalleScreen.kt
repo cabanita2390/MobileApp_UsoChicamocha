@@ -177,8 +177,10 @@ private fun DetalleContenido(d: EjecucionDetalle, networkStatus: Boolean, onNavi
                     if (d.actividadId != null) "Actividad civil" else "Descripción (no catalogada)",
                     d.actividadNombre ?: d.descripcionLibre ?: "—"
                 )
-                FilaDetalle("Programada", if (d.esProgramada) "Sí, venía de una cita del cronograma" else "No, registro libre")
-                if (d.actividadId == null && !d.motivoNoCatalogado.isNullOrBlank()) {
+                // Mismo vocabulario que la web: Cronograma o Imprevisto.
+                FilaDetalle("Origen", if (d.esProgramada) "Cronograma · venía de una cita" else "Imprevisto · sin cita del cronograma")
+                // "No programado" ya lo dice el Origen; solo se muestra el motivo si es otro.
+                if (d.actividadId == null && !d.motivoNoCatalogado.isNullOrBlank() && d.motivoNoCatalogado != "NO_PROGRAMADO") {
                     FilaDetalle("Motivo", L_MOT[d.motivoNoCatalogado] ?: d.motivoNoCatalogado)
                 }
 
