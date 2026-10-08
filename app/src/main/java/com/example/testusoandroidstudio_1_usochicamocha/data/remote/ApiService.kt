@@ -154,6 +154,12 @@ interface ApiService {
     @GET("v1/substation/actividades")
     suspend fun getActividadesSubestacion(@Query("disciplina") disciplina: String): Response<List<ActividadDto>>
 
+    @GET("v1/substation/observaciones/frecuentes")
+    suspend fun getObservacionesFrecuentes(
+        @Query("disciplina") disciplina: String,
+        @Query("limite") limite: Int = 5
+    ): Response<List<com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.ObservacionesFrecuentesDto>>
+
     @GET("v1/substation/programacion")
     suspend fun getProgramacionSubestacion(
         @Query("estacionId") estacionId: Long,

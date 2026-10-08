@@ -12,6 +12,7 @@ import com.example.testusoandroidstudio_1_usochicamocha.domain.model.EjecucionEd
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.LocalSyncCoordinator
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.EditarEjecucionUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.GuardarEjecucionLocalUseCase
+import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.ObtenerObservacionesFrecuentesUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.ObtenerActividadesCacheUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.ObtenerDetalleEjecucionUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.ObtenerEstacionesCacheUseCase
@@ -81,6 +82,8 @@ data class CapturaUiState(
     // Paso 2 — Actividad
     val tipoActividad: String = "",
     val tipoMantenimiento: String = "",
+    /** Observaciones más usadas por tipo de actividad (registros reales, último sync). */
+    val obsFrecuentes: Map<String, List<String>> = emptyMap(),
     val modoLibre: Boolean = false,
     val actividadId: Long? = null,
     val actividadNombre: String? = null,
@@ -138,12 +141,20 @@ data class CapturaUiState(
             }
         }
 
-    /** Mismas 3 categorías que `OBS_BY_TIPO` del diseño: cambian según tipoActividad. */
+    /** true si las sugerencias salen de los registros reales; false = lista fija de respaldo. */
+    val observacionesDeHistorial: Boolean
+        get() = !obsFrecuentes[tipoActividad].isNullOrEmpty()
+
+    /**
+     * Top 5: las observaciones más usadas de verdad (las calcula el backend con los registros);
+     * sin historial todavía (primera instalación sin red, tipo nuevo) se usa la lista fija.
+     */
     val observacionesRapidas: List<String>
-        get() = OBS_BY_TIPO[tipoActividad] ?: OBS_BY_TIPO_DEFAULT
+        get() = (obsFrecuentes[tipoActividad]?.takeIf { it.isNotEmpty() }
+            ?: OBS_BY_TIPO[tipoActividad] ?: OBS_BY_TIPO_DEFAULT).take(5)
 
     val observacionesRapidasTitulo: String
-        get() = when (tipoActividad) {
+        get() = if (!observacionesDeHistorial) "SUGERENCIAS" else when (tipoActividad) {
             "MANTENIMIENTO" -> "MÁS USADAS EN MANTENIMIENTO"
             "INSPECCION" -> "MÁS USADAS EN INSPECCIÓN"
             else -> "MÁS USADAS"
@@ -197,7 +208,8 @@ class CapturaViewModel @Inject constructor(
     private val obtenerPendientesUseCase: ObtenerPendientesUseCase,
     private val obtenerCitaLocalUseCase: ObtenerCitaLocalUseCase,
     private val localSyncCoordinator: LocalSyncCoordinator,
-    private val tokenManager: com.example.testusoandroidstudio_1_usochicamocha.data.local.TokenManager
+    private val tokenManager: com.example.testusoandroidstudio_1_usochicamocha.data.local.TokenManager,
+    private val obtenerObservacionesFrecuentesUseCase: ObtenerObservacionesFrecuentesUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CapturaUiState())
@@ -223,6 +235,11 @@ class CapturaViewModel @Inject constructor(
                     } else s.estacionNombre
                     s.copy(estaciones = lista, estacionNombre = nombre)
                 }
+            }
+        }
+        viewModelScope.launch {
+            obtenerObservacionesFrecuentesUseCase().collect { mapa ->
+                _uiState.update { it.copy(obsFrecuentes = mapa) }
             }
         }
         viewModelScope.launch {

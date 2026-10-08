@@ -36,6 +36,8 @@ interface SubestacionRepository {
     fun getEstacionesCache(): Flow<List<EstacionCatalogo>>
     fun getActividadesCache(): Flow<List<ActividadCatalogo>>
     suspend fun sincronizarCatalogos(): Result<Unit>
+    /** Top de observaciones por tipo de actividad (clave: INSPECCION / MANTENIMIENTO), del último sync. */
+    fun getObservacionesFrecuentes(): Flow<Map<String, List<String>>>
 
     // --- Consultas online (usadas hoy solo por el wizard de captura — CapturaViewModel;
     //     necesitan estar "al día" al momento de capturar, así que se dejan online-first) ---

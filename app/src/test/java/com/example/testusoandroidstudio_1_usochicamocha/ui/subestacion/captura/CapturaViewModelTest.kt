@@ -11,6 +11,7 @@ import com.example.testusoandroidstudio_1_usochicamocha.domain.model.EstacionCat
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.LocalSyncCoordinator
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.EditarEjecucionUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.GuardarEjecucionLocalUseCase
+import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.ObtenerObservacionesFrecuentesUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.ObtenerActividadesCacheUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.ObtenerDetalleEjecucionUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.ObtenerEstacionesCacheUseCase
@@ -74,6 +75,8 @@ class CapturaViewModelTest {
     lateinit var localSyncCoordinator: LocalSyncCoordinator
     @MockK
     lateinit var tokenManager: TokenManager
+    @MockK
+    lateinit var obtenerObservacionesFrecuentesUseCase: ObtenerObservacionesFrecuentesUseCase
 
     private lateinit var viewModel: CapturaViewModel
 
@@ -105,6 +108,7 @@ class CapturaViewModelTest {
         every { obtenerEstacionesCacheUseCase() } returns flowOf(emptyList())
         every { obtenerActividadesCacheUseCase() } returns flowOf(emptyList())
         every { tokenManager.getUsername() } returns flowOf("tecnico.test")
+        every { obtenerObservacionesFrecuentesUseCase() } returns flowOf(emptyMap())
         coEvery { localSyncCoordinator.coordinateSync(any()) } returns Result.success(Unit)
         coEvery { obtenerPendientesUseCase(any(), any()) } returns Result.success(emptyList())
         coEvery { obtenerCitaLocalUseCase(any()) } returns null
@@ -121,8 +125,35 @@ class CapturaViewModelTest {
             obtenerPendientesUseCase,
             obtenerCitaLocalUseCase,
             localSyncCoordinator,
-            tokenManager
+            tokenManager,
+            obtenerObservacionesFrecuentesUseCase
         )
+    }
+
+    // ---- Sugerencias de observaciones: las más usadas de verdad (top 5), con respaldo fijo ----
+
+    @Test
+    fun `sugerencias - con historial salen las mas usadas (top 5) con titulo MAS USADAS`() = runTest {
+        val top = listOf("A", "B", "C", "D", "E", "F")
+        every { obtenerObservacionesFrecuentesUseCase() } returns flowOf(mapOf("MANTENIMIENTO" to top))
+        createViewModel()
+        advanceUntilIdle()
+        viewModel.onTipoActividadChange("MANTENIMIENTO")
+
+        val s = viewModel.uiState.value
+        assertEquals(listOf("A", "B", "C", "D", "E"), s.observacionesRapidas)
+        assertEquals("MÁS USADAS EN MANTENIMIENTO", s.observacionesRapidasTitulo)
+    }
+
+    @Test
+    fun `sugerencias - sin historial usa la lista fija (max 5) y no dice MAS USADAS`() = runTest {
+        createViewModel()
+        advanceUntilIdle()
+        viewModel.onTipoActividadChange("INSPECCION")
+
+        val s = viewModel.uiState.value
+        assertEquals(5, s.observacionesRapidas.size)
+        assertEquals("SUGERENCIAS", s.observacionesRapidasTitulo)
     }
 
     @After

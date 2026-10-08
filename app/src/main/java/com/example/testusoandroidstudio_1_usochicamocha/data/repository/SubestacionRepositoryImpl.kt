@@ -1,5 +1,6 @@
 package com.example.testusoandroidstudio_1_usochicamocha.data.repository
 
+import androidx.datastore.preferences.core.edit
 import android.content.Context
 import android.net.Uri
 import android.util.Log
@@ -49,12 +50,17 @@ class SubestacionRepositoryImpl @Inject constructor(
     private val apiService: ApiService,
     private val cumplimientoCacheDao: CumplimientoCacheDao,
     private val ejecucionDetalleCacheDao: EjecucionDetalleCacheDao,
-    private val ejecucionNoProgramadaCacheDao: EjecucionNoProgramadaCacheDao
+    private val ejecucionNoProgramadaCacheDao: EjecucionNoProgramadaCacheDao,
+    private val dataStore: androidx.datastore.core.DataStore<androidx.datastore.preferences.core.Preferences>
 ) : SubestacionRepository {
 
     companion object {
         private const val TAG = "SubestacionRepositoryImpl"
         private const val DISCIPLINA = "CIVIL"
+        /** JSON {tipoActividad: [textos]} con las observaciones más usadas (DataStore, sin migración de Room). */
+        private val KEY_OBS_FRECUENTES = androidx.datastore.preferences.core.stringPreferencesKey("subestacion_obs_frecuentes")
+        private val gson = com.google.gson.Gson()
+        private val tipoMapa = object : com.google.gson.reflect.TypeToken<Map<String, List<String>>>() {}.type
     }
 
     // --- Captura offline ---
@@ -180,6 +186,33 @@ class SubestacionRepositoryImpl @Inject constructor(
         return estacionCacheDao.getAllFlow().map { entities -> entities.map { it.toDomain() } }
     }
 
+    /**
+     * Sugerencias del formulario: las observaciones más usadas, calculadas por el backend con los
+     * registros reales. Si falla (sin red, backend viejo) se conserva lo último guardado y el
+     * catálogo igual se da por sincronizado: no es un dato crítico.
+     */
+    private suspend fun sincronizarObservacionesFrecuentes() {
+        try {
+            val r = apiService.getObservacionesFrecuentes(DISCIPLINA)
+            val body = r.body()
+            if (r.isSuccessful && body != null) {
+                val mapa = body.associate { it.tipoActividad to it.textos.take(5) }
+                dataStore.edit { it[KEY_OBS_FRECUENTES] = gson.toJson(mapa) }
+            } else {
+                Log.w(TAG, "Observaciones frecuentes no disponibles: ${r.code()}")
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "No se pudieron actualizar las observaciones frecuentes", e)
+        }
+    }
+
+    override fun getObservacionesFrecuentes(): Flow<Map<String, List<String>>> =
+        dataStore.data.map { prefs ->
+            prefs[KEY_OBS_FRECUENTES]?.let {
+                runCatching { gson.fromJson<Map<String, List<String>>>(it, tipoMapa) }.getOrNull()
+            } ?: emptyMap()
+        }
+
     override fun getActividadesCache(): Flow<List<ActividadCatalogo>> {
         return actividadCacheDao.getAllFlow().map { entities -> entities.map { it.toDomain() } }
     }
@@ -200,6 +233,8 @@ class SubestacionRepositoryImpl @Inject constructor(
             } else {
                 return Result.failure(Exception("Error al obtener actividades: ${actividadesResponse.code()}"))
             }
+
+            sincronizarObservacionesFrecuentes()
 
             Result.success(Unit)
         } catch (e: Exception) {
