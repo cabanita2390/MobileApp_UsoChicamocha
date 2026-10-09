@@ -65,6 +65,11 @@ private val DISCIPLINAS = listOf(
     "ELECTROMECANICO" to "Electromecánico"
 )
 
+/** Responsable del registro: al editar es quien lo registró (no cambia); al registrar, el usuario en sesión. */
+private fun responsableDelRegistro(uiState: CapturaUiState): String =
+    if (uiState.esEdicion && uiState.responsableOriginal.isNotBlank()) uiState.responsableOriginal
+    else uiState.responsableNombre.ifBlank { "Usuario en sesión" }
+
 /** Iniciales para el avatar circular del responsable (ej. "Hilson Puerto" -> "HP"),
  * igual que el `respIni` del mockup. */
 private fun initialesDe(nombre: String): String =
@@ -544,12 +549,21 @@ private fun PasoContexto(uiState: CapturaUiState, viewModel: CapturaViewModel) {
                     )
                 }
                 Column(Modifier.weight(1f)) {
-                    Text("RESPONSABLE · USUARIO EN SESIÓN", color = SubestacionColors.TextTertiary, fontWeight = FontWeight.SemiBold, fontSize = 9.5.sp, letterSpacing = 0.7.sp)
+                    Text(
+                        if (uiState.esEdicion) "EDITA · USUARIO EN SESIÓN" else "RESPONSABLE · USUARIO EN SESIÓN",
+                        color = SubestacionColors.TextTertiary, fontWeight = FontWeight.SemiBold, fontSize = 9.5.sp, letterSpacing = 0.7.sp
+                    )
                     Text(
                         uiState.responsableNombre.ifBlank { "Usuario en sesión" },
                         color = SubestacionColors.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp,
                         modifier = Modifier.padding(top = 2.dp)
                     )
+                    if (uiState.esEdicion && uiState.responsableOriginal.isNotBlank()) {
+                        SubestacionType.Hint(
+                            "Registró: ${uiState.responsableOriginal} · el responsable no cambia",
+                            modifier = Modifier.padding(top = 2.dp)
+                        )
+                    }
                 }
                 Text("🔒", fontSize = 14.sp, color = SubestacionColors.TextQuaternary)
             }
@@ -847,14 +861,14 @@ private fun PasoCita(uiState: CapturaUiState, viewModel: CapturaViewModel) {
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                initialesDe(uiState.responsableNombre.ifBlank { "Usuario en sesión" }),
+                                initialesDe(responsableDelRegistro(uiState)),
                                 color = SubestacionColors.Purple, fontWeight = FontWeight.ExtraBold, fontSize = 10.sp
                             )
                         }
                         Column(Modifier.weight(1f)) {
                             Text("RESPONSABLE", color = SubestacionColors.TextTertiary, fontWeight = FontWeight.SemiBold, fontSize = 8.5.sp, letterSpacing = 0.6.sp)
                             Text(
-                                uiState.responsableNombre.ifBlank { "Usuario en sesión" },
+                                responsableDelRegistro(uiState),
                                 color = SubestacionColors.TextPrimary, fontWeight = FontWeight.Bold, fontSize = 12.5.sp
                             )
                         }
@@ -1079,7 +1093,8 @@ private fun PasoEvidencia(
                         "Mes / semana" to "${nombreMes(uiState.mesEjecucion)} · Semana ${uiState.semanaEjecucion}" +
                             if (uiState.periodoAjustadoManualmente) " (ajustado a mano)" else ""
                     )
-                    add("Responsable" to uiState.responsableNombre.ifBlank { "—" })
+                    add("Responsable" to responsableDelRegistro(uiState).ifBlank { "—" })
+                    if (uiState.esEdicion) add("Editado por" to uiState.responsableNombre.ifBlank { "—" })
                     add("Estación" to uiState.estacionNombre)
                     add("Disciplina" to "Civil")
                     add("Tipo actividad" to (L_ACT[uiState.tipoActividad] ?: uiState.tipoActividad))

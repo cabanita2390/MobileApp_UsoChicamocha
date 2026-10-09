@@ -65,6 +65,9 @@ data class CapturaUiState(
     val estacionId: Long? = null,
     val estacionNombre: String = "",
     val responsableNombre: String = "",
+    /** En edición: quien registró originalmente. El responsable no cambia al editar; el usuario en
+     *  sesión (responsableNombre) queda solo como quien editó, en el historial. */
+    val responsableOriginal: String = "",
     val mesEjecucion: Int = LocalDate.now().monthValue,
     val semanaEjecucion: Int = semanaDeDia(LocalDate.now().dayOfMonth),
     val periodoAjustadoManualmente: Boolean = false,
@@ -326,6 +329,7 @@ class CapturaViewModel @Inject constructor(
                     _uiState.update {
                         it.copy(
                             cargandoEdicion = false,
+                            responsableOriginal = d.responsable,
                             fecha = d.fecha,
                             estacionId = d.estacionId,
                             estacionNombre = d.estacionNombre,

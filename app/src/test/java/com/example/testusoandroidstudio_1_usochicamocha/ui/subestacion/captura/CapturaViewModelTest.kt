@@ -658,6 +658,8 @@ class CapturaViewModelTest {
         assertEquals(detalle.tipoMantenimiento, estado.tipoMantenimiento)
         assertEquals(detalle.actividadId, estado.actividadId)
         assertFalse(estado.modoLibre)
+        // Quien registró se conserva aparte: el usuario en sesión solo queda como quien edita.
+        assertEquals(detalle.responsable, estado.responsableOriginal)
     }
 
     @Test
