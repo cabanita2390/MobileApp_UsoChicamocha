@@ -39,6 +39,7 @@ fun CumplimientoCacheEntity.toDomain(): CitaProgramada {
         actividadId = actividadId,
         actividadNombre = actividadNombre,
         ejecutado = ejecutado,
-        cumple = cumple
+        cumple = cumple,
+        disciplina = disciplina
     )
 }

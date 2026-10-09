@@ -30,6 +30,8 @@ import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.MENSAJE_E
 import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.frecuenciaLabel
 import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.colorDeEstado
 import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.etiquetaDeEstado
+import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.mensajeCapturaEnDesarrollo
+import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.nombreDisciplina
 import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.nombreMes
 import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.tonoDeEstado
 import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.theme.AccentListCard
@@ -177,7 +179,9 @@ fun CronogramaScreen(
                         items(grupo.citas, key = { "cita_${it.cita.programacionId}" }) { citaUi ->
                             CitaRow(citaUi) {
                                 when (citaUi.estado) {
-                                    EstadoCita.PENDIENTE, EstadoCita.VENCIDA, EstadoCita.PROGRAMADA -> onNavigateToCaptura(
+                                    EstadoCita.PENDIENTE, EstadoCita.VENCIDA, EstadoCita.PROGRAMADA -> if (!citaUi.cita.capturaHabilitada) {
+                                        scope.launch { snackbarHostState.showSnackbar(mensajeCapturaEnDesarrollo(citaUi.cita.disciplina)) }
+                                    } else onNavigateToCaptura(
                                         citaUi.cita.programacionId,
                                         citaUi.cita.estacionId,
                                         citaUi.cita.actividadId,
@@ -235,6 +239,11 @@ private fun CitaRow(citaUi: CitaUi, onClick: () -> Unit) {
         Column {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 EstadoPill(etiquetaDeEstado(citaUi.estado), tono.pillBg, tono.pillFg)
+                // Disciplina que todavía no se registra desde el móvil: se ve, pero solo se consulta.
+                if (!citaUi.cita.capturaHabilitada) {
+                    Spacer(Modifier.width(6.dp))
+                    EstadoPill(nombreDisciplina(citaUi.cita.disciplina), SubestacionColors.ChipBg, SubestacionColors.TextQuaternary)
+                }
                 Spacer(Modifier.width(8.dp))
                 SubestacionType.Hint(metaDeCita(citaUi))
             }
@@ -258,12 +267,19 @@ private fun CitaRow(citaUi: CitaUi, onClick: () -> Unit) {
                         else -> "Registro completo con evidencia"
                     }
                 )
-                val cta = when (citaUi.estado) {
-                    EstadoCita.EJECUTADA -> "Ver detalle"
-                    EstadoCita.VENCIDA -> "Registrar ya"
-                    else -> "Registrar"
+                val soloConsulta = !citaUi.cita.capturaHabilitada && citaUi.estado != EstadoCita.EJECUTADA
+                val cta = when {
+                    citaUi.estado == EstadoCita.EJECUTADA -> "Ver detalle ›"
+                    soloConsulta -> "Solo consulta"
+                    citaUi.estado == EstadoCita.VENCIDA -> "Registrar ya ›"
+                    else -> "Registrar ›"
                 }
-                Text("$cta ›", color = SubestacionColors.Purple, fontWeight = FontWeight.ExtraBold, fontSize = 11.5.sp)
+                Text(
+                    cta,
+                    color = if (soloConsulta) SubestacionColors.TextQuaternary else SubestacionColors.Purple,
+                    fontWeight = FontWeight.ExtraBold,
+                    fontSize = 11.5.sp
+                )
             }
         }
     }

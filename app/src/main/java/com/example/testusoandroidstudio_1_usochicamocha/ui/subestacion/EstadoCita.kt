@@ -46,6 +46,19 @@ fun tonoDeEstado(estado: EstadoCita): SubestacionTono = when (estado) {
 
 fun colorDeEstado(estado: EstadoCita): Color = tonoDeEstado(estado).accent
 
+/** Nombre en español de una disciplina (CIVIL → Civil). */
+fun nombreDisciplina(codigo: String): String = when (codigo) {
+    "CIVIL" -> "Civil"
+    "ELECTRICO" -> "Eléctrico"
+    "ELECTROMECANICO" -> "Electromecánico"
+    else -> codigo
+}
+
+/** Cita de una disciplina que todavía no se registra desde el móvil: solo se consulta. */
+fun mensajeCapturaEnDesarrollo(disciplina: String): String =
+    "La captura de ${nombreDisciplina(disciplina)} aún está en desarrollo. Por ahora esta cita solo se puede consultar; " +
+        "el registro se hace cuando la app lo habilite."
+
 /** Cita registrada en este equipo que todavía no llega al servidor: no hay detalle que abrir. */
 const val MENSAJE_EN_COLA = "Este registro está guardado en el equipo y se enviará al haber señal. El detalle se podrá ver cuando se sincronice."
 

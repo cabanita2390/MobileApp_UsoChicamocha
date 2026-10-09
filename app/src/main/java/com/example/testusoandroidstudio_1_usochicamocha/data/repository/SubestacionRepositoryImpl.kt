@@ -56,6 +56,8 @@ class SubestacionRepositoryImpl @Inject constructor(
 
     companion object {
         private const val TAG = "SubestacionRepositoryImpl"
+        /** Disciplina que se registra desde el móvil (captura, registro libre y sugerencias). Las citas
+         *  del cronograma se consultan de todas las disciplinas: las demás se ven en solo consulta. */
         private const val DISCIPLINA = "CIVIL"
         /** JSON {tipoActividad: [textos]} con las observaciones más usadas (DataStore, sin migración de Room). */
         private val KEY_OBS_FRECUENTES = androidx.datastore.preferences.core.stringPreferencesKey("subestacion_obs_frecuentes")
@@ -260,7 +262,7 @@ class SubestacionRepositoryImpl @Inject constructor(
 
     override suspend fun getCumplimientoPorMes(anio: Int, mes: Int): Result<List<CitaProgramada>> {
         return try {
-            val response = apiService.getCumplimientoSubestacion(anio = anio, mes = mes, disciplina = DISCIPLINA)
+            val response = apiService.getCumplimientoSubestacion(anio = anio, mes = mes)
             if (response.isSuccessful && response.body() != null) {
                 Result.success(response.body()!!.map { it.toDomain() })
             } else {
@@ -273,7 +275,7 @@ class SubestacionRepositoryImpl @Inject constructor(
 
     override suspend fun getCumplimientoPorEstacion(estacionId: Long, anio: Int): Result<List<CitaProgramada>> {
         return try {
-            val response = apiService.getCumplimientoSubestacion(estacionId = estacionId, anio = anio, disciplina = DISCIPLINA)
+            val response = apiService.getCumplimientoSubestacion(estacionId = estacionId, anio = anio)
             if (response.isSuccessful && response.body() != null) {
                 Result.success(response.body()!!.map { it.toDomain() })
             } else {
@@ -382,7 +384,7 @@ class SubestacionRepositoryImpl @Inject constructor(
 
     override suspend fun sincronizarCumplimientoMes(anio: Int, mes: Int): Result<Unit> {
         return try {
-            val response = apiService.getCumplimientoSubestacion(anio = anio, mes = mes, disciplina = DISCIPLINA)
+            val response = apiService.getCumplimientoSubestacion(anio = anio, mes = mes)
             if (response.isSuccessful && response.body() != null) {
                 cumplimientoCacheDao.reemplazarMes(anio, mes, response.body()!!.map { it.toEntity() })
                 Result.success(Unit)

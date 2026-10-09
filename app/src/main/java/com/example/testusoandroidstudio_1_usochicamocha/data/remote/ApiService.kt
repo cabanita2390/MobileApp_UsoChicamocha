@@ -196,7 +196,8 @@ interface ApiService {
         @Query("estacionId") estacionId: Long? = null,
         @Query("anio") anio: Int,
         @Query("mes") mes: Int? = null,
-        @Query("disciplina") disciplina: String
+        /** null = todas las disciplinas. */
+        @Query("disciplina") disciplina: String? = null
     ): Response<List<CumplimientoDto>>
 
     /**

@@ -48,6 +48,7 @@ import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.L_ACT
 import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.L_MANT
 import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.L_RES
 import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.etiquetaDeEstado
+import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.nombreDisciplina
 import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.nombreMes
 import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.theme.SubestacionColors
 import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.theme.SubestacionShapes
@@ -63,8 +64,6 @@ private val DISCIPLINAS = listOf(
     "ELECTRICO" to "Eléctrico",
     "ELECTROMECANICO" to "Electromecánico"
 )
-
-private fun nombreDisciplina(valor: String): String = DISCIPLINAS.firstOrNull { it.first == valor }?.second ?: valor
 
 /** Iniciales para el avatar circular del responsable (ej. "Hilson Puerto" -> "HP"),
  * igual que el `respIni` del mockup. */

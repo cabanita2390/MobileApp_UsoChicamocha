@@ -83,7 +83,7 @@ fun SubestacionHomeScreen(
             androidx.compose.foundation.layout.Column {
                 SubestacionTopBar(
                     title = "Estaciones de Bombeo",
-                    subtitle = if (uiState.responsableNombre.isNotBlank()) "Disciplina Civil · ${uiState.responsableNombre}" else "Disciplina Civil",
+                    subtitle = if (uiState.responsableNombre.isNotBlank()) "Todas las disciplinas · ${uiState.responsableNombre}" else "Todas las disciplinas",
                     onBack = onNavigateBack,
                     onSyncClick = onNavigateToCola,
                     networkStatus = networkStatus

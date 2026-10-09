@@ -38,6 +38,7 @@ import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.L_ACT
 import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.L_MANT
 import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.L_MOT
 import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.L_RES
+import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.nombreDisciplina
 import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.nombreMes
 import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.theme.SubestacionColors
 import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.theme.SubestacionShapes
@@ -168,7 +169,7 @@ private fun DetalleContenido(d: EjecucionDetalle, networkStatus: Boolean, onNavi
                 FilaDetalle("Mes / semana", "${nombreMes(d.mesEjecucion)} · Semana ${d.semanaEjecucion}")
                 FilaDetalle("Responsable", d.responsable)
                 FilaDetalle("Estación", d.estacionNombre)
-                FilaDetalle("Disciplina", if (d.disciplina == "CIVIL") "Civil" else d.disciplina)
+                FilaDetalle("Disciplina", nombreDisciplina(d.disciplina))
 
                 SeccionEncabezado("ACTIVIDAD")
                 FilaDetalle("Tipo de actividad", L_ACT[d.tipoActividad] ?: d.tipoActividad)

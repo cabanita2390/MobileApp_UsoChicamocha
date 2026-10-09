@@ -39,8 +39,16 @@ data class CitaProgramada(
     val esProgramada: Boolean = true,
     val ejecucionId: Long? = null,
     /** Registrada en este equipo pero todavía en la cola de envío (sin id del servidor). */
-    val enCola: Boolean = false
-)
+    val enCola: Boolean = false,
+    /** Código de la disciplina (CIVIL, ELECTRICO, ELECTROMECANICO). */
+    val disciplina: String = "CIVIL"
+) {
+    /** El móvil muestra las citas de todas las disciplinas, pero solo registra las que ya tienen captura. */
+    val capturaHabilitada: Boolean get() = disciplina in DISCIPLINAS_CON_CAPTURA
+}
+
+/** Disciplinas que ya se pueden registrar desde el móvil; las demás se ven en solo consulta. */
+val DISCIPLINAS_CON_CAPTURA = setOf("CIVIL")
 
 /** Cita "cruda" del cronograma (sin estado de cumplimiento), para precargar el wizard de captura. */
 data class ProgramacionCita(
