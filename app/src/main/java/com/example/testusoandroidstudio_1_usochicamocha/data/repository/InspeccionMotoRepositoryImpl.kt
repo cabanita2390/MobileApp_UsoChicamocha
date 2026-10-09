@@ -96,7 +96,7 @@ class InspeccionMotoRepositoryImpl @Inject constructor(
                         Log.e(TAG, "   Verifica que: idVehiculo=${inspeccion.idVehiculo} existe en el servidor, idUbicacion=${inspeccion.idUbicacion} existe")
                     }
                     401 -> Log.e(TAG, "🔑 [syncOne] Error 401: Token expirado o inválido")
-                    403 -> Log.e(TAG, "🚫 [syncOne] Error 403: Usuario no tiene permisos (requiere rol MECANIC/ADMIN)")
+                    403 -> Log.e(TAG, "🚫 [syncOne] Error 403: Usuario no tiene permisos (requiere rol OPERARIO, SUPERVISOR_OPERATIVO o ADMIN)")
                     404 -> {
                         Log.e(TAG, "📍 [syncOne] Error 404: Vehículo no encontrado en servidor")
                         Log.e(TAG, "   El idVehiculo=${inspeccion.idVehiculo} no existe, pero la moto se sincronizó como ${inspeccion.placaVehiculo}")

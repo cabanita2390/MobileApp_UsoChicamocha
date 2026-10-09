@@ -40,10 +40,9 @@ fun HomeScreen(
     onNavigateToSubestaciones: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    // SUPERVISOR_OPERATIVO (nuevo) + ACEITE (legacy en BD aún no migrada) = mismo acceso
-    val isSupervisorOperativo = uiState.userRole == "SUPERVISOR_OPERATIVO" || uiState.userRole == "ACEITE" || uiState.userRole == "MECANIC"
+    // Los roles son 3: ADMIN, SUPERVISOR_OPERATIVO y OPERARIO (este último cae en el menú por defecto).
+    val isSupervisorOperativo = uiState.userRole == "SUPERVISOR_OPERATIVO"
     val isAdmin = uiState.userRole == "ADMIN"
-    @Suppress("UNUSED_VARIABLE") val isAceite = isSupervisorOperativo  // alias para compatibilidad
 
     LaunchedEffect(uiState.logoutCompleted) {
         if (uiState.logoutCompleted) {

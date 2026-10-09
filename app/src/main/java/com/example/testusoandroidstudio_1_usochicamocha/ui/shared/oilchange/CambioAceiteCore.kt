@@ -23,7 +23,7 @@ class CambioAceiteCore(
     private val logTag: String
 ) {
     companion object {
-        val ALLOWED_ROLES = setOf("SUPERVISOR_OPERATIVO", "ACEITE", "MECANIC", "ADMIN")
+        val ALLOWED_ROLES = setOf("SUPERVISOR_OPERATIVO", "ADMIN")
     }
 
     private lateinit var scope: CoroutineScope
@@ -47,7 +47,7 @@ class CambioAceiteCore(
             _uiState.update { it.copy(isRoleAllowed = isAllowed) }
             if (!isAllowed) {
                 _uiState.update {
-                    it.copy(error = "No tiene permisos para registrar cambios de aceite. Roles requeridos: SUPERVISOR_OPERATIVO, MECANIC o ADMIN.")
+                    it.copy(error = "No tiene permisos para registrar cambios de aceite. Roles requeridos: SUPERVISOR_OPERATIVO o ADMIN.")
                 }
             }
         }
@@ -150,7 +150,7 @@ class CambioAceiteCore(
             val userRole = tokenManager.getRole().firstOrNull()
             if (userRole == null || !ALLOWED_ROLES.contains(userRole)) {
                 _uiState.update {
-                    it.copy(error = "No tiene permisos para registrar cambios de aceite. Roles requeridos: SUPERVISOR_OPERATIVO, MECANIC o ADMIN.")
+                    it.copy(error = "No tiene permisos para registrar cambios de aceite. Roles requeridos: SUPERVISOR_OPERATIVO o ADMIN.")
                 }
                 return@launch
             }
