@@ -31,9 +31,12 @@ import com.example.testusoandroidstudio_1_usochicamocha.domain.model.Programacio
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.toEntity
 import com.example.testusoandroidstudio_1_usochicamocha.domain.repository.SubestacionRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody.Companion.asRequestBody
@@ -143,6 +146,11 @@ class SubestacionRepositoryImpl @Inject constructor(
                 Log.e(TAG, "❌ Ejecucion ${ejecucion.uuidCliente} sync failed: ${response.code()}")
                 Result.failure(Exception("Error del servidor al sincronizar ejecución: ${response.code()}"))
             }
+        } catch (e: CancellationException) {
+            // Cancelado a mitad del envío (p. ej. el withTimeout del worker): se suelta el lock
+            // fuera de la cancelación; si no, el registro quedaba en "ENVIANDO" para siempre.
+            withContext(NonCancellable) { ejecucionDao.markSyncFailed(ejecucion.uuidCliente) }
+            throw e
         } catch (e: Exception) {
             ejecucionDao.markSyncFailed(ejecucion.uuidCliente)
             Log.e(TAG, "❌ Exception syncing ejecucion ${ejecucion.uuidCliente}", e)

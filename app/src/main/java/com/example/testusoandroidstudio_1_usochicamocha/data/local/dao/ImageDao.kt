@@ -21,6 +21,10 @@ interface ImageDao {
     @Query("UPDATE pending_images SET isSyncing = 0 WHERE localId = :localId")
     suspend fun markAsNotSyncing(localId: Int)
 
+    /** Locks de subida que quedaron puestos si el proceso murió subiendo (ver LiberadorLocksHuerfanos). */
+    @Query("UPDATE pending_images SET isSyncing = 0 WHERE isSyncing = 1 AND isSynced = 0")
+    suspend fun resetStuckSyncing()
+
     /**
      * CORREGIDO: Se ha renombrado la columna 'pf.serverId as formServerId'
      * a 'pf.serverId as serverId' para que coincida exactamente con la propiedad

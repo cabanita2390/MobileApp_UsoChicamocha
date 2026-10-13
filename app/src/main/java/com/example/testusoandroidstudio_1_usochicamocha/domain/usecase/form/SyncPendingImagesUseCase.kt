@@ -1,11 +1,14 @@
 package com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.form
 
 import android.util.Log
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.LiberadorLocksHuerfanos
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.ImageEntity
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.pojo.ImageForSync
 import com.example.testusoandroidstudio_1_usochicamocha.domain.repository.FormRepository
 import com.example.testusoandroidstudio_1_usochicamocha.domain.repository.SubestacionRepository
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
 import javax.inject.Inject
 
 /**
@@ -22,11 +25,13 @@ import javax.inject.Inject
  */
 class SyncPendingImagesUseCase @Inject constructor(
     private val formRepository: FormRepository,
-    private val subestacionRepository: SubestacionRepository
+    private val subestacionRepository: SubestacionRepository,
+    private val liberadorLocks: LiberadorLocksHuerfanos
 ) {
     // La función invoke permite que la clase sea llamada como si fuera una función.
     suspend operator fun invoke(): Result<Unit> {
         return try {
+            liberadorLocks.liberarUnaVezPorProceso()
             // 1. Obtenemos solo las imágenes de formularios cuyo texto ya se ha sincronizado.
             val pendingImages = formRepository.getPendingImagesForSync().first()
 
@@ -73,7 +78,9 @@ class SyncPendingImagesUseCase @Inject constructor(
                 } catch (e: Exception) {
                     // En caso de error, liberamos el lock
                     try {
-                        formRepository.markImageAsNotSyncing(image.localId)
+                        // NonCancellable: si la subida se canceló (timeout del worker), soltar el
+                        // lock igual; si no, la foto quedaba bloqueada hasta reiniciar la app.
+                        withContext(NonCancellable) { formRepository.markImageAsNotSyncing(image.localId) }
                     } catch (unlockException: Exception) {
                         Log.e("SyncPendingImagesUC", "Error al liberar lock para imagen ${image.localId}: ${unlockException.message}")
                     }
