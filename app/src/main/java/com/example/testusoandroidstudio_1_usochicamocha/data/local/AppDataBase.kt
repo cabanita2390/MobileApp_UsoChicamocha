@@ -72,9 +72,10 @@ import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.Ejecuc
         com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.ActividadCacheEntity::class,
         com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.CumplimientoCacheEntity::class,
         com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.EjecucionDetalleCacheEntity::class,
-        com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.EjecucionNoProgramadaCacheEntity::class
+        com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.EjecucionNoProgramadaCacheEntity::class,
+        com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.SesionActualEntity::class
     ],
-    version = 49,
+    version = 50,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -816,6 +817,26 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Cada registro pendiente guarda su dueño (propietarioId) y sesion_actual dice quién está
+         * en sesión: las colas solo envían lo del usuario en sesión. Antes, si el técnico A dejaba
+         * registros sin enviar y entraba B en el mismo teléfono, se enviaban a nombre de B.
+         * Los registros ya existentes quedan con NULL (= de la sesión actual), como hasta ahora.
+         */
+        val MIGRATION_49_50 = object : Migration(49, 50) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                listOf(
+                    "pending_forms", "maintenance_forms", "pending_inspecciones_moto", "vehiculo_inspections",
+                    "vehiculo_oil_changes", "moto_oil_changes", "pending_mant_ejecucion"
+                ).forEach { tabla ->
+                    database.execSQL("ALTER TABLE `$tabla` ADD COLUMN `propietarioId` INTEGER")
+                }
+                database.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `sesion_actual` (`id` INTEGER NOT NULL, `usuarioId` INTEGER, PRIMARY KEY(`id`))"
+                )
+            }
+        }
+
         /** Foto pendiente cuyo archivo ya no existe: deja de reintentarse y la Cola lo avisa. */
         val MIGRATION_48_49 = object : Migration(48, 49) {
             override fun migrate(database: SupportSQLiteDatabase) {
@@ -846,4 +867,5 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun cumplimientoCacheDao(): CumplimientoCacheDao
     abstract fun ejecucionDetalleCacheDao(): EjecucionDetalleCacheDao
     abstract fun ejecucionNoProgramadaCacheDao(): EjecucionNoProgramadaCacheDao
+    abstract fun propietarioColasDao(): com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.PropietarioColasDao
 }

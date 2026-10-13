@@ -13,7 +13,7 @@ interface MotoOilChangeDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(oilChange: MotoOilChangeEntity): Long
 
-    @Query("SELECT * FROM moto_oil_changes WHERE isSynced = 0 AND isSyncing = 0 ORDER BY timestamp DESC")
+    @Query("SELECT * FROM moto_oil_changes WHERE isSynced = 0 AND isSyncing = 0 AND (propietarioId IS NULL OR propietarioId = (SELECT usuarioId FROM sesion_actual WHERE id = 1)) ORDER BY timestamp DESC")
     suspend fun getPendingOilChanges(): List<MotoOilChangeEntity>
 
     @Query("SELECT * FROM moto_oil_changes ORDER BY timestamp DESC")

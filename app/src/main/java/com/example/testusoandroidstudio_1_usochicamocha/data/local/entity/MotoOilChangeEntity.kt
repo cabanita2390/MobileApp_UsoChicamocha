@@ -16,5 +16,7 @@ data class MotoOilChangeEntity(
     val intervalKm: Int,
     val airFilterChanged: Boolean = false,
     val isSynced: Boolean = false,
-    val isSyncing: Boolean = false
+    val isSyncing: Boolean = false,
+    /** Usuario que hizo el registro (ver PropietarioColas); null = de la sesión actual. */
+    val propietarioId: Long? = null
 )

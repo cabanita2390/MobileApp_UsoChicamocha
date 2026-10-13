@@ -14,11 +14,11 @@ interface InspeccionMotoDao {
     suspend fun insertInspeccion(entity: InspeccionMotoEntity)
 
     /** Retorna las inspecciones pendientes de sincronizar (no bloqueadas por otro proceso) */
-    @Query("SELECT * FROM pending_inspecciones_moto WHERE isSynced = 0 AND isSyncing = 0 ORDER BY timestamp ASC")
+    @Query("SELECT * FROM pending_inspecciones_moto WHERE isSynced = 0 AND isSyncing = 0 AND (propietarioId IS NULL OR propietarioId = (SELECT usuarioId FROM sesion_actual WHERE id = 1)) ORDER BY timestamp ASC")
     fun getPendingInspecciones(): Flow<List<InspeccionMotoEntity>>
 
     /** Versión suspend para el SyncDataWorker */
-    @Query("SELECT * FROM pending_inspecciones_moto WHERE isSynced = 0 AND isSyncing = 0 ORDER BY timestamp ASC")
+    @Query("SELECT * FROM pending_inspecciones_moto WHERE isSynced = 0 AND isSyncing = 0 AND (propietarioId IS NULL OR propietarioId = (SELECT usuarioId FROM sesion_actual WHERE id = 1)) ORDER BY timestamp ASC")
     suspend fun getPendingInspeccionesList(): List<InspeccionMotoEntity>
 
     /**

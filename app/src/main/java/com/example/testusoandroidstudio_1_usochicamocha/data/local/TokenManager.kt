@@ -101,9 +101,18 @@ class TokenManager @Inject constructor(private val dataStore: DataStore<Preferen
 
     // --- DELETE METHOD ---
 
+    /**
+     * Borra solo los datos de la sesión. Antes hacía preferences.clear() sobre todo el DataStore,
+     * que también guarda datos que no son de la sesión (p. ej. las observaciones frecuentes).
+     */
     suspend fun clearSessionData() {
         dataStore.edit { preferences ->
-            preferences.clear()
+            preferences.remove(ACCESS_TOKEN_KEY)
+            preferences.remove(REFRESH_TOKEN_KEY)
+            preferences.remove(USER_ID_KEY)
+            preferences.remove(INSPECTOR_INFO_KEY)
+            preferences.remove(USERNAME_KEY)
+            preferences.remove(USER_ROLE_KEY)
         }
     }
 }

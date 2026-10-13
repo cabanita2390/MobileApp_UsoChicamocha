@@ -50,7 +50,7 @@ interface FormDao {
      * cumplir con el método getPendingForms() de su interfaz. Esta consulta es
      * usada por el SyncDataWorker para obtener los formularios de texto a sincronizar.
      */
-    @Query("SELECT * FROM pending_forms WHERE isSynced = 0 AND isSyncing = 0 ORDER BY timestamp DESC")
+    @Query("SELECT * FROM pending_forms WHERE isSynced = 0 AND isSyncing = 0 AND (propietarioId IS NULL OR propietarioId = (SELECT usuarioId FROM sesion_actual WHERE id = 1)) ORDER BY timestamp DESC")
     fun getPendingFormsFlow(): Flow<List<FormEntity>>
 
     @Query("""

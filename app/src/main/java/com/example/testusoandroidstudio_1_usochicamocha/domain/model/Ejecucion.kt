@@ -33,7 +33,9 @@ data class Ejecucion(
     /** Ídem `fotosCount`: cuántas de esas fotos ya confirmó el servidor. */
     val fotosSincronizadas: Int = 0,
     /** Fotos cuyo archivo ya no existe en el equipo: hay que tomarlas de nuevo o descartarlas. */
-    val fotosPerdidas: Int = 0
+    val fotosPerdidas: Int = 0,
+    /** Registro pendiente de otro usuario: se envía cuando él vuelva a iniciar sesión. */
+    val deOtroUsuario: Boolean = false
 )
 
 fun Ejecucion.toEntity(): EjecucionEntity {

@@ -26,7 +26,9 @@ data class EjecucionEntity(
     val descripcionLibre: String? = null,
     var isSynced: Boolean = false,
     var isSyncing: Boolean = false,
-    var syncFallido: Boolean = false
+    var syncFallido: Boolean = false,
+    /** Usuario que hizo el registro (ver PropietarioColas); null = de la sesión actual. */
+    val propietarioId: Long? = null
 )
 
 fun EjecucionEntity.toDomain(): Ejecucion {

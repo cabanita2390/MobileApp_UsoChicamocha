@@ -53,7 +53,8 @@ object DatabaseModule {
                 AppDatabase.MIGRATION_45_46,
                 AppDatabase.MIGRATION_46_47,
                 AppDatabase.MIGRATION_47_48,
-                AppDatabase.MIGRATION_48_49
+                AppDatabase.MIGRATION_48_49,
+                AppDatabase.MIGRATION_49_50
             )
             .build()
     }
@@ -121,6 +122,11 @@ object DatabaseModule {
     @Provides
     @Singleton
     fun provideEjecucionDao(db: AppDatabase): EjecucionDao = db.ejecucionDao()
+
+    @Provides
+    @Singleton
+    fun providePropietarioColasDao(db: AppDatabase): com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.PropietarioColasDao =
+        db.propietarioColasDao()
 
     @Provides
     @Singleton

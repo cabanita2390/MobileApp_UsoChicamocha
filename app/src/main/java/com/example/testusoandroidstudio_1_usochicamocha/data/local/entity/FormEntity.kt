@@ -31,7 +31,9 @@ data class FormEntity(
     val greasingObservations: String,
     val isUnexpected: Boolean,
     var isSynced: Boolean = false,
-    var isSyncing: Boolean = false
+    var isSyncing: Boolean = false,
+    /** Usuario que hizo el registro (ver PropietarioColas); null = de la sesión actual. */
+    val propietarioId: Long? = null
 )
 
 fun FormEntity.toDomain(): Form {

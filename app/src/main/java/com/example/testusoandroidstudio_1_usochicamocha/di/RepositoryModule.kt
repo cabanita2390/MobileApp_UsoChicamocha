@@ -19,7 +19,11 @@ object RepositoryModule {
 
     @Provides
     @Singleton
-    fun provideAuthRepository(apiService: ApiService, tokenManager: TokenManager): AuthRepository = AuthRepositoryImpl(apiService, tokenManager)
+    fun provideAuthRepository(
+        apiService: ApiService,
+        tokenManager: TokenManager,
+        propietarioColas: com.example.testusoandroidstudio_1_usochicamocha.data.local.PropietarioColas
+    ): AuthRepository = AuthRepositoryImpl(apiService, tokenManager, propietarioColas)
 
     @Provides
     @Singleton

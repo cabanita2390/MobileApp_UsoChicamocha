@@ -16,7 +16,7 @@ interface VehiculoOilChangeDao {
     @Query("SELECT * FROM vehiculo_oil_changes ORDER BY timestamp DESC")
     fun getAllFlow(): Flow<List<VehiculoOilChangeEntity>>
 
-    @Query("SELECT * FROM vehiculo_oil_changes WHERE isSynced = 0 AND isSyncing = 0")
+    @Query("SELECT * FROM vehiculo_oil_changes WHERE isSynced = 0 AND isSyncing = 0 AND (propietarioId IS NULL OR propietarioId = (SELECT usuarioId FROM sesion_actual WHERE id = 1))")
     suspend fun getPending(): List<VehiculoOilChangeEntity>
 
     @Query("UPDATE vehiculo_oil_changes SET isSynced = 1, isSyncing = 0 WHERE localId = :id")

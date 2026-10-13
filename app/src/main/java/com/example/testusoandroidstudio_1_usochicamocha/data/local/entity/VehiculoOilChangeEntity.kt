@@ -18,5 +18,7 @@ data class VehiculoOilChangeEntity(
     val airFilterChanged: Boolean = false,
     @ColumnInfo(defaultValue = "VEHICLE") val assetType: String = "VEHICLE",
     val isSynced: Boolean = false,
-    val isSyncing: Boolean = false
+    val isSyncing: Boolean = false,
+    /** Usuario que hizo el registro (ver PropietarioColas); null = de la sesión actual. */
+    val propietarioId: Long? = null
 )

@@ -11,6 +11,7 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.LiberadorLocksHuerfanos
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.PropietarioColas
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.auth.SessionStatus
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.auth.ValidateSessionUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.form.GetPendingFormsUseCase
@@ -67,13 +68,15 @@ class SyncDataWorker @AssistedInject constructor(
     private val sincronizarCatalogosSubestacionUseCase: SincronizarCatalogosSubestacionUseCase,
     private val sincronizarCumplimientoAnioUseCase: SincronizarCumplimientoAnioUseCase,
     private val sincronizarEjecucionesNoProgramadasAnioUseCase: SincronizarEjecucionesNoProgramadasAnioUseCase,
-    private val liberadorLocks: LiberadorLocksHuerfanos
+    private val liberadorLocks: LiberadorLocksHuerfanos,
+    private val propietarioColas: PropietarioColas
 ) : CoroutineWorker(appContext, workerParams) {
 
     override suspend fun doWork(): Result {
         val syncType = inputData.getString("SYNC_TYPE") ?: "ALL_DATA"
         val workId = id.toString().take(8)
         liberadorLocks.liberarUnaVezPorProceso()
+        propietarioColas.sincronizarConSesionGuardada()
         
         try {
             Log.d("SyncDataWorker", "🔄 [$workId] === SYNC SESSION START - Type: $syncType ===")

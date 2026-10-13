@@ -1,6 +1,7 @@
 package com.example.testusoandroidstudio_1_usochicamocha.data.repository
 
 import android.util.Log
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.PropietarioColas
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.TokenManager
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.ApiService
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.LoginRequest
@@ -17,7 +18,8 @@ import javax.inject.Inject
 
 class AuthRepositoryImpl @Inject constructor(
     private val apiService: ApiService,
-    private val tokenManager: TokenManager
+    private val tokenManager: TokenManager,
+    private val propietarioColas: PropietarioColas
 ) : AuthRepository {
 
     // Evita que múltiples workers/interceptores disparen refrescos de token en paralelo
@@ -40,6 +42,7 @@ class AuthRepositoryImpl @Inject constructor(
 
                 tokenManager.saveTokens(accessToken, refreshToken)
                 tokenManager.saveUserId(userId)
+                propietarioColas.alIniciarSesion(userId.toLong())
                 tokenManager.saveUsername(username)
                 tokenManager.saveRole(loginResponse.role ?: "OPERARIO")
 
@@ -60,6 +63,8 @@ class AuthRepositoryImpl @Inject constructor(
         }
     }
     override suspend fun logout() {
+        // Antes de borrar la sesión: lo pendiente queda a nombre de quien lo hizo.
+        propietarioColas.alCerrarSesion()
         tokenManager.clearSessionData()
     }
 

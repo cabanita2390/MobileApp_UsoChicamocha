@@ -44,7 +44,9 @@ data class InspeccionMotoEntity(
 
     // Para visualización en lista (Motos vs Vehículos)
     @ColumnInfo(defaultValue = "") val placaVehiculo: String = "",
-    @ColumnInfo(defaultValue = "") val tipoVehiculo: String = ""
+    @ColumnInfo(defaultValue = "") val tipoVehiculo: String = "",
+    /** Usuario que hizo el registro (ver PropietarioColas); null = de la sesión actual. */
+    val propietarioId: Long? = null
 )
 
 fun InspeccionMotoEntity.toDomain() = InspeccionMotoPendiente(

@@ -17,7 +17,9 @@ data class MachineOilChangeEntity(
     val type: String, // "motor" o "hydraulic"
     val isSynced: Boolean,
     val isSyncing: Boolean = false,
-    val syncError: String? = null
+    val syncError: String? = null,
+    /** Usuario que hizo el registro (ver PropietarioColas); null = de la sesión actual. */
+    val propietarioId: Long? = null
 )
 
 fun MachineOilChangeEntity.toDomain(): MachineOilChangeForm {

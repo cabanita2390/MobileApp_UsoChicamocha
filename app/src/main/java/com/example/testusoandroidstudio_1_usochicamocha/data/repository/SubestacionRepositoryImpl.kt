@@ -83,7 +83,8 @@ class SubestacionRepositoryImpl @Inject constructor(
             filas.map { it.entity.toDomain().copy(
                 fotosCount = it.fotosCount,
                 fotosSincronizadas = it.fotosSincronizadas,
-                fotosPerdidas = it.fotosPerdidas
+                fotosPerdidas = it.fotosPerdidas,
+                deOtroUsuario = it.deOtroUsuario
             ) }
         }
     }

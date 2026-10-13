@@ -13,7 +13,7 @@ interface MachineOilChangeDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(machineOilChange: MachineOilChangeEntity)
 
-    @Query("SELECT * FROM maintenance_forms WHERE isSynced = 0 AND isSyncing = 0 ORDER BY dateTime DESC")
+    @Query("SELECT * FROM maintenance_forms WHERE isSynced = 0 AND isSyncing = 0 AND (propietarioId IS NULL OR propietarioId = (SELECT usuarioId FROM sesion_actual WHERE id = 1)) ORDER BY dateTime DESC")
     fun getPendingMachineOilChangeForms(): Flow<List<MachineOilChangeEntity>>
 
     @Query("UPDATE maintenance_forms SET isSyncing = 1 WHERE id = :id")

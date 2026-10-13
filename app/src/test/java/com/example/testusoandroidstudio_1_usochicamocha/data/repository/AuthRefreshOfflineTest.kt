@@ -5,6 +5,9 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
 import androidx.test.core.app.ApplicationProvider
+import androidx.room.Room
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.AppDatabase
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.PropietarioColas
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.TokenManager
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.ApiService
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.NewAccessTokenResponse
@@ -46,6 +49,7 @@ class AuthRefreshOfflineTest {
     private lateinit var tokenManager: TokenManager
     private lateinit var apiService: ApiService
     private lateinit var repository: AuthRepositoryImpl
+    private lateinit var db: AppDatabase
 
     private fun jwt(expEpochSeconds: Long): String {
         val enc = Base64.getUrlEncoder().withoutPadding()
@@ -64,9 +68,10 @@ class AuthRefreshOfflineTest {
         val file = File(context.cacheDir, "auth_refresh_offline_${System.nanoTime()}.preferences_pb")
         val dataStore: DataStore<Preferences> = PreferenceDataStoreFactory.create(produceFile = { file })
         tokenManager = TokenManager(dataStore)
+        db = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java).allowMainThreadQueries().build()
         tokenManager.saveTokens(accessVencido, refreshVigente)
         apiService = mockk()
-        repository = AuthRepositoryImpl(apiService, tokenManager)
+        repository = AuthRepositoryImpl(apiService, tokenManager, PropietarioColas(db.propietarioColasDao(), tokenManager))
     }
 
     @Test

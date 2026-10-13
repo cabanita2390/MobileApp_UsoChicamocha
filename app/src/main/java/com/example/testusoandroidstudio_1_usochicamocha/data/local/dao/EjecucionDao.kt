@@ -13,7 +13,8 @@ data class EjecucionConFotos(
     @Embedded val entity: EjecucionEntity,
     val fotosCount: Int,
     val fotosSincronizadas: Int,
-    val fotosPerdidas: Int = 0
+    val fotosPerdidas: Int = 0,
+    val deOtroUsuario: Boolean = false
 )
 
 @Dao
@@ -51,7 +52,7 @@ interface EjecucionDao {
     @Query("UPDATE pending_mant_ejecucion SET isSyncing = 0 WHERE isSyncing = 1")
     suspend fun resetStuckSyncing()
 
-    @Query("SELECT * FROM pending_mant_ejecucion WHERE isSynced = 0 AND isSyncing = 0 ORDER BY fecha DESC")
+    @Query("SELECT * FROM pending_mant_ejecucion WHERE isSynced = 0 AND isSyncing = 0 AND (propietarioId IS NULL OR propietarioId = (SELECT usuarioId FROM sesion_actual WHERE id = 1)) ORDER BY fecha DESC")
     fun getPendingFlow(): Flow<List<EjecucionEntity>>
 
     /**
@@ -83,7 +84,8 @@ interface EjecucionDao {
         SELECT e.*,
             (SELECT COUNT(*) FROM pending_images i WHERE i.ejecucionUUID = e.uuidCliente) AS fotosCount,
             (SELECT COUNT(*) FROM pending_images i WHERE i.ejecucionUUID = e.uuidCliente AND i.isSynced = 1) AS fotosSincronizadas,
-            (SELECT COUNT(*) FROM pending_images i WHERE i.ejecucionUUID = e.uuidCliente AND i.isSynced = 0 AND i.perdida = 1) AS fotosPerdidas
+            (SELECT COUNT(*) FROM pending_images i WHERE i.ejecucionUUID = e.uuidCliente AND i.isSynced = 0 AND i.perdida = 1) AS fotosPerdidas,
+            (e.propietarioId IS NOT NULL AND e.propietarioId IS NOT (SELECT usuarioId FROM sesion_actual WHERE id = 1)) AS deOtroUsuario
         FROM pending_mant_ejecucion e
         WHERE e.isSynced = 0
            OR EXISTS (SELECT 1 FROM pending_images i WHERE i.ejecucionUUID = e.uuidCliente AND i.isSynced = 0)

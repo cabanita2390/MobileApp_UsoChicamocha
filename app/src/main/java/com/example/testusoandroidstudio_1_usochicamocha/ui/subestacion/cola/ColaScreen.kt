@@ -209,6 +209,7 @@ private fun ColaItem(
     val fotosPendientes = ejecucion.fotosCount > ejecucion.fotosSincronizadas
     val fotosPerdidas = ejecucion.fotosPerdidas > 0
     val (etiqueta, pillBg, pillFg) = when {
+        ejecucion.deOtroUsuario -> Triple("De otro usuario", SubestacionColors.PurpleSurface, SubestacionColors.Purple)
         fotosPerdidas -> Triple("Foto perdida", SubestacionColors.RedBg, SubestacionColors.Red)
         ejecucion.syncFallido -> Triple("Error", SubestacionColors.RedBg, SubestacionColors.Red)
         ejecucion.isSyncing -> Triple("Enviando", SubestacionColors.PurpleSurface, SubestacionColors.Purple)
@@ -219,6 +220,7 @@ private fun ColaItem(
     // Mock: detalle = "{fotos} foto(s) · {texto según estado}" — siempre da contexto,
     // no solo cuando falla.
     val textoEstado = when {
+        ejecucion.deOtroUsuario -> "lo registró otro usuario: se enviará a su nombre cuando vuelva a iniciar sesión"
         fotosPerdidas -> "${ejecucion.fotosPerdidas} foto(s) ya no está(n) en el equipo: tómala de nuevo o descártala"
         ejecucion.syncFallido -> "falló, se reintenta solo"
         ejecucion.isSyncing -> "subiendo ahora…"

@@ -13,7 +13,7 @@ interface VehiculoInspectionDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertInspection(inspection: VehiculoInspectionEntity): Long
 
-    @Query("SELECT * FROM vehiculo_inspections WHERE isSynced = 0 AND isSyncing = 0")
+    @Query("SELECT * FROM vehiculo_inspections WHERE isSynced = 0 AND isSyncing = 0 AND (propietarioId IS NULL OR propietarioId = (SELECT usuarioId FROM sesion_actual WHERE id = 1))")
     suspend fun getPendingInspections(): List<VehiculoInspectionEntity>
 
     @Query("SELECT * FROM vehiculo_inspections ORDER BY timestamp DESC")
