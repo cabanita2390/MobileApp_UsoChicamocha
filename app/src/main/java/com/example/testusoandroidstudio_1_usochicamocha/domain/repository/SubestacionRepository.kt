@@ -27,6 +27,9 @@ interface SubestacionRepository {
     fun getEjecucionesCola(): Flow<List<Ejecucion>>
 
     suspend fun saveEjecucionLocally(ejecucion: Ejecucion, imageUris: List<String>)
+
+    /** Estado de envío del registro local (null si no existe): alimenta la confirmación de captura. */
+    fun observarEjecucionLocal(uuidCliente: String): Flow<Ejecucion?>
     suspend fun syncEjecucion(ejecucion: Ejecucion): Result<Unit>
 
     // --- Evidencia (comparte ImageDao/ImageEntity con Form/Vehículo) ---

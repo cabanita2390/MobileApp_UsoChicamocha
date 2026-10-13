@@ -80,6 +80,9 @@ class SubestacionRepositoryImpl @Inject constructor(
         }
     }
 
+    override fun observarEjecucionLocal(uuidCliente: String): Flow<Ejecucion?> =
+        ejecucionDao.getByUuidFlow(uuidCliente).map { it?.toDomain() }
+
     override suspend fun saveEjecucionLocally(ejecucion: Ejecucion, imageUris: List<String>) {
         val entity = ejecucion.toEntity()
         ejecucionDao.insertEjecucion(entity)

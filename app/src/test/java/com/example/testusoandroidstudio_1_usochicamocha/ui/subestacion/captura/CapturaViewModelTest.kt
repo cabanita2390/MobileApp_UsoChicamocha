@@ -27,6 +27,7 @@ import io.mockk.just
 import io.mockk.unmockkAll
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -112,6 +113,7 @@ class CapturaViewModelTest {
         coEvery { localSyncCoordinator.coordinateSync(any()) } returns Result.success(Unit)
         coEvery { obtenerPendientesUseCase(any(), any()) } returns Result.success(emptyList())
         coEvery { obtenerCitaLocalUseCase(any()) } returns null
+        every { guardarEjecucionLocalUseCase.observarEnvio(any()) } returns flowOf(null)
     }
 
     private fun createViewModel() {
@@ -782,4 +784,44 @@ class CapturaViewModelTest {
         evidenciaPendiente = false,
         ediciones = emptyList()
     )
+
+    @Test
+    fun `la confirmacion sigue el estado real del envio y no solo la red`() = runTest {
+        val envio = MutableStateFlow<Ejecucion?>(null)
+        var guardada: Ejecucion? = null
+        coEvery { guardarEjecucionLocalUseCase(any(), any()) } answers { guardada = firstArg() }
+        every { guardarEjecucionLocalUseCase.observarEnvio(any()) } returns envio
+        createViewModel()
+        viewModel.cargarDesdeCita(
+            programacionId = 100L, estacionId = estacion.id, actividadId = actividad.id,
+            esInspeccion = true, vencida = false
+        )
+        viewModel.onTipoActividadChange("INSPECCION")
+        viewModel.onSiguiente()
+        viewModel.onResultadoChange("CONFORME")
+        viewModel.onObservacionesChange("Todo en orden")
+        viewModel.onSiguiente()
+        viewModel.onSiguiente()
+        advanceUntilIdle()
+        assertEquals(EstadoEnvio.EN_EQUIPO, viewModel.uiState.value.estadoEnvio)
+
+        // Backend caído con señal en el teléfono: el envío falla.
+        envio.value = guardada!!.copy(syncFallido = true)
+        advanceUntilIdle()
+        assertEquals(EstadoEnvio.NO_ENVIADO, viewModel.uiState.value.estadoEnvio)
+
+        envio.value = guardada!!.copy(isSynced = true, serverId = 68)
+        advanceUntilIdle()
+        assertEquals(EstadoEnvio.ENVIADO, viewModel.uiState.value.estadoEnvio)
+    }
+
+    @Test
+    fun `con red pero sin envio confirmado nunca dice que se envio`() {
+        listOf(null, EstadoEnvio.EN_EQUIPO, EstadoEnvio.ENVIANDO, EstadoEnvio.NO_ENVIADO).forEach { estado ->
+            val texto = textoConfirmacion(esEdicion = false, online = true, estadoEnvio = estado)
+            assertFalse("$estado: $texto", texto.contains("se envió"))
+        }
+        assertTrue(textoConfirmacion(false, true, EstadoEnvio.ENVIADO).contains("se envió"))
+        assertTrue(textoConfirmacion(false, true, EstadoEnvio.NO_ENVIADO).contains("todavía no se pudo enviar"))
+    }
 }

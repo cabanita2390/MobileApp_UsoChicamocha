@@ -23,6 +23,7 @@ import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.estadoDeC
 import com.example.testusoandroidstudio_1_usochicamocha.util.ImageUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -110,7 +111,9 @@ data class CapturaUiState(
     val actividades: List<ActividadCatalogo> = emptyList(),
 
     val isSaving: Boolean = false,
-    val saveCompleted: Boolean = false
+    val saveCompleted: Boolean = false,
+    /** Estado REAL del envío del registro recién guardado (null en ediciones, que son online). */
+    val estadoEnvio: EstadoEnvio? = null
 ) {
     val esEdicion: Boolean get() = editandoId != null
 
@@ -214,6 +217,8 @@ class CapturaViewModel @Inject constructor(
     private val tokenManager: com.example.testusoandroidstudio_1_usochicamocha.data.local.TokenManager,
     private val obtenerObservacionesFrecuentesUseCase: ObtenerObservacionesFrecuentesUseCase
 ) : ViewModel() {
+
+    private var envioJob: Job? = null
 
     private val _uiState = MutableStateFlow(CapturaUiState())
     val uiState = _uiState.asStateFlow()
@@ -721,6 +726,7 @@ class CapturaViewModel @Inject constructor(
                 descripcionLibre = if (s.modoLibre) s.descripcionLibre.trim() else null
             )
             guardarEjecucionLocalUseCase(ejecucion, s.fotos.map { it.toString() })
+            observarEnvio(ejecucion.uuidCliente)
             localSyncCoordinator.coordinateSync(
                 LocalSyncCoordinator.SyncTrigger.SubstationSaved("captura")
             )
@@ -728,8 +734,22 @@ class CapturaViewModel @Inject constructor(
         }
     }
 
+    /**
+     * La confirmación dice lo que de verdad pasó con el envío, no si el teléfono tiene red:
+     * antes, con el backend caído, decía "se envió correctamente" y el registro seguía en cola.
+     */
+    private fun observarEnvio(uuidCliente: String) {
+        envioJob?.cancel()
+        envioJob = viewModelScope.launch {
+            guardarEjecucionLocalUseCase.observarEnvio(uuidCliente).collect { local ->
+                _uiState.update { it.copy(estadoEnvio = estadoEnvioDe(local)) }
+            }
+        }
+    }
+
     fun onConfirmacionMostrada() {
-        _uiState.update { it.copy(saveCompleted = false) }
+        envioJob?.cancel()
+        _uiState.update { it.copy(saveCompleted = false, estadoEnvio = null) }
     }
 
     private fun guardarEdicion() {
@@ -761,4 +781,14 @@ class CapturaViewModel @Inject constructor(
                 }
         }
     }
+}
+
+enum class EstadoEnvio { EN_EQUIPO, ENVIANDO, ENVIADO, NO_ENVIADO }
+
+internal fun estadoEnvioDe(local: Ejecucion?): EstadoEnvio = when {
+    local == null -> EstadoEnvio.EN_EQUIPO
+    local.isSynced -> EstadoEnvio.ENVIADO
+    local.isSyncing -> EstadoEnvio.ENVIANDO
+    local.syncFallido -> EstadoEnvio.NO_ENVIADO
+    else -> EstadoEnvio.EN_EQUIPO
 }

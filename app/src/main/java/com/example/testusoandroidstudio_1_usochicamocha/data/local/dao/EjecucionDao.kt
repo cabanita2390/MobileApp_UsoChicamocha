@@ -23,6 +23,9 @@ interface EjecucionDao {
     @Query("SELECT * FROM pending_mant_ejecucion WHERE uuidCliente = :uuid")
     suspend fun getByUuid(uuid: String): EjecucionEntity?
 
+    @Query("SELECT * FROM pending_mant_ejecucion WHERE uuidCliente = :uuid")
+    fun getByUuidFlow(uuid: String): Flow<EjecucionEntity?>
+
     @Query("UPDATE pending_mant_ejecucion SET isSynced = 1, serverId = :serverId, isSyncing = 0 WHERE uuidCliente = :uuid")
     suspend fun markAsSynced(uuid: String, serverId: Long)
 

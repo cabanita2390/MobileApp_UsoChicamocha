@@ -264,6 +264,7 @@ fun CapturaScreen(
                 PantallaGuardado(
                     esEdicion = uiState.esEdicion,
                     online = networkStatus,
+                    estadoEnvio = uiState.estadoEnvio,
                     onSiguientePendiente = {
                         viewModel.onConfirmacionMostrada()
                         onNavigateToPendientes()
@@ -1128,6 +1129,7 @@ private fun PasoEvidencia(
 private fun PantallaGuardado(
     esEdicion: Boolean,
     online: Boolean,
+    estadoEnvio: EstadoEnvio?,
     onSiguientePendiente: () -> Unit,
     onVolverInicio: () -> Unit
 ) {
@@ -1158,11 +1160,7 @@ private fun PantallaGuardado(
         )
         Spacer(Modifier.height(10.dp))
         Text(
-            when {
-                esEdicion -> "La edición quedó registrada con su motivo en el historial del registro."
-                online -> "El registro se envió correctamente y ya quedó sincronizado con el servidor."
-                else -> "El registro quedó guardado en el dispositivo. Se sincronizará automáticamente en cuanto haya conexión."
-            },
+            textoConfirmacion(esEdicion, online, estadoEnvio),
             color = SubestacionColors.TextTertiary,
             fontWeight = FontWeight.Medium,
             fontSize = 13.5.sp,
@@ -1211,4 +1209,19 @@ private fun PantallaGuardado(
             Text("Volver al inicio", color = SubestacionColors.Purple, fontWeight = FontWeight.ExtraBold, fontSize = 15.sp)
         }
     }
+}
+
+/**
+ * Lo que de verdad pasó con el envío (estado del registro en el equipo), no solo si hay red:
+ * con el backend caído y señal en el teléfono se decía "se envió correctamente" y el registro
+ * seguía en cola.
+ */
+internal fun textoConfirmacion(esEdicion: Boolean, online: Boolean, estadoEnvio: EstadoEnvio?): String = when {
+    esEdicion -> "La edición quedó registrada con su motivo en el historial del registro."
+    estadoEnvio == EstadoEnvio.ENVIADO ->
+        "El registro se envió y quedó sincronizado con el servidor. Si lleva fotos, terminan de subir solas (se ven en la Cola de sincronización)."
+    estadoEnvio == EstadoEnvio.NO_ENVIADO ->
+        "El registro quedó guardado en el dispositivo, pero todavía no se pudo enviar al servidor. Se reintentará automáticamente; puedes revisarlo en la Cola de sincronización."
+    !online -> "El registro quedó guardado en el dispositivo. Se sincronizará automáticamente en cuanto haya conexión."
+    else -> "El registro quedó guardado en el dispositivo y se está enviando al servidor…"
 }
