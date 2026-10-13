@@ -43,6 +43,7 @@ class AuthRepositoryImpl @Inject constructor(
                 tokenManager.saveTokens(accessToken, refreshToken)
                 tokenManager.saveUserId(userId)
                 propietarioColas.alIniciarSesion(userId.toLong())
+                loginResponse.archivosToken?.let { tokenManager.saveArchivosToken(it) }
                 tokenManager.saveUsername(username)
                 tokenManager.saveRole(loginResponse.role ?: "OPERARIO")
 
@@ -118,6 +119,7 @@ class AuthRepositoryImpl @Inject constructor(
                 if (response.isSuccessful && response.body() != null) {
                     val newAccessToken = response.body()!!.accessToken
                     tokenManager.saveTokens(accessToken = newAccessToken, refreshToken = refreshToken)
+                    response.body()!!.archivosToken?.let { tokenManager.saveArchivosToken(it) }
                     Log.d("AuthRepository", "✅ Refresco exitoso en intento $attempt")
                     return Result.success(newAccessToken)
                 }

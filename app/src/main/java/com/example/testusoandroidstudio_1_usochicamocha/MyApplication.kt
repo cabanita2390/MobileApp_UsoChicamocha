@@ -4,16 +4,29 @@ import android.app.Application
 import android.util.Log
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.*
+import coil.ImageLoader
+import coil.ImageLoaderFactory
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.TokenManager
+import com.example.testusoandroidstudio_1_usochicamocha.data.remote.ArchivosInterceptor
 import com.example.testusoandroidstudio_1_usochicamocha.data.workers.SyncDataWorker
+import okhttp3.OkHttpClient
 import dagger.hilt.android.HiltAndroidApp
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
 @HiltAndroidApp
-class MyApplication : Application(), Configuration.Provider {
+class MyApplication : Application(), Configuration.Provider, ImageLoaderFactory {
 
     @Inject
     lateinit var workerFactory: HiltWorkerFactory
+
+    @Inject
+    lateinit var tokenManager: TokenManager
+
+    /** Cargador de imágenes de toda la app: agrega la credencial a las URL de /uploads. */
+    override fun newImageLoader(): ImageLoader = ImageLoader.Builder(this)
+        .okHttpClient { OkHttpClient.Builder().addInterceptor(ArchivosInterceptor(tokenManager)).build() }
+        .build()
 
     override val workManagerConfiguration: Configuration
         get() = Configuration.Builder()

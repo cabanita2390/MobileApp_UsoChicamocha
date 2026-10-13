@@ -24,6 +24,10 @@ data class LoginResponse(
     val role: String?,
 
     @SerializedName("status")
-    val status: Boolean
+    val status: Boolean,
+
+    /** Credencial para ver archivos de /uploads (ver ArchivosInterceptor). null con backends viejos. */
+    @SerializedName("archivosToken")
+    val archivosToken: String? = null
 )
 

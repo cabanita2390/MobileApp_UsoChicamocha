@@ -26,6 +26,7 @@ class TokenManager @Inject constructor(private val dataStore: DataStore<Preferen
         val INSPECTOR_INFO_KEY = stringPreferencesKey("inspector_info")
         val USERNAME_KEY = stringPreferencesKey("username")
         val USER_ROLE_KEY = stringPreferencesKey("user_role")
+        val ARCHIVOS_TOKEN_KEY = stringPreferencesKey("archivos_token")
     }
 
     // --- SAVE METHODS ---
@@ -99,6 +100,12 @@ class TokenManager @Inject constructor(private val dataStore: DataStore<Preferen
         }
     }
 
+    suspend fun saveArchivosToken(token: String) {
+        dataStore.edit { it[ARCHIVOS_TOKEN_KEY] = token }
+    }
+
+    fun getArchivosToken(): Flow<String?> = dataStore.data.map { it[ARCHIVOS_TOKEN_KEY] }
+
     // --- DELETE METHOD ---
 
     /**
@@ -113,6 +120,7 @@ class TokenManager @Inject constructor(private val dataStore: DataStore<Preferen
             preferences.remove(INSPECTOR_INFO_KEY)
             preferences.remove(USERNAME_KEY)
             preferences.remove(USER_ROLE_KEY)
+            preferences.remove(ARCHIVOS_TOKEN_KEY)
         }
     }
 }
