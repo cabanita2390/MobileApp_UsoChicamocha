@@ -44,7 +44,9 @@ class TokenRefreshMonitor @Inject constructor(
 
                         if (expiresInMs > 0 && expiresInMs < REFRESH_THRESHOLD_MS) {
                             appLogger.log("$TAG: Token expires in ${expiresInMs / 1000}s, refreshing proactively...")
-                            val refreshResult = authRepository.refreshTokenIfNecessary()
+                            // refreshTokenIfNecessary() devolvía el mismo token mientras no
+                            // venciera: el refresco "proactivo" nunca ocurría.
+                            val refreshResult = authRepository.refrescarSiVencePronto(REFRESH_THRESHOLD_MS)
 
                             if (refreshResult.isSuccess) {
                                 appLogger.log("$TAG: Token refreshed successfully")

@@ -8,6 +8,16 @@ import java.util.Locale
 
 object JwtUtils {
 
+    /** Milisegundos que le quedan al token antes de vencer (negativo si ya venció o no se puede leer). */
+    fun msHastaVencer(token: String): Long = try {
+        val partes = token.split(".")
+        val payload = JSONObject(String(android.util.Base64.decode(partes[1], android.util.Base64.URL_SAFE), Charsets.UTF_8))
+        val exp = payload.optLong("exp")
+        if (exp == 0L) -1 else exp * 1000 - System.currentTimeMillis()
+    } catch (e: Exception) {
+        -1
+    }
+
 
     fun isTokenExpired(token: String, tokenType: String): Boolean {
         try {

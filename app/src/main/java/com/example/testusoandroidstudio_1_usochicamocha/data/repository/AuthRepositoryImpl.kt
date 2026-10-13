@@ -78,6 +78,19 @@ class AuthRepositoryImpl @Inject constructor(
         refreshTokenWithRetry(refreshToken, maxAttempts = 2, initialDelayMs = 500)
     }
 
+    override suspend fun refrescarSiVencePronto(margenMs: Long): Result<String> = refreshMutex.withLock {
+        val currentAccessToken = tokenManager.getAccessToken().first()
+        if (currentAccessToken != null && JwtUtils.msHastaVencer(currentAccessToken) > margenMs) {
+            return@withLock Result.success(currentAccessToken)
+        }
+        val refreshToken = tokenManager.getRefreshToken().first()
+        if (refreshToken == null || JwtUtils.isTokenExpired(refreshToken, "Refresh Token")) {
+            logout()
+            return@withLock Result.failure(SesionInvalidaException())
+        }
+        refreshTokenWithRetry(refreshToken, maxAttempts = 2, initialDelayMs = 500)
+    }
+
     /**
      * Solo un rechazo del servidor (401/403) cierra la sesión. Un fallo de red o un error 5xx
      * NO: el técnico puede estar sin señal en la estación y su sesión sigue siendo válida

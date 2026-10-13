@@ -145,4 +145,26 @@ class AuthRefreshOfflineTest {
 
         assertEquals(SessionStatus.EXPIRED, useCase())
     }
+
+    @Test
+    fun `refresca antes de vencer si le quedan menos minutos que el margen`() = runTest {
+        val nuevo = jwt(ahora + 900)
+        tokenManager.saveTokens(jwt(ahora + 120), refreshVigente) // le quedan 2 min
+        coEvery { apiService.refreshToken(any()) } returns Response.success(NewAccessTokenResponse(nuevo))
+
+        val result = repository.refrescarSiVencePronto(5 * 60 * 1000L)
+
+        assertEquals(nuevo, result.getOrNull())
+        assertEquals(nuevo, tokenManager.getAccessToken().first())
+        coVerify(exactly = 1) { apiService.refreshToken(any()) }
+    }
+
+    @Test
+    fun `no refresca si al token le queda mas que el margen`() = runTest {
+        val vigente = jwt(ahora + 10 * 60)
+        tokenManager.saveTokens(vigente, refreshVigente)
+
+        assertEquals(vigente, repository.refrescarSiVencePronto(5 * 60 * 1000L).getOrNull())
+        coVerify(exactly = 0) { apiService.refreshToken(any()) }
+    }
 }
