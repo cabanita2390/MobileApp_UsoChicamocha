@@ -1,9 +1,11 @@
 package com.example.testusoandroidstudio_1_usochicamocha.di
 
+import android.util.Log
 import com.example.testusoandroidstudio_1_usochicamocha.BuildConfig
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.ApiService
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.AuthInterceptor
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.TokenAuthenticator
+import com.example.testusoandroidstudio_1_usochicamocha.util.redactarSecretos
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -21,7 +23,13 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideApiService(tokenAuthenticator: TokenAuthenticator, authInterceptor: AuthInterceptor): ApiService {
-        val loggingInterceptor = HttpLoggingInterceptor().apply { level = HttpLoggingInterceptor.Level.BODY }
+        // En release no se loguea nada de la red; en debug, sin contraseña ni tokens.
+        val loggingInterceptor = HttpLoggingInterceptor { mensaje ->
+            Log.i("okhttp.OkHttpClient", redactarSecretos(mensaje))
+        }.apply {
+            level = if (BuildConfig.DEBUG) HttpLoggingInterceptor.Level.BODY else HttpLoggingInterceptor.Level.NONE
+            redactHeader("Authorization")
+        }
         val client = OkHttpClient.Builder()
             .addInterceptor(loggingInterceptor)
             .addInterceptor(authInterceptor)
