@@ -9,6 +9,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import com.example.testusoandroidstudio_1_usochicamocha.util.ServiceDateTime
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -60,7 +61,10 @@ fun ServiceDateField(
             initialSelectedDateMillis = dateTimeMillis,
             selectableDates = object : SelectableDates {
                 override fun isSelectableDate(utcTimeMillis: Long) =
-                    utcTimeMillis <= System.currentTimeMillis()
+                    ServiceDateTime.isSelectableServiceDay(utcTimeMillis)
+
+                override fun isSelectableYear(year: Int) =
+                    ServiceDateTime.isSelectableServiceYear(year)
             }
         )
         DatePickerDialog(
