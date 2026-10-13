@@ -18,6 +18,7 @@ import com.example.testusoandroidstudio_1_usochicamocha.data.remote.ApiService
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.mensajeErrorBackend
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.EjecucionEditRequestDto
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.EjecucionRequestDto
+import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.EjecucionResponseDto
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.toDomain
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.toEntity
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.toNoProgramadaCacheEntity
@@ -62,6 +63,9 @@ class SubestacionRepositoryImpl @Inject constructor(
         /** Disciplina que se registra desde el móvil (captura, registro libre y sugerencias). Las citas
          *  del cronograma se consultan de todas las disciplinas: las demás se ven en solo consulta. */
         private const val DISCIPLINA = "CIVIL"
+        /** Páginas de las no programadas del año; MAX_PAGINAS es solo un tope de seguridad. */
+        private const val TAMANO_PAGINA = 500
+        private const val MAX_PAGINAS = 100
         /** JSON {tipoActividad: [textos]} con las observaciones más usadas (DataStore, sin migración de Room). */
         private val KEY_OBS_FRECUENTES = androidx.datastore.preferences.core.stringPreferencesKey("subestacion_obs_frecuentes")
         private val gson = com.google.gson.Gson()
@@ -427,33 +431,40 @@ class SubestacionRepositoryImpl @Inject constructor(
     }
 
     /**
-     * Trae TODAS las páginas del año en una sola pasada (size grande: el volumen esperado de
-     * actividades "no previstas" es bajo — unas pocas por mes por estación, ver contexto del
-     * bug) en vez de paginar de verdad, para no complicar el caché con estado de paginación.
+     * Trae TODAS las páginas del año. Antes pedía una sola página de 500 y, si había más, el
+     * resto se cortaba sin aviso (faltaban registros en "Realizadas"). Si una página falla no
+     * se toca el caché: mejor lo anterior completo que una mezcla a medias.
      */
     override suspend fun sincronizarEjecucionesNoProgramadasDelAnio(anio: Int): Result<Unit> {
         return try {
             val desde = LocalDate.of(anio, 1, 1)
             val hasta = LocalDate.of(anio, 12, 31)
-            val response = apiService.getEjecucionesSubestacion(
-                estacionId = null,
-                fechaInicio = desde.toString(),
-                fechaFin = hasta.toString(),
-                esProgramada = false,
-                page = 0,
-                size = 500
-            )
-            if (response.isSuccessful && response.body() != null) {
-                val entidades = response.body()!!.content
-                    // Defensivo: si el backend no filtró (esProgramada quedó fuera del query
-                    // por alguna razón), no se cachean ejecuciones programadas por error.
-                    .filter { !it.esProgramada }
-                    .map { it.toNoProgramadaCacheEntity() }
-                ejecucionNoProgramadaCacheDao.reemplazarAnio(anio, entidades)
-                Result.success(Unit)
-            } else {
-                Result.failure(Exception("Error al sincronizar ejecuciones no programadas: ${response.code()}"))
+            val todas = mutableListOf<EjecucionResponseDto>()
+            var pagina = 0
+            while (pagina < MAX_PAGINAS) {
+                val response = apiService.getEjecucionesSubestacion(
+                    estacionId = null,
+                    fechaInicio = desde.toString(),
+                    fechaFin = hasta.toString(),
+                    esProgramada = false,
+                    page = pagina,
+                    size = TAMANO_PAGINA
+                )
+                val body = response.body()
+                if (!response.isSuccessful || body == null) {
+                    return Result.failure(Exception("Error al sincronizar ejecuciones no programadas: ${response.code()}"))
+                }
+                todas += body.content
+                if (body.last != false || body.content.size < TAMANO_PAGINA) break
+                pagina++
             }
+            val entidades = todas
+                // Defensivo: si el backend no filtró (esProgramada quedó fuera del query
+                // por alguna razón), no se cachean ejecuciones programadas por error.
+                .filter { !it.esProgramada }
+                .map { it.toNoProgramadaCacheEntity() }
+            ejecucionNoProgramadaCacheDao.reemplazarAnio(anio, entidades)
+            Result.success(Unit)
         } catch (e: Exception) {
             Log.e(TAG, "❌ Exception sincronizando ejecuciones no programadas $anio", e)
             Result.failure(e)
