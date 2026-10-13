@@ -15,6 +15,7 @@ import com.example.testusoandroidstudio_1_usochicamocha.util.ImageUtils
 import io.mockk.coEvery
 import io.mockk.every
 import io.mockk.mockk
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.test.runTest
 import org.junit.After
@@ -130,5 +131,51 @@ class AlmacenFotosPendientesTest {
 
         assertFalse(ok.exists())
         assertTrue(falla.exists())
+    }
+
+    private suspend fun ejecucionSincronizada(uuid: String, serverId: Long) {
+        db.ejecucionDao().insertEjecucion(
+            com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.EjecucionEntity(
+                uuidCliente = uuid, fecha = "2026-10-13", mesEjecucion = 10, semanaEjecucion = 2,
+                estacionId = 13, estacionNombre = "Holanda", tipoMantenimiento = "PREVENTIVO",
+                tipoActividad = "INSPECCION", esProgramada = false, resultado = "CONFORME", observaciones = "ok"
+            )
+        )
+        db.ejecucionDao().markAsSynced(uuid, serverId)
+    }
+
+    @Test
+    fun `una foto cuyo archivo ya no existe queda perdida y deja de reintentarse`() = runTest {
+        ejecucionSincronizada("holanda", 63)
+        val borrada = File(dirPendientes, "borrada.jpg") // nunca existió en disco
+        imageDao.insertImages(listOf(ImageEntity(ejecucionUUID = "holanda", localUri = Uri.fromFile(borrada).toString(), tipo = ImageEntity.TIPO_SUBESTACION)))
+        val formRepository = mockk<FormRepository>(relaxed = true)
+        every { formRepository.getPendingImagesForSync() } returns imageDao.getPendingImagesForSync()
+        val subestacionRepository = mockk<SubestacionRepository>(relaxed = true)
+
+        SyncPendingImagesUseCase(formRepository, subestacionRepository, mockk(relaxed = true), almacen)()
+
+        io.mockk.coVerify(exactly = 0) { subestacionRepository.syncEvidencia(any(), any()) }
+        assertTrue(imageDao.getPendingImagesForSync().first().isEmpty())
+        val cola = db.ejecucionDao().getColaFlow().first().single()
+        assertEquals(1, cola.fotosPerdidas)
+    }
+
+    @Test
+    fun `reponer la foto la devuelve a la cola de subida y descartar la saca de la cola`() = runTest {
+        ejecucionSincronizada("holanda", 63)
+        imageDao.insertImages(listOf(ImageEntity(ejecucionUUID = "holanda", localUri = "file:///no/existe.jpg", tipo = ImageEntity.TIPO_SUBESTACION)))
+        imageDao.marcarPerdida(imageDao.getNoSincronizadas().single().localId)
+        val nueva = foto(dirPendientes, "nueva.jpg")
+
+        imageDao.reemplazarFotoPerdida(imageDao.getPerdidasDeEjecucion("holanda").single().localId, Uri.fromFile(nueva).toString())
+
+        val pendiente = imageDao.getPendingImagesForSync().first().single()
+        assertEquals(63L, pendiente.serverId)
+        assertEquals(Uri.fromFile(nueva).toString(), pendiente.localUri)
+
+        imageDao.marcarPerdida(pendiente.localId)
+        imageDao.descartarPerdidas("holanda")
+        assertTrue(db.ejecucionDao().getColaFlow().first().isEmpty())
     }
 }

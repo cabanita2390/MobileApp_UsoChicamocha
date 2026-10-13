@@ -63,6 +63,7 @@ class SyncPendingImagesUseCase @Inject constructor(
             var successCount = 0
             for (image in imagesToProcess) {
                 try {
+                    if (almacenFotos.marcarSiPerdida(image.localId, image.localUri)) continue
                     val syncResult = if (image.tipo == ImageEntity.TIPO_SUBESTACION) {
                         subestacionRepository.syncEvidencia(image.serverId, image.localUri)
                     } else {

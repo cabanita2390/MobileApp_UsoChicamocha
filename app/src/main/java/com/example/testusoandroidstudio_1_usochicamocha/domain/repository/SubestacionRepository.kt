@@ -28,6 +28,12 @@ interface SubestacionRepository {
 
     suspend fun saveEjecucionLocally(ejecucion: Ejecucion, imageUris: List<String>)
 
+    /** Reemplaza la primera foto perdida del registro por una nueva; false si no tenía. */
+    suspend fun reemplazarFotoPerdida(ejecucionUuid: String, nuevaUri: String): Boolean
+
+    /** El técnico decide no reponer las fotos perdidas: salen de la cola. */
+    suspend fun descartarFotosPerdidas(ejecucionUuid: String)
+
     /** Estado de envío del registro local (null si no existe): alimenta la confirmación de captura. */
     fun observarEjecucionLocal(uuidCliente: String): Flow<Ejecucion?>
     suspend fun syncEjecucion(ejecucion: Ejecucion): Result<Unit>

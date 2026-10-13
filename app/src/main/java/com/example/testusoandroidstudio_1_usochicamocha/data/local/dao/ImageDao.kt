@@ -24,6 +24,19 @@ interface ImageDao {
     @Query("SELECT * FROM pending_images WHERE isSynced = 0")
     suspend fun getNoSincronizadas(): List<ImageEntity>
 
+    @Query("UPDATE pending_images SET perdida = 1, isSyncing = 0 WHERE localId = :localId")
+    suspend fun marcarPerdida(localId: Int)
+
+    @Query("SELECT * FROM pending_images WHERE ejecucionUUID = :ejecucionUuid AND perdida = 1 AND isSynced = 0 ORDER BY localId")
+    suspend fun getPerdidasDeEjecucion(ejecucionUuid: String): List<ImageEntity>
+
+    /** Foto tomada de nuevo: vuelve a la cola de subida con el archivo nuevo. */
+    @Query("UPDATE pending_images SET localUri = :localUri, perdida = 0, isSyncing = 0 WHERE localId = :localId")
+    suspend fun reemplazarFotoPerdida(localId: Int, localUri: String)
+
+    @Query("DELETE FROM pending_images WHERE ejecucionUUID = :ejecucionUuid AND perdida = 1 AND isSynced = 0")
+    suspend fun descartarPerdidas(ejecucionUuid: String)
+
     @Query("UPDATE pending_images SET localUri = :localUri WHERE localId = :localId")
     suspend fun actualizarLocalUri(localId: Int, localUri: String)
 
@@ -53,7 +66,7 @@ interface ImageDao {
         LEFT JOIN pending_forms pf ON pi.formUUID = pf.UUID
         LEFT JOIN vehiculo_inspections vi ON pi.vehicleInspectionUUID = vi.UUID
         LEFT JOIN pending_mant_ejecucion ej ON pi.ejecucionUUID = ej.uuidCliente
-        WHERE pi.isSynced = 0 AND pi.isSyncing = 0
+        WHERE pi.isSynced = 0 AND pi.isSyncing = 0 AND pi.perdida = 0
           AND (
             (pf.isSynced = 1 AND pf.serverId IS NOT NULL)
             OR

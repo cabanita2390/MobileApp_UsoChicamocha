@@ -1,11 +1,16 @@
 package com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.cola
 
+import android.content.Context
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.Ejecucion
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.LocalSyncCoordinator
+import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.FotosPerdidasUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.ObtenerEjecucionesColaUseCase
+import com.example.testusoandroidstudio_1_usochicamocha.util.ImageUtils
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
@@ -16,8 +21,10 @@ import javax.inject.Inject
 
 @HiltViewModel
 class ColaViewModel @Inject constructor(
+    @ApplicationContext private val context: Context,
     obtenerEjecucionesColaUseCase: ObtenerEjecucionesColaUseCase,
-    private val localSyncCoordinator: LocalSyncCoordinator
+    private val localSyncCoordinator: LocalSyncCoordinator,
+    private val fotosPerdidasUseCase: FotosPerdidasUseCase
 ) : ViewModel() {
 
     /**
@@ -51,6 +58,18 @@ class ColaViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
     val syncStatus: StateFlow<LocalSyncCoordinator.SyncStatus> = localSyncCoordinator.syncStatus
+
+    /** Foto tomada de nuevo para reponer una perdida: se comprime igual que en la captura y se sube. */
+    fun reponerFotoPerdida(ejecucionUuid: String, uri: Uri) {
+        viewModelScope.launch {
+            val comprimida = ImageUtils.compressAndSaveImage(context, uri) ?: return@launch
+            if (fotosPerdidasUseCase.reemplazar(ejecucionUuid, comprimida.toString())) sincronizarAhora()
+        }
+    }
+
+    fun descartarFotosPerdidas(ejecucionUuid: String) {
+        viewModelScope.launch { fotosPerdidasUseCase.descartar(ejecucionUuid) }
+    }
 
     fun sincronizarAhora() {
         viewModelScope.launch {

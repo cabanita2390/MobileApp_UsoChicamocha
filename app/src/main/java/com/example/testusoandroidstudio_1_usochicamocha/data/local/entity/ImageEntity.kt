@@ -18,7 +18,13 @@ data class ImageEntity(
      * Subestaciones (se subía usando el id de la ejecución como si fuera un id de
      * inspección de vehículo). Ver TIPO_FORM/TIPO_SUBESTACION.
      */
-    val tipo: String = TIPO_FORM
+    val tipo: String = TIPO_FORM,
+    /**
+     * El archivo ya no existe en el equipo (Android lo borró del caché en versiones anteriores,
+     * se borraron los datos…). No se reintenta su subida: la Cola le pide al técnico tomarla
+     * de nuevo o descartarla. Antes quedaba "subiendo fotos…" para siempre.
+     */
+    val perdida: Boolean = false
 ) {
     companion object {
         const val TIPO_FORM = "FORM"

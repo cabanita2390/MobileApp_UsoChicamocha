@@ -12,7 +12,8 @@ import kotlinx.coroutines.flow.Flow
 data class EjecucionConFotos(
     @Embedded val entity: EjecucionEntity,
     val fotosCount: Int,
-    val fotosSincronizadas: Int
+    val fotosSincronizadas: Int,
+    val fotosPerdidas: Int = 0
 )
 
 @Dao
@@ -81,7 +82,8 @@ interface EjecucionDao {
     @Query("""
         SELECT e.*,
             (SELECT COUNT(*) FROM pending_images i WHERE i.ejecucionUUID = e.uuidCliente) AS fotosCount,
-            (SELECT COUNT(*) FROM pending_images i WHERE i.ejecucionUUID = e.uuidCliente AND i.isSynced = 1) AS fotosSincronizadas
+            (SELECT COUNT(*) FROM pending_images i WHERE i.ejecucionUUID = e.uuidCliente AND i.isSynced = 1) AS fotosSincronizadas,
+            (SELECT COUNT(*) FROM pending_images i WHERE i.ejecucionUUID = e.uuidCliente AND i.isSynced = 0 AND i.perdida = 1) AS fotosPerdidas
         FROM pending_mant_ejecucion e
         WHERE e.isSynced = 0
            OR EXISTS (SELECT 1 FROM pending_images i WHERE i.ejecucionUUID = e.uuidCliente AND i.isSynced = 0)

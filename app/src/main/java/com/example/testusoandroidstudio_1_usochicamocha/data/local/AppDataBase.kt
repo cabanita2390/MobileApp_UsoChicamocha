@@ -74,7 +74,7 @@ import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.Ejecuc
         com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.EjecucionDetalleCacheEntity::class,
         com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.EjecucionNoProgramadaCacheEntity::class
     ],
-    version = 48,
+    version = 49,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -812,6 +812,15 @@ abstract class AppDatabase : RoomDatabase() {
                 )
                 database.execSQL(
                     "UPDATE `pending_images` SET `tipo` = 'SUBESTACION' WHERE `ejecucionUUID` IS NOT NULL"
+                )
+            }
+        }
+
+        /** Foto pendiente cuyo archivo ya no existe: deja de reintentarse y la Cola lo avisa. */
+        val MIGRATION_48_49 = object : Migration(48, 49) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL(
+                    "ALTER TABLE `pending_images` ADD COLUMN `perdida` INTEGER NOT NULL DEFAULT 0"
                 )
             }
         }

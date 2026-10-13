@@ -1,5 +1,9 @@
 package com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.cola
 
+import android.Manifest
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
@@ -13,10 +17,15 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.FileProvider
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -29,6 +38,7 @@ import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.theme.Sub
 import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.theme.SubestacionShapes
 import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.theme.SubestacionType
 import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.theme.SubestacionTopBar
+import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -39,6 +49,28 @@ fun ColaScreen(
 ) {
     val pendientes by viewModel.pendientes.collectAsState()
     val confirmadosSesion by viewModel.confirmadosSesion.collectAsState()
+    val context = LocalContext.current
+
+    // Reponer una foto perdida: mismo flujo de cámara/galería que la captura.
+    var uuidAReponer by remember { mutableStateOf<String?>(null) }
+    var tempImageUri by remember { mutableStateOf<Uri?>(null) }
+    val pickImageLauncher = rememberLauncherForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        val uuid = uuidAReponer
+        if (uri != null && uuid != null) viewModel.reponerFotoPerdida(uuid, uri)
+    }
+    val takePictureLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { ok ->
+        val uuid = uuidAReponer
+        val uri = tempImageUri
+        if (ok && uri != null && uuid != null) viewModel.reponerFotoPerdida(uuid, uri)
+    }
+    val cameraPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) {
+            val file = File(context.cacheDir, "subestacion_${System.currentTimeMillis()}.jpg")
+            val uri = FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
+            tempImageUri = uri
+            takePictureLauncher.launch(uri)
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -101,7 +133,20 @@ fun ColaScreen(
                 }
             } else {
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(9.dp), modifier = Modifier.weight(1f)) {
-                    items(pendientes, key = { it.uuidCliente }) { ejecucion -> ColaItem(ejecucion) }
+                    items(pendientes, key = { it.uuidCliente }) { ejecucion ->
+                        ColaItem(
+                            ejecucion,
+                            onTomarFoto = {
+                                uuidAReponer = ejecucion.uuidCliente
+                                cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+                            },
+                            onGaleria = {
+                                uuidAReponer = ejecucion.uuidCliente
+                                pickImageLauncher.launch("image/*")
+                            },
+                            onDescartar = { viewModel.descartarFotosPerdidas(ejecucion.uuidCliente) }
+                        )
+                    }
                 }
             }
 
@@ -152,12 +197,19 @@ private fun EstadoSyncBanner(networkStatus: Boolean, pendientesCount: Int) {
 }
 
 @Composable
-private fun ColaItem(ejecucion: Ejecucion) {
+private fun ColaItem(
+    ejecucion: Ejecucion,
+    onTomarFoto: () -> Unit,
+    onGaleria: () -> Unit,
+    onDescartar: () -> Unit
+) {
     // El registro (mant_ejecucion) y sus fotos (pending_images) sincronizan por separado
     // — el registro puede quedar "Enviado" mientras alguna foto todavía se sube/reintenta.
     // Sin esto, el técnico veía "confirmado" sin forma de saber que faltaba una foto.
     val fotosPendientes = ejecucion.fotosCount > ejecucion.fotosSincronizadas
+    val fotosPerdidas = ejecucion.fotosPerdidas > 0
     val (etiqueta, pillBg, pillFg) = when {
+        fotosPerdidas -> Triple("Foto perdida", SubestacionColors.RedBg, SubestacionColors.Red)
         ejecucion.syncFallido -> Triple("Error", SubestacionColors.RedBg, SubestacionColors.Red)
         ejecucion.isSyncing -> Triple("Enviando", SubestacionColors.PurpleSurface, SubestacionColors.Purple)
         ejecucion.isSynced && fotosPendientes -> Triple("Fotos pendientes", SubestacionColors.AmberBg, SubestacionColors.Amber)
@@ -167,6 +219,7 @@ private fun ColaItem(ejecucion: Ejecucion) {
     // Mock: detalle = "{fotos} foto(s) · {texto según estado}" — siempre da contexto,
     // no solo cuando falla.
     val textoEstado = when {
+        fotosPerdidas -> "${ejecucion.fotosPerdidas} foto(s) ya no está(n) en el equipo: tómala de nuevo o descártala"
         ejecucion.syncFallido -> "falló, se reintenta solo"
         ejecucion.isSyncing -> "subiendo ahora…"
         ejecucion.isSynced && fotosPendientes -> "registro guardado, subiendo fotos…"
@@ -202,9 +255,17 @@ private fun ColaItem(ejecucion: Ejecucion) {
         Spacer(Modifier.height(9.dp))
         SubestacionType.Hint(
             "$textoFotos · $textoEstado",
-            color = if (ejecucion.syncFallido) SubestacionColors.Red
+            color = if (ejecucion.syncFallido || fotosPerdidas) SubestacionColors.Red
                 else if (fotosPendientes) SubestacionColors.Amber
                 else SubestacionColors.TextQuaternary
         )
+        if (fotosPerdidas) {
+            Spacer(Modifier.height(11.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick = onTomarFoto) { Text("Tomar de nuevo") }
+                OutlinedButton(onClick = onGaleria) { Text("Galería") }
+                TextButton(onClick = onDescartar) { Text("Descartar", color = SubestacionColors.Red) }
+            }
+        }
     }
 }

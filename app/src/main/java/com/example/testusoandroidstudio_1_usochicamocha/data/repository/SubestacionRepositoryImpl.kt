@@ -80,12 +80,26 @@ class SubestacionRepositoryImpl @Inject constructor(
 
     override fun getEjecucionesCola(): Flow<List<Ejecucion>> {
         return ejecucionDao.getColaFlow().map { filas ->
-            filas.map { it.entity.toDomain().copy(fotosCount = it.fotosCount, fotosSincronizadas = it.fotosSincronizadas) }
+            filas.map { it.entity.toDomain().copy(
+                fotosCount = it.fotosCount,
+                fotosSincronizadas = it.fotosSincronizadas,
+                fotosPerdidas = it.fotosPerdidas
+            ) }
         }
     }
 
     override fun observarEjecucionLocal(uuidCliente: String): Flow<Ejecucion?> =
         ejecucionDao.getByUuidFlow(uuidCliente).map { it?.toDomain() }
+
+    override suspend fun reemplazarFotoPerdida(ejecucionUuid: String, nuevaUri: String): Boolean {
+        val perdida = imageDao.getPerdidasDeEjecucion(ejecucionUuid).firstOrNull() ?: return false
+        imageDao.reemplazarFotoPerdida(perdida.localId, nuevaUri)
+        return true
+    }
+
+    override suspend fun descartarFotosPerdidas(ejecucionUuid: String) {
+        imageDao.descartarPerdidas(ejecucionUuid)
+    }
 
     override suspend fun saveEjecucionLocally(ejecucion: Ejecucion, imageUris: List<String>) {
         val entity = ejecucion.toEntity()

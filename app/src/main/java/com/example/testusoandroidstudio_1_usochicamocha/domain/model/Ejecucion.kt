@@ -31,7 +31,9 @@ data class Ejecucion(
     /** Solo poblado por `SubestacionRepository.getEjecucionesCola()` (para el detalle de la Cola) — 0 en el resto de usos. */
     val fotosCount: Int = 0,
     /** Ídem `fotosCount`: cuántas de esas fotos ya confirmó el servidor. */
-    val fotosSincronizadas: Int = 0
+    val fotosSincronizadas: Int = 0,
+    /** Fotos cuyo archivo ya no existe en el equipo: hay que tomarlas de nuevo o descartarlas. */
+    val fotosPerdidas: Int = 0
 )
 
 fun Ejecucion.toEntity(): EjecucionEntity {

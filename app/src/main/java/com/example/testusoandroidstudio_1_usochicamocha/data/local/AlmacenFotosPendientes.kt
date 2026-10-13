@@ -53,6 +53,18 @@ class AlmacenFotosPendientes @Inject constructor(
         }
     }
 
+    /**
+     * Si la foto es un archivo local que ya no existe, la marca como perdida (deja de
+     * reintentarse) y devuelve true. Las URI que no son de archivo no se pueden comprobar aquí.
+     */
+    suspend fun marcarSiPerdida(localId: Int, localUri: String): Boolean {
+        val archivo = archivoDe(localUri) ?: return false
+        if (archivo.exists()) return false
+        Log.w(TAG, "La foto $localId ya no existe en el equipo: queda como perdida")
+        imageDao.marcarPerdida(localId)
+        return true
+    }
+
     /** Borra la foto ya confirmada por el servidor, solo si está en el directorio de pendientes. */
     fun borrarSubida(localUri: String) {
         val archivo = archivoDe(localUri) ?: return
@@ -67,7 +79,8 @@ class AlmacenFotosPendientes @Inject constructor(
             val origen = archivoDe(imagen.localUri) ?: continue
             if (origen.parentFile?.canonicalPath != cache) continue
             if (!origen.exists()) {
-                Log.w(TAG, "La foto ${imagen.localId} ya no existe en el caché: no se puede recuperar")
+                Log.w(TAG, "La foto ${imagen.localId} ya no existe en el caché: queda como perdida")
+                imageDao.marcarPerdida(imagen.localId)
                 continue
             }
             val destino = File(directorio, origen.name)
