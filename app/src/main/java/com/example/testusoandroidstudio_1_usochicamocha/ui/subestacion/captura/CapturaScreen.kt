@@ -3,6 +3,7 @@ package com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.captura
 import android.Manifest
 import android.app.DatePickerDialog
 import android.net.Uri
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -98,6 +99,30 @@ fun CapturaScreen(
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
 
+    // Atrás (flecha, botón o el del sistema) retrocede un paso; en el primero, si ya hay algo
+    // capturado, pregunta antes de descartarlo. Antes el Atrás del sistema cerraba el
+    // formulario entero desde cualquier paso y se perdía todo sin aviso.
+    var confirmarSalida by remember { mutableStateOf(false) }
+    val volverOSalir: () -> Unit = {
+        if (!viewModel.onAnterior()) {
+            if (uiState.tieneDatosCapturados) confirmarSalida = true else onNavigateBack()
+        }
+    }
+    BackHandler(enabled = !uiState.saveCompleted) { volverOSalir() }
+    if (confirmarSalida) {
+        AlertDialog(
+            onDismissRequest = { confirmarSalida = false },
+            title = { Text("¿Salir sin guardar?") },
+            text = { Text("Se perderá lo que llevas de este registro.") },
+            confirmButton = {
+                TextButton(onClick = { confirmarSalida = false; onNavigateBack() }) { Text("Salir sin guardar") }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmarSalida = false }) { Text("Seguir aquí") }
+            }
+        )
+    }
+
     LaunchedEffect(programacionId) {
         if (programacionId > 0L) {
             viewModel.cargarDesdeCita(programacionId, estacionId, actividadId, esInspeccion, vencida, mes)
@@ -155,7 +180,7 @@ fun CapturaScreen(
                             .size(38.dp)
                             .clip(RoundedCornerShape(12.dp))
                             .background(SubestacionColors.PurpleSurface)
-                            .clickable { if (!viewModel.onAnterior()) onNavigateBack() },
+                            .clickable { volverOSalir() },
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
@@ -234,7 +259,7 @@ fun CapturaScreen(
                                 .height(56.dp)
                                 .clip(SubestacionShapes.Button)
                                 .background(SubestacionColors.PurpleSurface)
-                                .clickable { if (!viewModel.onAnterior()) onNavigateBack() }
+                                .clickable { volverOSalir() }
                                 .padding(horizontal = 20.dp),
                             contentAlignment = Alignment.Center
                         ) {

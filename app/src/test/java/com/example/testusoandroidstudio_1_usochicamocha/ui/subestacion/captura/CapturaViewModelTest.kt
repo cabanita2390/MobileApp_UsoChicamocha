@@ -18,6 +18,7 @@ import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestaci
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.ObtenerCitaLocalUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.ObtenerPendientesUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.EstadoCita
+import androidx.lifecycle.SavedStateHandle
 import io.mockk.MockKAnnotations
 import io.mockk.Runs
 import io.mockk.coEvery
@@ -116,7 +117,7 @@ class CapturaViewModelTest {
         every { guardarEjecucionLocalUseCase.observarEnvio(any()) } returns flowOf(null)
     }
 
-    private fun createViewModel() {
+    private fun createViewModel(savedStateHandle: SavedStateHandle = SavedStateHandle()) {
         viewModel = CapturaViewModel(
             context,
             guardarEjecucionLocalUseCase,
@@ -128,7 +129,8 @@ class CapturaViewModelTest {
             obtenerCitaLocalUseCase,
             localSyncCoordinator,
             tokenManager,
-            obtenerObservacionesFrecuentesUseCase
+            obtenerObservacionesFrecuentesUseCase,
+            savedStateHandle
         )
     }
 
@@ -823,5 +825,76 @@ class CapturaViewModelTest {
         }
         assertTrue(textoConfirmacion(false, true, EstadoEnvio.ENVIADO).contains("se envió"))
         assertTrue(textoConfirmacion(false, true, EstadoEnvio.NO_ENVIADO).contains("todavía no se pudo enviar"))
+    }
+
+    @Test
+    fun `si Android mata el proceso el borrador se recupera y la cita no lo pisa`() = runTest {
+        val handle = SavedStateHandle()
+        createViewModel(handle)
+        viewModel.cargarDesdeCita(
+            programacionId = 100L, estacionId = estacion.id, actividadId = actividad.id,
+            esInspeccion = true, vencida = false
+        )
+        viewModel.onTipoMantenimientoChange("CORRECTIVO")
+        viewModel.onSiguiente()
+        viewModel.onResultadoChange("CON_HALLAZGOS")
+        viewModel.onObservacionesChange("Fisura en el muro norte")
+        advanceUntilIdle()
+
+        // Proceso nuevo: mismo SavedStateHandle (Android lo conserva), ViewModel nuevo.
+        createViewModel(handle)
+        viewModel.cargarDesdeCita(
+            programacionId = 100L, estacionId = estacion.id, actividadId = actividad.id,
+            esInspeccion = true, vencida = false
+        )
+        advanceUntilIdle()
+
+        val s = viewModel.uiState.value
+        assertEquals(2, s.currentStep)
+        assertEquals("CON_HALLAZGOS", s.resultado)
+        assertEquals("Fisura en el muro norte", s.observaciones)
+        assertEquals("CORRECTIVO", s.tipoMantenimiento)
+        assertEquals(100L, s.programacionId)
+    }
+
+    @Test
+    fun `al guardar se borra el borrador`() = runTest {
+        coEvery { guardarEjecucionLocalUseCase(any(), any()) } just Runs
+        val handle = SavedStateHandle()
+        createViewModel(handle)
+        viewModel.cargarDesdeCita(
+            programacionId = 100L, estacionId = estacion.id, actividadId = actividad.id,
+            esInspeccion = true, vencida = false
+        )
+        viewModel.onTipoActividadChange("INSPECCION")
+        viewModel.onSiguiente()
+        viewModel.onResultadoChange("CONFORME")
+        viewModel.onObservacionesChange("Todo en orden")
+        viewModel.onSiguiente()
+        advanceUntilIdle()
+        assertTrue(handle.contains("borrador_captura"))
+
+        viewModel.onSiguiente()
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.saveCompleted)
+        assertFalse(handle.contains("borrador_captura"))
+    }
+
+    @Test
+    fun `solo pide confirmar la salida si hay algo capturado`() {
+        createViewModel()
+        assertFalse(viewModel.uiState.value.tieneDatosCapturados)
+        viewModel.onObservacionesChange("algo")
+        assertTrue(viewModel.uiState.value.tieneDatosCapturados)
+    }
+
+    @Test
+    fun `las observaciones y la descripcion se cortan en 500 caracteres`() {
+        createViewModel()
+        viewModel.onObservacionesChange("x".repeat(800))
+        viewModel.onDescripcionLibreChange("y".repeat(800))
+        assertEquals(500, viewModel.uiState.value.observaciones.length)
+        assertEquals(500, viewModel.uiState.value.descripcionLibre.length)
     }
 }

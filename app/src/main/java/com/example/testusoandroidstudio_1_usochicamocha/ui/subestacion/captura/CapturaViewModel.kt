@@ -2,6 +2,7 @@ package com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.captura
 
 import android.content.Context
 import android.net.Uri
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.ActividadCatalogo
@@ -117,6 +118,11 @@ data class CapturaUiState(
 ) {
     val esEdicion: Boolean get() = editandoId != null
 
+    /** Hay algo que se perdería al salir: se pide confirmación antes de descartarlo. */
+    val tieneDatosCapturados: Boolean
+        get() = resultado.isNotBlank() || observaciones.isNotBlank() || fotos.isNotEmpty() ||
+            descripcionLibre.isNotBlank()
+
     /**
      * Modo cita: el registro viene de una cita real del cronograma (`cargarDesdeCita`
      * fijó `programacionId`) y el técnico no pasó por "regístralo como actividad no
@@ -215,7 +221,8 @@ class CapturaViewModel @Inject constructor(
     private val obtenerCitaLocalUseCase: ObtenerCitaLocalUseCase,
     private val localSyncCoordinator: LocalSyncCoordinator,
     private val tokenManager: com.example.testusoandroidstudio_1_usochicamocha.data.local.TokenManager,
-    private val obtenerObservacionesFrecuentesUseCase: ObtenerObservacionesFrecuentesUseCase
+    private val obtenerObservacionesFrecuentesUseCase: ObtenerObservacionesFrecuentesUseCase,
+    private val savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
     private var envioJob: Job? = null
@@ -223,11 +230,25 @@ class CapturaViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(CapturaUiState())
     val uiState = _uiState.asStateFlow()
 
+    /** true si el formulario se rearmó desde un borrador tras la muerte del proceso (ver BorradorCaptura). */
+    private val borradorRestaurado: Boolean =
+        BorradorCaptura.desdeJson(savedStateHandle[BorradorCaptura.KEY])
+            ?.also { b -> _uiState.update { b.aplicarA(it) } } != null
+
     /** Citas pendientes/vencidas cacheadas para sugerir en modo libre — se pide una
      * sola vez por instancia del ViewModel, no en cada tap de estación. */
     private var citasPendientesCache: List<Pair<CitaProgramada, EstadoCita>>? = null
 
     init {
+        viewModelScope.launch {
+            _uiState.collect { s ->
+                when {
+                    s.esEdicion -> Unit // la edición se recarga del servidor
+                    s.saveCompleted -> savedStateHandle.remove<String>(BorradorCaptura.KEY)
+                    else -> savedStateHandle[BorradorCaptura.KEY] = BorradorCaptura.de(s).aJson()
+                }
+            }
+        }
         viewModelScope.launch {
             tokenManager.getUsername().collect { username ->
                 _uiState.update { it.copy(responsableNombre = username ?: "") }
@@ -289,6 +310,8 @@ class CapturaViewModel @Inject constructor(
         mesProgramado: Int = -1
     ) {
         if (programacionId <= 0L) return
+        // Tras la muerte del proceso la pantalla vuelve a pedir la cita: no pisar el borrador.
+        if (borradorRestaurado && _uiState.value.programacionId == programacionId) return
         val nombreEstacion = _uiState.value.estaciones.find { it.id == estacionId }?.nombre
         val nombreActividad = _uiState.value.actividades.find { it.id == actividadId }?.nombre
         _uiState.update {
@@ -464,7 +487,7 @@ class CapturaViewModel @Inject constructor(
     }
 
     fun onMotivoEdicionChange(texto: String) {
-        _uiState.update { it.copy(motivoEdicion = texto) }
+        _uiState.update { it.copy(motivoEdicion = texto.take(LARGO_MAXIMO_TEXTO)) }
     }
 
     fun onFechaChange(fecha: String) {
@@ -611,7 +634,7 @@ class CapturaViewModel @Inject constructor(
     }
 
     fun onDescripcionLibreChange(texto: String) {
-        _uiState.update { it.copy(descripcionLibre = texto) }
+        _uiState.update { it.copy(descripcionLibre = texto.take(LARGO_MAXIMO_TEXTO)) }
     }
 
     fun onResultadoChange(resultado: String) {
@@ -619,7 +642,7 @@ class CapturaViewModel @Inject constructor(
     }
 
     fun onObservacionesChange(texto: String) {
-        _uiState.update { it.copy(observaciones = texto) }
+        _uiState.update { it.copy(observaciones = texto.take(LARGO_MAXIMO_TEXTO)) }
     }
 
     fun onObservacionRapidaClick(frase: String) {
@@ -632,7 +655,7 @@ class CapturaViewModel @Inject constructor(
             } else {
                 actual.trimEnd().trimEnd('.') + ". " + frase
             }
-            current.copy(observaciones = nueva)
+            current.copy(observaciones = nueva.take(LARGO_MAXIMO_TEXTO))
         }
     }
 
@@ -792,3 +815,9 @@ internal fun estadoEnvioDe(local: Ejecucion?): EstadoEnvio = when {
     local.syncFallido -> EstadoEnvio.NO_ENVIADO
     else -> EstadoEnvio.EN_EQUIPO
 }
+
+/**
+ * El formulario muestra "x/500" pero antes no cortaba: el texto podía ser de cualquier largo.
+ * El backend acepta hasta 2000 por los registros que ya estén encolados.
+ */
+internal const val LARGO_MAXIMO_TEXTO = 500
