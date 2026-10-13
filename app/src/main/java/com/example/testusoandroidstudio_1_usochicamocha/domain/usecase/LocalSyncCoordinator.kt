@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.distinctUntilChanged
 import java.util.concurrent.ConcurrentHashMap
@@ -134,7 +135,7 @@ class LocalSyncCoordinator @Inject constructor(
             cleanupStuckWork(workName)
             
             // 2. Verificar si hay un work con el mismo nombre ya en progreso
-            val existingWorkInfos = workManager.getWorkInfosForUniqueWork(workName).await()
+            val existingWorkInfos = workManager.getWorkInfosForUniqueWorkFlow(workName).first()
             val runningWork = existingWorkInfos.find {
                 it.state == WorkInfo.State.RUNNING || it.state == WorkInfo.State.ENQUEUED
             }
@@ -199,7 +200,7 @@ class LocalSyncCoordinator @Inject constructor(
      */
     private suspend fun cleanupStuckWork(workName: String) {
         try {
-            val existingWorkInfos = workManager.getWorkInfosForUniqueWork(workName).await()
+            val existingWorkInfos = workManager.getWorkInfosForUniqueWorkFlow(workName).first()
             val stuckWork = existingWorkInfos.find { workInfo ->
                 workInfo.state == WorkInfo.State.ENQUEUED
             }
