@@ -242,7 +242,7 @@ fun CambioAceiteScreen(
                 OutlinedTextField(
                     value = uiState.quantity,
                     onValueChange = onQuantityChange,
-                    label = { Text("Cantidad (L) — opcional") },
+                    label = { Text("Cantidad (L) (*)", fontWeight = FontWeight.Bold) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                     enabled = uiState.isRoleAllowed,
                     modifier = Modifier.fillMaxWidth(),

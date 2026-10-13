@@ -242,7 +242,11 @@ class MotocicletaViewModel @Inject constructor(
                 val result = motoOilChangeRepository.syncPending()
                 if (result.isSuccess) {
                     Log.d("MotocicletaVM", "✅ Cambios de aceite sincronizados correctamente")
-                    _uiState.update { it.copy(isSyncingOilChanges = false, syncMessage = "✅ Sincronización completada") }
+                    val sinCantidad = _uiState.value.pendingOilChanges.count { it.quantity == null }
+                    val mensaje = if (sinCantidad > 0)
+                        "⚠️ $sinCantidad cambio(s) de aceite sin cantidad no se pueden enviar: elimínelos y regístrelos de nuevo."
+                    else "✅ Sincronización completada"
+                    _uiState.update { it.copy(isSyncingOilChanges = false, syncMessage = mensaje) }
                 } else {
                     val error = result.exceptionOrNull()?.message ?: "Error desconocido"
                     Log.e("MotocicletaVM", "❌ Error sincronizando cambios de aceite: $error")
@@ -253,6 +257,10 @@ class MotocicletaViewModel @Inject constructor(
                 _uiState.update { it.copy(isSyncingOilChanges = false, syncMessage = "❌ Error: ${e.message}") }
             }
         }
+    }
+
+    fun onDeletePendingOilChange(localId: Int) {
+        viewModelScope.launch { motoOilChangeRepository.deletePending(localId) }
     }
 
     fun clearSyncMessage() {

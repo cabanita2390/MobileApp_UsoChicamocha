@@ -139,4 +139,40 @@ class CambioAceiteCoreTest {
         assertEquals(false, core.uiState.value.isRoleAllowed)
         coVerify(exactly = 0) { strategy.save(any(), any(), any(), any(), any(), any(), any(), any()) }
     }
+
+    private suspend fun kotlinx.coroutines.test.TestScope.llenarYEnviar(intervalo: String, cantidad: String) {
+        core.start(this)
+        advanceUntilIdle()
+        core.onAssetSelected(asset)
+        core.onOilSelected(oil)
+        core.onKmAtChangeChange("5200")
+        core.onIntervalKmChange(intervalo)
+        core.onQuantityChange(cantidad)
+        core.submit()
+        advanceUntilIdle()
+    }
+
+    @Test
+    fun `sin cantidad no guarda (es obligatoria)`() = runTest {
+        llenarYEnviar(intervalo = "3000", cantidad = "")
+
+        assertEquals("Ingrese la cantidad de aceite (litros).", core.uiState.value.error)
+        coVerify(exactly = 0) { strategy.save(any(), any(), any(), any(), any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `intervalo menor al minimo del backend se rechaza antes de guardar`() = runTest {
+        llenarYEnviar(intervalo = "50", cantidad = "4")
+
+        assertEquals("El intervalo debe estar entre 100 y 100000 km.", core.uiState.value.error)
+        coVerify(exactly = 0) { strategy.save(any(), any(), any(), any(), any(), any(), any(), any()) }
+    }
+
+    @Test
+    fun `cantidad fuera de rango se rechaza antes de guardar`() = runTest {
+        llenarYEnviar(intervalo = "3000", cantidad = "0.2")
+
+        assertEquals("La cantidad debe estar entre 0.5 y 100.0 litros.", core.uiState.value.error)
+        coVerify(exactly = 0) { strategy.save(any(), any(), any(), any(), any(), any(), any(), any()) }
+    }
 }

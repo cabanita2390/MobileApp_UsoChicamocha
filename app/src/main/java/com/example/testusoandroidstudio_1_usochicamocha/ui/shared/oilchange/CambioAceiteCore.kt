@@ -24,6 +24,15 @@ class CambioAceiteCore(
 ) {
     companion object {
         val ALLOWED_ROLES = setOf("SUPERVISOR_OPERATIVO", "ADMIN")
+
+        // Mismos rangos que OilChangeValidationService del backend: si el formulario deja
+        // pasar un valor que el backend rechaza, el registro queda en el celular
+        // reintentando la sincronización sin fin y nunca llega al Consolidado.
+        const val MAX_KM = 999_999
+        const val MIN_INTERVAL_KM = 100
+        const val MAX_INTERVAL_KM = 100_000
+        const val MIN_QUANTITY = 0.5
+        const val MAX_QUANTITY = 100.0
     }
 
     private lateinit var scope: CoroutineScope
@@ -168,9 +177,26 @@ class CambioAceiteCore(
                 _uiState.update { it.copy(error = "Ingrese el kilometraje actual.") }
                 return@launch
             }
+            if (km > MAX_KM) {
+                _uiState.update { it.copy(error = "El kilometraje no puede superar $MAX_KM km.") }
+                return@launch
+            }
             val interval = state.intervalKm.toIntOrNull()
             if (interval == null || interval <= 0) {
                 _uiState.update { it.copy(error = "Ingrese el intervalo del próximo cambio.") }
+                return@launch
+            }
+            if (interval < MIN_INTERVAL_KM || interval > MAX_INTERVAL_KM) {
+                _uiState.update { it.copy(error = "El intervalo debe estar entre $MIN_INTERVAL_KM y $MAX_INTERVAL_KM km.") }
+                return@launch
+            }
+            val quantity = state.quantity.toDoubleOrNull()
+            if (quantity == null) {
+                _uiState.update { it.copy(error = "Ingrese la cantidad de aceite (litros).") }
+                return@launch
+            }
+            if (quantity < MIN_QUANTITY || quantity > MAX_QUANTITY) {
+                _uiState.update { it.copy(error = "La cantidad debe estar entre $MIN_QUANTITY y $MAX_QUANTITY litros.") }
                 return@launch
             }
             if (state.dateTimeMillis > System.currentTimeMillis()) {
@@ -184,7 +210,7 @@ class CambioAceiteCore(
                     asset = state.selectedAsset,
                     oilType = state.oilType.ifBlank { "motor" },
                     oil = state.selectedOil,
-                    quantity = state.quantity.toDoubleOrNull(),
+                    quantity = quantity,
                     km = km,
                     interval = interval,
                     airFilterChanged = state.airFilterChanged,

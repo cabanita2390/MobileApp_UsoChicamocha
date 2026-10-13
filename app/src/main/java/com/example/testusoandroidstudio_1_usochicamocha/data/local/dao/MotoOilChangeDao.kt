@@ -30,4 +30,7 @@ interface MotoOilChangeDao {
 
     @Query("DELETE FROM moto_oil_changes WHERE localId = :localId")
     suspend fun delete(localId: Int)
+
+    @Query("DELETE FROM moto_oil_changes WHERE localId = :localId AND isSynced = 0")
+    suspend fun deletePending(localId: Int)
 }

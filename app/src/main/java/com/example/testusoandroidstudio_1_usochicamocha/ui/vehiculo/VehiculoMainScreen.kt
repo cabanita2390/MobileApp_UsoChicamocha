@@ -1,5 +1,6 @@
 package com.example.testusoandroidstudio_1_usochicamocha.ui.vehiculo
 
+import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.oilchange.CambioSinCantidadAviso
 import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -93,7 +94,8 @@ fun VehiculoMainScreen(
             PendingOilChangeVehiculoCard(
                 pendingOilChanges = uiState.pendingOilChanges,
                 isSyncing = uiState.isSyncingOilChanges,
-                onSyncClicked = { viewModel.onSyncOilChangesClicked() }
+                onSyncClicked = { viewModel.onSyncOilChangesClicked() },
+                onDeleteOilChange = { viewModel.onDeletePendingOilChange(it) }
             )
 
             PendingVehiculoFormsCard(
@@ -163,7 +165,8 @@ fun VehiculoAvailableFormsCard(
 fun PendingOilChangeVehiculoCard(
     pendingOilChanges: List<VehiculoOilChangeEntity>,
     isSyncing: Boolean,
-    onSyncClicked: () -> Unit
+    onSyncClicked: () -> Unit,
+    onDeleteOilChange: (Int) -> Unit = {}
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -202,7 +205,7 @@ fun PendingOilChangeVehiculoCard(
             } else {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     pendingOilChanges.forEach { item ->
-                        PendingOilChangeVehiculoItem(oilChange = item)
+                        PendingOilChangeVehiculoItem(oilChange = item, onDelete = { onDeleteOilChange(item.localId) })
                         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outlineVariant)
                     }
                 }
@@ -212,7 +215,7 @@ fun PendingOilChangeVehiculoCard(
 }
 
 @Composable
-fun PendingOilChangeVehiculoItem(oilChange: VehiculoOilChangeEntity) {
+fun PendingOilChangeVehiculoItem(oilChange: VehiculoOilChangeEntity, onDelete: () -> Unit = {}) {
     val sdf = SimpleDateFormat("HH:mm - dd/MM/yyyy", Locale.getDefault())
     val formattedDate = sdf.format(Date(oilChange.timestamp))
 
@@ -226,9 +229,13 @@ fun PendingOilChangeVehiculoItem(oilChange: VehiculoOilChangeEntity) {
             Text(formattedDate, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
         }
         Text("Marca: ${oilChange.oilBrandName}", style = MaterialTheme.typography.bodyMedium)
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Estado: ", style = MaterialTheme.typography.bodySmall)
-            Text("Pendiente 🔄", color = Color(0xFFFFA000), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodySmall)
+        if (oilChange.quantity == null) {
+            CambioSinCantidadAviso(placa = oilChange.placa, onDelete = onDelete)
+        } else {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Estado: ", style = MaterialTheme.typography.bodySmall)
+                Text("Pendiente 🔄", color = Color(0xFFFFA000), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodySmall)
+            }
         }
     }
 }

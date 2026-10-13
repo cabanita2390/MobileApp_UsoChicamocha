@@ -102,9 +102,19 @@ class VehiculoMainViewModel @Inject constructor(
     fun onSyncOilChangesClicked() {
         viewModelScope.launch {
             _uiState.update { it.copy(isSyncingOilChanges = true, syncMessage = "Sincronizando cambios de aceite...") }
-            oilChangeRepository.syncPending()
-            _uiState.update { it.copy(isSyncingOilChanges = false) }
+            val result = oilChangeRepository.syncPending()
+            val sinCantidad = _uiState.value.pendingOilChanges.count { it.quantity == null }
+            val mensaje = when {
+                result.isFailure -> "❌ No se pudieron enviar algunos cambios de aceite. Revise la conexión e intente de nuevo."
+                sinCantidad > 0 -> "⚠️ $sinCantidad cambio(s) de aceite sin cantidad no se pueden enviar: elimínelos y regístrelos de nuevo."
+                else -> "✅ Sincronización completada"
+            }
+            _uiState.update { it.copy(isSyncingOilChanges = false, syncMessage = mensaje) }
         }
+    }
+
+    fun onDeletePendingOilChange(localId: Int) {
+        viewModelScope.launch { oilChangeRepository.deletePending(localId) }
     }
 
     fun onSyncInspectionsClicked() {

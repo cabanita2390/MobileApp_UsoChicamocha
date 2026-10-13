@@ -27,4 +27,7 @@ interface VehiculoOilChangeDao {
 
     @Query("UPDATE vehiculo_oil_changes SET isSyncing = 0 WHERE localId = :id")
     suspend fun markAsNotSyncing(id: Int)
+
+    @Query("DELETE FROM vehiculo_oil_changes WHERE localId = :id AND isSynced = 0")
+    suspend fun deletePending(id: Int)
 }

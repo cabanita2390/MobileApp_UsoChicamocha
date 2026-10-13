@@ -1,5 +1,6 @@
 package com.example.testusoandroidstudio_1_usochicamocha.ui.motocicleta
 
+import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.oilchange.CambioSinCantidadAviso
 import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -125,7 +126,8 @@ fun MotoHubScreen(
             PendingOilChangesCard(
                 pendingOilChanges = uiState.pendingOilChanges,
                 isSyncing = uiState.isSyncingOilChanges,
-                onSyncClicked = { viewModel.onSyncOilChangesClicked() }
+                onSyncClicked = { viewModel.onSyncOilChangesClicked() },
+                onDeleteOilChange = { viewModel.onDeletePendingOilChange(it) }
             )
 
             // Sección 3: Sincronización de Datos (2 botones)
@@ -254,7 +256,8 @@ fun PendingInspeccionItem(inspeccion: InspeccionMotoPendiente) {
 fun PendingOilChangesCard(
     pendingOilChanges: List<com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.MotoOilChangeEntity>,
     isSyncing: Boolean,
-    onSyncClicked: () -> Unit
+    onSyncClicked: () -> Unit,
+    onDeleteOilChange: (Int) -> Unit = {}
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -293,7 +296,7 @@ fun PendingOilChangesCard(
             } else {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     pendingOilChanges.forEach { oilChange ->
-                        PendingOilChangeItem(oilChange)
+                        PendingOilChangeItem(oilChange, onDelete = { onDeleteOilChange(oilChange.localId) })
                         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outlineVariant)
                     }
                 }
@@ -303,7 +306,10 @@ fun PendingOilChangesCard(
 }
 
 @Composable
-fun PendingOilChangeItem(oilChange: com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.MotoOilChangeEntity) {
+fun PendingOilChangeItem(
+    oilChange: com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.MotoOilChangeEntity,
+    onDelete: () -> Unit = {}
+) {
     val sdf = SimpleDateFormat("HH:mm - dd/MM/yyyy", Locale.getDefault())
     val formattedDate = sdf.format(Date(oilChange.timestamp))
 
@@ -317,9 +323,13 @@ fun PendingOilChangeItem(oilChange: com.example.testusoandroidstudio_1_usochicam
             Text(formattedDate, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
         }
         Text("Marca: ${oilChange.oilBrandName}", style = MaterialTheme.typography.bodyMedium)
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("Estado: ", style = MaterialTheme.typography.bodySmall)
-            Text("Pendiente 🔄", color = Color(0xFFFFA000), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodySmall)
+        if (oilChange.quantity == null) {
+            CambioSinCantidadAviso(placa = oilChange.placa, onDelete = onDelete)
+        } else {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Estado: ", style = MaterialTheme.typography.bodySmall)
+                Text("Pendiente 🔄", color = Color(0xFFFFA000), fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodySmall)
+            }
         }
     }
 }

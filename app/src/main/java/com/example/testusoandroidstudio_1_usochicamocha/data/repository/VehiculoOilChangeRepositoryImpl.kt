@@ -6,6 +6,7 @@ import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.Vehicu
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.ApiService
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.request.VehicleOilChangeRequest
 import com.example.testusoandroidstudio_1_usochicamocha.domain.repository.VehiculoOilChangeRepository
+import com.example.testusoandroidstudio_1_usochicamocha.util.ServiceDateTime
 import kotlinx.coroutines.flow.Flow
 
 class VehiculoOilChangeRepositoryImpl(
@@ -30,14 +31,17 @@ class VehiculoOilChangeRepositoryImpl(
         var hasError = false
 
         for (item in pending) {
+            // Registros guardados con versiones anteriores de la app, cuando la cantidad era
+            // "opcional": el backend los rechaza siempre. No se reenvían; la pantalla los marca
+            // para que el usuario los elimine y los registre de nuevo.
+            if (item.quantity == null) continue
             val lock = dao.acquireLock(item.localId)
             if (lock == 0) continue
 
             try {
                 val request = VehicleOilChangeRequest(
                     placa = item.placa,
-                    dateStamp = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", java.util.Locale.US)
-                        .format(java.util.Date(item.timestamp)),
+                    dateStamp = ServiceDateTime.toBackendLocal(item.timestamp),
                     oilType = item.oilType,
                     brandId = item.oilBrandId,
                     quantity = item.quantity,
@@ -63,4 +67,6 @@ class VehiculoOilChangeRepositoryImpl(
 
         return if (hasError) Result.failure(Exception("Some oil changes failed to sync")) else Result.success(Unit)
     }
+
+    override suspend fun deletePending(localId: Int) = dao.deletePending(localId)
 }

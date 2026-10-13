@@ -6,6 +6,7 @@ import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.MotoOi
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.ApiService
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.request.VehicleOilChangeRequest
 import com.example.testusoandroidstudio_1_usochicamocha.domain.repository.MotoOilChangeRepository
+import com.example.testusoandroidstudio_1_usochicamocha.util.ServiceDateTime
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
 
@@ -47,6 +48,9 @@ class MotoOilChangeRepositoryImpl @Inject constructor(
             var lastError: Exception? = null
 
             for (oilChange in pending) {
+                // Sin cantidad (versiones anteriores de la app): el backend lo rechaza siempre.
+                // No se reenvía; la pantalla lo marca para eliminarlo y registrarlo de nuevo.
+                if (oilChange.quantity == null) continue
                 try {
                     // Adquirir lock para evitar duplicados (retorna número de filas actualizadas)
                     val rowsUpdated = dao.acquireOilChangeLock(oilChange.localId)
@@ -60,8 +64,7 @@ class MotoOilChangeRepositoryImpl @Inject constructor(
                     // Crear request para enviar al backend
                     val request = VehicleOilChangeRequest(
                         placa = oilChange.placa,
-                        dateStamp = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", java.util.Locale.US)
-                            .format(java.util.Date(oilChange.timestamp)),
+                        dateStamp = ServiceDateTime.toBackendLocal(oilChange.timestamp),
                         oilType = oilChange.oilType ?: "motor",
                         brandId = oilChange.oilBrandId,
                         quantity = oilChange.quantity,
@@ -109,4 +112,6 @@ class MotoOilChangeRepositoryImpl @Inject constructor(
             Result.failure(e)
         }
     }
+
+    override suspend fun deletePending(localId: Int) = dao.deletePending(localId)
 }
