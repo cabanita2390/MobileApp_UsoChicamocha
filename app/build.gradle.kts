@@ -56,6 +56,9 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
+        // minSdk 24 y la app usa java.time (LocalDate en captura, cronograma, sync), que solo
+        // existe desde Android 8 (API 26): sin desugaring la app se cae en Android 7.x.
+        isCoreLibraryDesugaringEnabled = true
     }
     kotlinOptions {
         jvmTarget = "17"
@@ -84,6 +87,8 @@ android {
 
 
 dependencies {
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
+
     // CORRECCIÓN: Se utilizan las rutas completas de las dependencias en lugar de los alias.
 
     // Core & Lifecycle
