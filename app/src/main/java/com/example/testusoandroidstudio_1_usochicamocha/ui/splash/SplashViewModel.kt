@@ -31,7 +31,14 @@ class SplashViewModel @Inject constructor(
             }
 
             if (sessionStatus == null) {
-                _destination.value = "login"
+                // Señal muy débil: la validación no alcanzó a responder. Con el refresh token
+                // vigente se entra igual (modo offline); el login exigiría red.
+                if (validateSessionUseCase.refreshTokenVigente()) {
+                    tokenRefreshMonitor.startMonitoring()
+                    _destination.value = "home"
+                } else {
+                    _destination.value = "login"
+                }
                 return@launch
             }
 

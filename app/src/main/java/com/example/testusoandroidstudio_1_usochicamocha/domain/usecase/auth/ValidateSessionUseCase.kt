@@ -2,6 +2,7 @@ package com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.auth
 
 import android.util.Log
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.TokenManager
+import com.example.testusoandroidstudio_1_usochicamocha.domain.model.SesionInvalidaException
 import com.example.testusoandroidstudio_1_usochicamocha.domain.repository.AuthRepository
 import com.example.testusoandroidstudio_1_usochicamocha.util.JwtUtils
 import com.example.testusoandroidstudio_1_usochicamocha.util.NetworkMonitor
@@ -28,6 +29,12 @@ class ValidateSessionUseCase @Inject constructor(
         private const val INITIAL_RETRY_DELAY_MS = 1000L
     }
 
+    /** true si hay un refresh token sin vencer: con él la sesión sigue siendo válida offline. */
+    suspend fun refreshTokenVigente(): Boolean {
+        val refreshToken = tokenManager.getRefreshToken().first()
+        return refreshToken != null && !JwtUtils.isTokenExpired(refreshToken, "Refresh Token")
+    }
+
     suspend operator fun invoke(): SessionStatus {
         val accessToken = tokenManager.getAccessToken().first()
         val refreshToken = tokenManager.getRefreshToken().first()
@@ -47,12 +54,21 @@ class ValidateSessionUseCase @Inject constructor(
                 if (hasInternet) {
                     Log.d(TAG, "Intentando refrescar token con reintentos inteligentes...")
                     val refreshResult = refreshTokenWithRetry()
-                    return if (refreshResult.isSuccess) {
-                        Log.d(TAG, "Token refrescado con éxito.")
-                        SessionStatus.REFRESHED
-                    } else {
-                        Log.d(TAG, "Fallo al refrescar token después de $MAX_REFRESH_ATTEMPTS intentos: ${refreshResult.exceptionOrNull()?.message}")
-                        SessionStatus.EXPIRED
+                    return when {
+                        refreshResult.isSuccess -> {
+                            Log.d(TAG, "Token refrescado con éxito.")
+                            SessionStatus.REFRESHED
+                        }
+                        refreshResult.exceptionOrNull() is SesionInvalidaException -> {
+                            Log.d(TAG, "El servidor rechazó el refresh token: sesión EXPIRADA.")
+                            SessionStatus.EXPIRED
+                        }
+                        else -> {
+                            // Hay "red" pero no se llegó al servidor (señal débil, backend caído):
+                            // el refresh token sigue vigente, así que se entra en modo offline.
+                            Log.d(TAG, "No se pudo refrescar (${refreshResult.exceptionOrNull()?.message}); acceso offline.")
+                            SessionStatus.VALID_OFFLINE
+                        }
                     }
                 } else {
                     // Si no hay internet pero el refresh token era válido, permitimos el acceso offline.
@@ -82,6 +98,7 @@ class ValidateSessionUseCase @Inject constructor(
                 } else {
                     lastException = result.exceptionOrNull()
                     Log.w(TAG, "⚠️ Refresco falló en intento $attempt: ${lastException?.message}")
+                    if (lastException is SesionInvalidaException) return result
 
                     // Si es el último intento, no esperar
                     if (attempt < MAX_REFRESH_ATTEMPTS) {

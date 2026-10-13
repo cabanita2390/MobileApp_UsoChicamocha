@@ -32,10 +32,10 @@ class TokenAuthenticator @Inject constructor(
                     .header("Authorization", "Bearer $newAccessToken")
                     .build()
             } else {
-                appLogger.log("Refresh token inválido. No se reintentará la petición.")
-                // Si el refresco falla (ej. el refresh token también expiró),
-                // cerramos la sesión y no reintentamos la petición (devolvemos null).
-                authRepository.get().logout()
+                // No se reintenta. Si el servidor rechazó el refresh token, AuthRepository ya
+                // cerró la sesión; si fue un fallo de red, la sesión se conserva (sin señal en
+                // campo el técnico debe poder seguir registrando offline).
+                appLogger.log("No se pudo refrescar el token: ${tokenRefreshResult.exceptionOrNull()?.message}. No se reintentará la petición.")
                 null
             }
         }

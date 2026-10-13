@@ -5,6 +5,7 @@ import com.example.testusoandroidstudio_1_usochicamocha.data.local.TokenManager
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.ApiService
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.LoginRequest
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.RefreshTokenRequest
+import com.example.testusoandroidstudio_1_usochicamocha.domain.model.SesionInvalidaException
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.UserSession
 import com.example.testusoandroidstudio_1_usochicamocha.domain.repository.AuthRepository
 import com.example.testusoandroidstudio_1_usochicamocha.util.JwtUtils
@@ -72,11 +73,16 @@ class AuthRepositoryImpl @Inject constructor(
         val refreshToken = tokenManager.getRefreshToken().first()
         if (refreshToken == null || JwtUtils.isTokenExpired(refreshToken, "Refresh Token")) {
             logout()
-            return@withLock Result.failure(Exception("Sesión expirada."))
+            return@withLock Result.failure(SesionInvalidaException())
         }
         refreshTokenWithRetry(refreshToken, maxAttempts = 2, initialDelayMs = 500)
     }
 
+    /**
+     * Solo un rechazo del servidor (401/403) cierra la sesión. Un fallo de red o un error 5xx
+     * NO: el técnico puede estar sin señal en la estación y su sesión sigue siendo válida
+     * mientras el refresh token no venza; antes se cerraba la sesión y el login exigía red.
+     */
     private suspend fun refreshTokenWithRetry(
         refreshToken: String,
         maxAttempts: Int = 2,
@@ -96,30 +102,28 @@ class AuthRepositoryImpl @Inject constructor(
                     tokenManager.saveTokens(accessToken = newAccessToken, refreshToken = refreshToken)
                     Log.d("AuthRepository", "✅ Refresco exitoso en intento $attempt")
                     return Result.success(newAccessToken)
-                } else {
-                    lastException = Exception("Refresh token inválido: ${response.code()}")
-                    Log.w("AuthRepository", "⚠️ Respuesta fallida en intento $attempt: ${response.code()}")
-
-                    if (attempt < maxAttempts) {
-                        Log.d("AuthRepository", "⏳ Esperando ${retryDelay}ms antes de reintentar...")
-                        delay(retryDelay)
-                        retryDelay *= 2
-                    }
                 }
+                if (response.code() == 401 || response.code() == 403) {
+                    Log.w("AuthRepository", "⛔ El servidor rechazó el refresh token: ${response.code()}")
+                    logout()
+                    return Result.failure(SesionInvalidaException("Sesión expirada: ${response.code()}"))
+                }
+                lastException = Exception("Error del servidor al refrescar: ${response.code()}")
+                Log.w("AuthRepository", "⚠️ Respuesta fallida en intento $attempt: ${response.code()}")
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
             } catch (e: Exception) {
                 lastException = e
                 Log.e("AuthRepository", "❌ Excepción en intento $attempt", e)
-
-                if (attempt < maxAttempts) {
-                    Log.d("AuthRepository", "⏳ Esperando ${retryDelay}ms antes de reintentar...")
-                    delay(retryDelay)
-                    retryDelay *= 2
-                }
+            }
+            if (attempt < maxAttempts) {
+                Log.d("AuthRepository", "⏳ Esperando ${retryDelay}ms antes de reintentar...")
+                delay(retryDelay)
+                retryDelay *= 2
             }
         }
 
-        Log.e("AuthRepository", "❌ Todos los $maxAttempts intentos fallaron")
-        logout()
-        return Result.failure(lastException ?: Exception("Error de red al refrescar token después de $maxAttempts intentos"))
+        Log.e("AuthRepository", "❌ Todos los $maxAttempts intentos fallaron; se conserva la sesión")
+        return Result.failure(lastException ?: java.io.IOException("Sin conexión para refrescar la sesión"))
     }
 }

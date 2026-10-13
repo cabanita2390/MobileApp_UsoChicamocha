@@ -1,6 +1,7 @@
 package com.example.testusoandroidstudio_1_usochicamocha.data.remote
 
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.TokenManager
+import com.example.testusoandroidstudio_1_usochicamocha.domain.model.SesionInvalidaException
 import com.example.testusoandroidstudio_1_usochicamocha.domain.repository.AuthRepository
 import com.example.testusoandroidstudio_1_usochicamocha.util.AppLogger
 import com.example.testusoandroidstudio_1_usochicamocha.util.JwtUtils
@@ -10,6 +11,7 @@ import kotlinx.coroutines.runBlocking
 import okhttp3.Interceptor
 import okhttp3.Response
 import okhttp3.ResponseBody.Companion.toResponseBody
+import java.io.IOException
 import javax.inject.Inject
 
 class AuthInterceptor @Inject constructor(
@@ -64,9 +66,15 @@ class AuthInterceptor @Inject constructor(
                 appLogger.log("Realizando petición (${originalRequest.url.encodedPath}) con nuevo token.")
                 return chain.proceed(newRequest)
             } else {
-                // Si el refresco falla en el servidor por otra razón, forzamos logout.
-                appLogger.log("El refresco del token falló en el servidor. Forzando logout.")
-                runBlocking { authRepository.get().logout() }
+                val error = refreshResult.exceptionOrNull()
+                if (error !is SesionInvalidaException) {
+                    // Sin señal o backend caído: la sesión sigue siendo válida. La petición
+                    // falla como cualquier otra sin red y el registro queda en la cola local.
+                    appLogger.log("No se pudo refrescar el token (sin conexión). Se conserva la sesión.")
+                    throw IOException("Sin conexión para refrescar la sesión", error)
+                }
+                // El servidor rechazó el refresh token: AuthRepository ya cerró la sesión.
+                appLogger.log("El servidor rechazó el refresh token. Sesión cerrada.")
                 return Response.Builder()
                     .request(originalRequest)
                     .protocol(okhttp3.Protocol.HTTP_1_1)
