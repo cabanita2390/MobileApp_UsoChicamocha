@@ -21,6 +21,12 @@ interface ImageDao {
     @Query("UPDATE pending_images SET isSyncing = 0 WHERE localId = :localId")
     suspend fun markAsNotSyncing(localId: Int)
 
+    @Query("SELECT * FROM pending_images WHERE isSynced = 0")
+    suspend fun getNoSincronizadas(): List<ImageEntity>
+
+    @Query("UPDATE pending_images SET localUri = :localUri WHERE localId = :localId")
+    suspend fun actualizarLocalUri(localId: Int, localUri: String)
+
     /** Locks de subida que quedaron puestos si el proceso murió subiendo (ver LiberadorLocksHuerfanos). */
     @Query("UPDATE pending_images SET isSyncing = 0 WHERE isSyncing = 1 AND isSynced = 0")
     suspend fun resetStuckSyncing()

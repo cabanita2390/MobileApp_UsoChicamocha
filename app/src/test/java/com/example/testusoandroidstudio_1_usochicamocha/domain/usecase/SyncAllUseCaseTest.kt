@@ -80,7 +80,7 @@ class SyncAllUseCaseTest {
         syncMachineOilChangeFormsUseCase = SyncMachineOilChangeFormsUseCase(machineOilChangeRepository)
         syncMachinesUseCase = SyncMachinesUseCase(machineRepository, logger)
         syncOilsUseCase = SyncOilsUseCase(oilRepository, logger)
-        syncPendingImagesUseCase = SyncPendingImagesUseCase(formRepository, subestacionRepository, mockk(relaxed = true))
+        syncPendingImagesUseCase = SyncPendingImagesUseCase(formRepository, subestacionRepository, mockk(relaxed = true), mockk(relaxed = true))
         triggerImageSyncUseCase = TriggerImageSyncUseCase(context)
 
         // Mock WorkManager

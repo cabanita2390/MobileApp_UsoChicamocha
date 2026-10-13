@@ -26,7 +26,7 @@ object ImageUtils {
 
     /**
      * Reduce la foto a [LADO_MAXIMO] px de lado mayor, la endereza según su orientación
-     * EXIF y la guarda como JPEG en el caché.
+     * EXIF y la guarda como JPEG en [directorioFotosPendientes].
      *
      * Se decodifica ya reducida (`inSampleSize`), nunca a resolución completa: una foto de
      * 50 MP ocupa ~200 MB como bitmap. Todo corre en `Dispatchers.IO` para no congelar la
@@ -60,7 +60,7 @@ object ImageUtils {
             } while (salida.size() > BYTES_OBJETIVO && calidad >= CALIDAD_MINIMA)
             final.recycle()
 
-            val file = File(context.cacheDir, "compressed_${System.currentTimeMillis()}.jpg")
+            val file = File(directorioFotosPendientes(context), "compressed_${System.currentTimeMillis()}.jpg")
             file.writeBytes(salida.toByteArray())
             Uri.fromFile(file)
         } catch (e: Exception) {
@@ -71,6 +71,15 @@ object ImageUtils {
             null
         }
     }
+
+    /**
+     * Fotos listas para subir. En `filesDir`, NO en `cacheDir`: Android vacía el caché cuando
+     * le falta espacio y la evidencia que aún no había subido se perdía sin aviso. Las borra
+     * [com.example.testusoandroidstudio_1_usochicamocha.data.local.AlmacenFotosPendientes]
+     * una vez el servidor las confirma.
+     */
+    fun directorioFotosPendientes(context: Context): File =
+        File(context.filesDir, "fotos_pendientes").apply { mkdirs() }
 
     /** Mayor potencia de 2 que deja el lado mayor decodificado en al menos [ladoMaximo]. */
     internal fun calcularInSampleSize(ancho: Int, alto: Int, ladoMaximo: Int): Int {

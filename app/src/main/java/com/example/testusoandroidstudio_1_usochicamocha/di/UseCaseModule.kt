@@ -109,8 +109,9 @@ object UseCaseModule {
     fun provideSyncPendingImagesUseCase(
         repo: FormRepository,
         subestacionRepo: SubestacionRepository,
-        liberadorLocks: com.example.testusoandroidstudio_1_usochicamocha.data.local.LiberadorLocksHuerfanos
-    ): SyncPendingImagesUseCase = SyncPendingImagesUseCase(repo, subestacionRepo, liberadorLocks)
+        liberadorLocks: com.example.testusoandroidstudio_1_usochicamocha.data.local.LiberadorLocksHuerfanos,
+        almacenFotos: com.example.testusoandroidstudio_1_usochicamocha.data.local.AlmacenFotosPendientes
+    ): SyncPendingImagesUseCase = SyncPendingImagesUseCase(repo, subestacionRepo, liberadorLocks, almacenFotos)
 
     @Provides
     @Singleton

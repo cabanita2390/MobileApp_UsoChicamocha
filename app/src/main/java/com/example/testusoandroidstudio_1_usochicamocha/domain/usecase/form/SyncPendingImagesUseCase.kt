@@ -1,6 +1,7 @@
 package com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.form
 
 import android.util.Log
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.AlmacenFotosPendientes
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.LiberadorLocksHuerfanos
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.ImageEntity
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.pojo.ImageForSync
@@ -26,12 +27,14 @@ import javax.inject.Inject
 class SyncPendingImagesUseCase @Inject constructor(
     private val formRepository: FormRepository,
     private val subestacionRepository: SubestacionRepository,
-    private val liberadorLocks: LiberadorLocksHuerfanos
+    private val liberadorLocks: LiberadorLocksHuerfanos,
+    private val almacenFotos: AlmacenFotosPendientes
 ) {
     // La función invoke permite que la clase sea llamada como si fuera una función.
     suspend operator fun invoke(): Result<Unit> {
         return try {
             liberadorLocks.liberarUnaVezPorProceso()
+            almacenFotos.prepararUnaVezPorProceso()
             // 1. Obtenemos solo las imágenes de formularios cuyo texto ya se ha sincronizado.
             val pendingImages = formRepository.getPendingImagesForSync().first()
 
@@ -68,6 +71,7 @@ class SyncPendingImagesUseCase @Inject constructor(
                     if (syncResult.isSuccess) {
                         // 4. Si la subida es exitosa, la marcamos como synced
                         formRepository.markImageAsSynced(image.localId)
+                        almacenFotos.borrarSubida(image.localUri)
                         successCount++
                         Log.d("SyncPendingImagesUC", "Imagen ${image.localId} sincronizada exitosamente")
                     } else {
