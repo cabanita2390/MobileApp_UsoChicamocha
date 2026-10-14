@@ -16,7 +16,10 @@ class ArchivosInterceptor(private val tokenManager: TokenManager) : Interceptor 
     override fun intercept(chain: Interceptor.Chain): Response {
         val request = chain.request()
         if (!esDeArchivos(request.url)) return chain.proceed(request)
-        val k = runBlocking { tokenManager.getArchivosToken().first() } ?: return chain.proceed(request)
+        // Respaldo: una sesión iniciada con una versión anterior aún no tiene token de archivos
+        // hasta el próximo refresco; el backend también acepta el access token en ?k=.
+        val k = runBlocking { tokenManager.getArchivosToken().first() ?: tokenManager.getAccessToken().first() }
+            ?: return chain.proceed(request)
         return chain.proceed(request.newBuilder().url(conCredencial(request.url, k)).build())
     }
 
