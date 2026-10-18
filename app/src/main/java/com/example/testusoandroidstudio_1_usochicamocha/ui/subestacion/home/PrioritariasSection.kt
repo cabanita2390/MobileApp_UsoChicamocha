@@ -70,6 +70,12 @@ private fun OrdenCard(orden: OrdenAsignada, onClick: () -> Unit) {
             )
         }
         SubestacionType.CardTitle(orden.estacionNombre)
+        if (orden.paraCualquiera) {
+            Text(
+                "Para cualquier operario · queda a nombre de quien la registre",
+                color = SubestacionColors.Purple, fontWeight = FontWeight.Bold, fontSize = 11.5.sp
+            )
+        }
         Text(
             orden.instrucciones, color = SubestacionColors.TextSecondary, fontWeight = FontWeight.SemiBold,
             fontSize = 12.5.sp, maxLines = 2, overflow = TextOverflow.Ellipsis

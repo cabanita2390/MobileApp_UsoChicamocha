@@ -19,5 +19,7 @@ data class OrdenAsignada(
     val hallazgoObservaciones: String,
     /** Si el supervisor la devolvió, por qué; null si no. */
     val motivoDevolucion: String?,
-    val fotosHallazgo: List<String>
+    val fotosHallazgo: List<String>,
+    /** Para cualquier operario: también les aparece a los demás hasta que alguien la registre. */
+    val paraCualquiera: Boolean = false
 )

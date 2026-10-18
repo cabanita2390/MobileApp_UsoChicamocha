@@ -76,7 +76,7 @@ import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.Ejecuc
         com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.SesionActualEntity::class,
         com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.OrdenAsignadaCacheEntity::class
     ],
-    version = 51,
+    version = 52,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -853,6 +853,15 @@ abstract class AppDatabase : RoomDatabase() {
                         "`fotosHallazgo` TEXT NOT NULL, PRIMARY KEY(`id`))"
                 )
                 database.execSQL("ALTER TABLE `pending_mant_ejecucion` ADD COLUMN `ordenId` INTEGER")
+            }
+        }
+
+        /** Orden de trabajo para cualquier operario (la ven todos hasta que alguien la registra). */
+        val MIGRATION_51_52 = object : Migration(51, 52) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL(
+                    "ALTER TABLE `mant_orden_asignada_cache` ADD COLUMN `paraCualquiera` INTEGER NOT NULL DEFAULT 0"
+                )
             }
         }
 

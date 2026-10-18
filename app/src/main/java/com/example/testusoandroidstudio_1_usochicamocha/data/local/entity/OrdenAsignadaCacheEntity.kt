@@ -1,5 +1,6 @@
 package com.example.testusoandroidstudio_1_usochicamocha.data.local.entity
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.OrdenAsignada
@@ -27,7 +28,10 @@ data class OrdenAsignadaCacheEntity(
     val hallazgoObservaciones: String,
     val motivoDevolucion: String?,
     /** Rutas de las fotos del hallazgo, una por línea. */
-    val fotosHallazgo: String
+    val fotosHallazgo: String,
+    /** Para cualquier operario: la ven todos y queda a nombre del primero que la registre. */
+    @ColumnInfo(defaultValue = "0")
+    val paraCualquiera: Boolean = false
 )
 
 fun OrdenAsignadaCacheEntity.toDomain() = OrdenAsignada(
@@ -45,5 +49,6 @@ fun OrdenAsignadaCacheEntity.toDomain() = OrdenAsignada(
     hallazgoResultado = hallazgoResultado,
     hallazgoObservaciones = hallazgoObservaciones,
     motivoDevolucion = motivoDevolucion,
-    fotosHallazgo = fotosHallazgo.split('\n').filter { it.isNotBlank() }
+    fotosHallazgo = fotosHallazgo.split('\n').filter { it.isNotBlank() },
+    paraCualquiera = paraCualquiera
 )

@@ -301,7 +301,8 @@ class SubestacionRepositoryImpl @Inject constructor(
             hallazgoResultado = orden.hallazgoResultado ?: "",
             hallazgoObservaciones = orden.hallazgoObservaciones ?: "",
             motivoDevolucion = motivoDevolucion,
-            fotosHallazgo = evidenciasHallazgo.orEmpty().joinToString("\n") { it.rutaArchivo }
+            fotosHallazgo = evidenciasHallazgo.orEmpty().joinToString("\n") { it.rutaArchivo },
+            paraCualquiera = orden.paraCualquiera == true
         )
 
     override suspend fun sincronizarCatalogos(): Result<Unit> {

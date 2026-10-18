@@ -22,5 +22,6 @@ data class OrdenResumenDto(
     @SerializedName("instrucciones") val instrucciones: String,
     @SerializedName("hallazgoFecha") val hallazgoFecha: String?,
     @SerializedName("hallazgoResultado") val hallazgoResultado: String?,
-    @SerializedName("hallazgoObservaciones") val hallazgoObservaciones: String?
+    @SerializedName("hallazgoObservaciones") val hallazgoObservaciones: String?,
+    @SerializedName("paraCualquiera") val paraCualquiera: Boolean? = null
 )
