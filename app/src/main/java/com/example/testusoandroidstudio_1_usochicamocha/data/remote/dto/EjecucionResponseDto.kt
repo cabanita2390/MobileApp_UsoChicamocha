@@ -42,7 +42,15 @@ data class EjecucionResponseDto(
     @SerializedName("uuidCliente") val uuidCliente: String,
     @SerializedName("evidencias") val evidencias: List<EvidenciaSubestacionDto>,
     @SerializedName("evidenciaPendiente") val evidenciaPendiente: Boolean,
-    @SerializedName("ediciones") val ediciones: List<EdicionSubestacionDto>
+    @SerializedName("ediciones") val ediciones: List<EdicionSubestacionDto>,
+    /** Orden de trabajo (OT-EB) que esta visita ejecutó; null en citas e imprevistos. */
+    @SerializedName("orden") val orden: OrdenRefDto? = null
+)
+
+data class OrdenRefDto(
+    @SerializedName("id") val id: Long,
+    @SerializedName("consecutivo") val consecutivo: String,
+    @SerializedName("estado") val estado: String
 )
 
 /** Usado tras un POST/GET por uuid: refleja el resultado ya confirmado por el servidor en la fila local. */
@@ -93,7 +101,8 @@ fun EjecucionResponseDto.toDomain(): EjecucionDetalle {
         uuidCliente = uuidCliente,
         evidencias = evidencias.map { EvidenciaDetalle(it.id, it.rutaArchivo, it.nombreOriginal, it.subidoEn) },
         evidenciaPendiente = evidenciaPendiente,
-        ediciones = ediciones.map { EdicionDetalle(it.usuario, it.motivo, it.editadoEn) }
+        ediciones = ediciones.map { EdicionDetalle(it.usuario, it.motivo, it.editadoEn) },
+        deOrden = orden != null
     )
 }
 

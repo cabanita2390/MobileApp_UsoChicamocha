@@ -76,7 +76,7 @@ import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.Ejecuc
         com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.SesionActualEntity::class,
         com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.OrdenAsignadaCacheEntity::class
     ],
-    version = 52,
+    version = 53,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -853,6 +853,24 @@ abstract class AppDatabase : RoomDatabase() {
                         "`fotosHallazgo` TEXT NOT NULL, PRIMARY KEY(`id`))"
                 )
                 database.execSQL("ALTER TABLE `pending_mant_ejecucion` ADD COLUMN `ordenId` INTEGER")
+            }
+        }
+
+        /**
+         * La caché de órdenes pasa a llave (orden, usuario): una orden para cualquiera está una vez por
+         * operario. Es solo caché (se vuelve a llenar al sincronizar): se recrea vacía.
+         */
+        val MIGRATION_52_53 = object : Migration(52, 53) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("DROP TABLE IF EXISTS `mant_orden_asignada_cache`")
+                database.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `mant_orden_asignada_cache` (`id` INTEGER NOT NULL, `usuarioId` INTEGER NOT NULL, " +
+                        "`consecutivo` TEXT NOT NULL, `prioridad` TEXT NOT NULL, `fechaLimite` TEXT NOT NULL, `vencida` INTEGER NOT NULL, " +
+                        "`estacionId` INTEGER NOT NULL, `estacionNombre` TEXT NOT NULL, `actividadId` INTEGER NOT NULL, " +
+                        "`actividadNombre` TEXT NOT NULL, `instrucciones` TEXT NOT NULL, `hallazgoFecha` TEXT NOT NULL, " +
+                        "`hallazgoResultado` TEXT NOT NULL, `hallazgoObservaciones` TEXT NOT NULL, `motivoDevolucion` TEXT, " +
+                        "`fotosHallazgo` TEXT NOT NULL, `paraCualquiera` INTEGER NOT NULL DEFAULT 0, PRIMARY KEY(`id`, `usuarioId`))"
+                )
             }
         }
 

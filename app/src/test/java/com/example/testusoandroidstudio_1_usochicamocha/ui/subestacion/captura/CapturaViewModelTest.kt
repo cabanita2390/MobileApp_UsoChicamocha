@@ -725,6 +725,17 @@ class CapturaViewModelTest {
     }
 
     @Test
+    fun `editar la visita de una orden de trabajo tambien bloquea la actividad`() = runTest {
+        coEvery { obtenerDetalleEjecucionUseCase(any()) } returns
+            Result.success(detalleFixture().copy(esProgramada = false, deOrden = true))
+        createViewModel()
+        viewModel.cargarParaEditar(1L)
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.actividadBloqueada)
+    }
+
+    @Test
     fun `editar un registro libre deja cambiar la actividad como hoy`() = runTest {
         coEvery { obtenerDetalleEjecucionUseCase(any()) } returns Result.success(
             detalleFixture().copy(esProgramada = false, actividadId = null, actividadNombre = null, descripcionLibre = "Arreglo puntual")

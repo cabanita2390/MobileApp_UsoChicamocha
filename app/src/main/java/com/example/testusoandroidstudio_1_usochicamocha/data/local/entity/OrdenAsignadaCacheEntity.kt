@@ -2,17 +2,18 @@ package com.example.testusoandroidstudio_1_usochicamocha.data.local.entity
 
 import androidx.room.ColumnInfo
 import androidx.room.Entity
-import androidx.room.PrimaryKey
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.OrdenAsignada
 
 /**
  * Orden de trabajo (OT-EB) asignada al operario: la lista "Prioritarias" del Home, offline.
  * Se guarda con su `usuarioId` porque los teléfonos se comparten: cada operario ve solo las suyas
- * aunque no haya señal (mismo criterio que las colas con `sesion_actual`).
+ * y las que son para cualquiera, aunque no haya señal (mismo criterio que las colas con `sesion_actual`).
  */
-@Entity(tableName = "mant_orden_asignada_cache")
+@Entity(tableName = "mant_orden_asignada_cache", primaryKeys = ["id", "usuarioId"])
 data class OrdenAsignadaCacheEntity(
-    @PrimaryKey val id: Long,
+    // Llave (orden, usuario): una orden para cualquiera le llega a varios operarios del mismo teléfono
+    // con el mismo id; con solo `id` la del último que sincronizaba borraba la de los demás.
+    val id: Long,
     val usuarioId: Long,
     val consecutivo: String,
     val prioridad: String,

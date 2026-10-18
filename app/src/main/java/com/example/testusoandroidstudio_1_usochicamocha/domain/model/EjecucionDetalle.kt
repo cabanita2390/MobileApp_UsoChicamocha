@@ -22,7 +22,9 @@ data class EjecucionDetalle(
     val uuidCliente: String,
     val evidencias: List<EvidenciaDetalle>,
     val evidenciaPendiente: Boolean,
-    val ediciones: List<EdicionDetalle>
+    val ediciones: List<EdicionDetalle>,
+    /** Visita que ejecutó una orden de trabajo: como las de las citas, su actividad no se cambia al editar. */
+    val deOrden: Boolean = false
 )
 
 data class EvidenciaDetalle(

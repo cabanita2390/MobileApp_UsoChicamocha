@@ -415,7 +415,8 @@ class CapturaViewModel @Inject constructor(
                             tipoActividad = d.tipoActividad,
                             tipoMantenimiento = d.tipoMantenimiento,
                             modoLibre = d.actividadId == null,
-                            actividadBloqueada = d.esProgramada && d.actividadId != null,
+                            // Cita del cronograma u orden de trabajo: el backend no deja cambiar la actividad.
+                            actividadBloqueada = (d.esProgramada || d.deOrden) && d.actividadId != null,
                             actividadId = d.actividadId,
                             actividadNombre = d.actividadNombre,
                             descripcionLibre = d.descripcionLibre ?: "",

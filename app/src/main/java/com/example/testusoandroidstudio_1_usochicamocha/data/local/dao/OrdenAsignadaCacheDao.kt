@@ -18,13 +18,14 @@ interface OrdenAsignadaCacheDao {
     )
     fun delUsuarioFlow(): Flow<List<OrdenAsignadaCacheEntity>>
 
-    @Query("SELECT * FROM mant_orden_asignada_cache WHERE id = :id")
+    /** La del usuario en sesión (una orden para cualquiera está una vez por cada operario). */
+    @Query("SELECT * FROM mant_orden_asignada_cache WHERE id = :id AND usuarioId = (SELECT usuarioId FROM sesion_actual WHERE id = 1)")
     suspend fun getById(id: Long): OrdenAsignadaCacheEntity?
 
     @Query("SELECT usuarioId FROM sesion_actual WHERE id = 1")
     suspend fun usuarioEnSesion(): Long?
 
-    /** Ya se registró en el teléfono: sale de la lista sin esperar a que el servidor responda. */
+    /** Ya se registró en el teléfono: sale de la lista de todos (si era para cualquiera, ya la tomaron). */
     @Query("DELETE FROM mant_orden_asignada_cache WHERE id = :id")
     suspend fun deleteById(id: Long)
 
