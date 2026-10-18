@@ -48,6 +48,12 @@ import kotlin.math.min
 data class CapturaUiState(
     val currentStep: Int = 1,
     val programacionId: Long? = null,
+    /**
+     * Orden de trabajo (OT-EB) que corrige un hallazgo. Se registra como una cita: estación,
+     * actividad y tipo de mantenimiento (correctivo) fijos, y la foto del después es obligatoria.
+     */
+    val ordenId: Long? = null,
+    val orden: com.example.testusoandroidstudio_1_usochicamocha.domain.model.OrdenAsignada? = null,
     // Mes (1-12) en que el cronograma programó esta cita — solo para mostrarlo en la
     // tarjeta "Del cronograma" de PasoCita, no se usa para nada más.
     val mesProgramado: Int? = null,
@@ -132,7 +138,13 @@ data class CapturaUiState(
      * realizada, resultado, observaciones y evidencia. Derivado, no un campo de estado
      * propio: cambia solo como efecto de `programacionId`/`modoLibre`.
      */
-    val citaMode: Boolean get() = programacionId != null && !modoLibre
+    val citaMode: Boolean get() = (programacionId != null || ordenId != null) && !modoLibre
+
+    /** Corrección de un hallazgo con una orden de trabajo (ver `ordenId`). */
+    val ordenMode: Boolean get() = ordenId != null
+
+    /** La foto es obligatoria si hay hallazgo, y siempre en una orden de trabajo (es la prueba del arreglo). */
+    val fotoObligatoria: Boolean get() = !esEdicion && (ordenMode || resultado != "CONFORME")
 
     /** 3 pasos en modo cita (Cita/Resultado/Evidencia), 4 en modo libre (como hoy). */
     val nSteps: Int get() = if (citaMode) 3 else 4
@@ -222,6 +234,7 @@ class CapturaViewModel @Inject constructor(
     private val localSyncCoordinator: LocalSyncCoordinator,
     private val tokenManager: com.example.testusoandroidstudio_1_usochicamocha.data.local.TokenManager,
     private val obtenerObservacionesFrecuentesUseCase: ObtenerObservacionesFrecuentesUseCase,
+    private val obtenerOrdenAsignadaUseCase: com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.ObtenerOrdenAsignadaUseCase,
     private val savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -348,6 +361,38 @@ class CapturaViewModel @Inject constructor(
      * disciplina, programacionId y uuidCliente NO se editan (el backend tampoco lo
      * permite — EjecucionEditRequest no los trae).
      */
+    /**
+     * Abre la captura para ejecutar una orden de trabajo (lista "Prioritarias" del Home): la orden
+     * fija la estación, la actividad y el tipo de mantenimiento (correctivo). Sin programacionId:
+     * la corrección de un hallazgo no es una cita del cronograma.
+     */
+    fun cargarDesdeOrden(ordenId: Long) {
+        if (ordenId <= 0L) return
+        viewModelScope.launch {
+            val orden = obtenerOrdenAsignadaUseCase(ordenId)
+            // Tras la muerte del proceso el borrador ya trae todo: solo se vuelve a mostrar la orden.
+            if (borradorRestaurado && _uiState.value.ordenId == ordenId) {
+                _uiState.update { it.copy(orden = orden ?: it.orden) }
+                return@launch
+            }
+            if (orden == null) return@launch
+            _uiState.update {
+                it.copy(
+                    ordenId = orden.id,
+                    orden = orden,
+                    programacionId = null,
+                    estacionId = orden.estacionId,
+                    estacionNombre = orden.estacionNombre,
+                    actividadId = orden.actividadId,
+                    actividadNombre = orden.actividadNombre,
+                    modoLibre = false,
+                    tipoActividad = "MANTENIMIENTO",
+                    tipoMantenimiento = "CORRECTIVO"
+                )
+            }
+        }
+    }
+
     fun cargarParaEditar(ejecucionId: Long) {
         if (_uiState.value.editandoId == ejecucionId) return
         _uiState.update { it.copy(editandoId = ejecucionId, cargandoEdicion = true, errorEdicion = null) }
@@ -688,7 +733,7 @@ class CapturaViewModel @Inject constructor(
                 1 -> s.fecha.isNotBlank() && s.tipoActividad.isNotBlank()
                 2 -> s.resultado.isNotBlank() && s.observaciones.isNotBlank()
                 3 -> if (s.esEdicion) s.motivoEdicion.trim().length >= 15
-                     else (s.resultado == "CONFORME" || s.fotos.isNotEmpty())
+                     else (!s.fotoObligatoria || s.fotos.isNotEmpty())
                 else -> true
             }
         }
@@ -743,6 +788,7 @@ class CapturaViewModel @Inject constructor(
                 actividadNombre = if (s.modoLibre) null else s.actividadNombre,
                 programacionId = s.programacionId,
                 esProgramada = s.programacionId != null,
+                ordenId = s.ordenId,
                 motivoNoCatalogado = if (s.modoLibre) "NO_PROGRAMADO" else null,
                 resultado = s.resultado,
                 observaciones = s.observaciones,

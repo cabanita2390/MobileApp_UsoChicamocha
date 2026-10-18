@@ -28,7 +28,9 @@ data class EjecucionEntity(
     var isSyncing: Boolean = false,
     var syncFallido: Boolean = false,
     /** Usuario que hizo el registro (ver PropietarioColas); null = de la sesión actual. */
-    val propietarioId: Long? = null
+    val propietarioId: Long? = null,
+    /** Orden de trabajo (OT-EB) que este registro ejecuta; null en citas y registros libres. */
+    val ordenId: Long? = null
 )
 
 fun EjecucionEntity.toDomain(): Ejecucion {
@@ -53,6 +55,7 @@ fun EjecucionEntity.toDomain(): Ejecucion {
         descripcionLibre = descripcionLibre,
         isSynced = isSynced,
         isSyncing = isSyncing,
-        syncFallido = syncFallido
+        syncFallido = syncFallido,
+        ordenId = ordenId
     )
 }

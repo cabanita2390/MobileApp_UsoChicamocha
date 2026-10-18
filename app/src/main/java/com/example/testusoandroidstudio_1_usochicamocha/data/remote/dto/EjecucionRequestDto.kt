@@ -17,5 +17,7 @@ data class EjecucionRequestDto(
     @SerializedName("resultado") val resultado: String,
     @SerializedName("observaciones") val observaciones: String,
     @SerializedName("descripcionLibre") val descripcionLibre: String?,
-    @SerializedName("uuidCliente") val uuidCliente: String
+    @SerializedName("uuidCliente") val uuidCliente: String,
+    /** Orden de trabajo (OT-EB) que esta visita ejecuta; null en citas y registros libres. */
+    @SerializedName("ordenId") val ordenId: Long? = null
 )

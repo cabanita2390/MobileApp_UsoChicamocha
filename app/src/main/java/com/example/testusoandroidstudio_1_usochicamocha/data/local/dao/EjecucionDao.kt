@@ -22,6 +22,10 @@ interface EjecucionDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertEjecucion(ejecucion: EjecucionEntity)
 
+    /** Órdenes de trabajo ya registradas en el teléfono que todavía no llegan al servidor. */
+    @Query("SELECT ordenId FROM pending_mant_ejecucion WHERE ordenId IS NOT NULL AND isSynced = 0")
+    suspend fun ordenesEnCola(): List<Long>
+
     @Query("SELECT * FROM pending_mant_ejecucion WHERE uuidCliente = :uuid")
     suspend fun getByUuid(uuid: String): EjecucionEntity?
 

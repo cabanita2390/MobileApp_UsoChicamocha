@@ -280,12 +280,19 @@ class MainActivity : ComponentActivity() {
                             },
                             onNavigateToCola = {
                                 navController.navigate("subestaciones_cola")
+                            },
+                            onNavigateToOrden = { ordenId ->
+                                navController.navigate("subestaciones_captura?ordenId=$ordenId")
                             }
                         )
                     }
                     composable(
-                        route = "subestaciones_captura?programacionId={programacionId}&estacionId={estacionId}&actividadId={actividadId}&esInspeccion={esInspeccion}&vencida={vencida}&mes={mes}&editandoId={editandoId}&motivoEdicion={motivoEdicion}&libre={libre}",
+                        route = "subestaciones_captura?programacionId={programacionId}&estacionId={estacionId}&actividadId={actividadId}&esInspeccion={esInspeccion}&vencida={vencida}&mes={mes}&editandoId={editandoId}&motivoEdicion={motivoEdicion}&libre={libre}&ordenId={ordenId}",
                         arguments = listOf(
+                            androidx.navigation.navArgument("ordenId") {
+                                type = androidx.navigation.NavType.LongType
+                                defaultValue = -1L
+                            },
                             androidx.navigation.navArgument("programacionId") {
                                 type = androidx.navigation.NavType.LongType
                                 defaultValue = -1L
@@ -336,6 +343,7 @@ class MainActivity : ComponentActivity() {
                             motivoEdicionInicial = (backStackEntry.arguments?.getString("motivoEdicion") ?: "")
                                 .let { runCatching { java.net.URLDecoder.decode(it, "UTF-8") }.getOrDefault(it) },
                             libre = backStackEntry.arguments?.getBoolean("libre") ?: false,
+                            ordenId = backStackEntry.arguments?.getLong("ordenId") ?: -1L,
                             onNavigateBack = {
                                 navController.popBackStack()
                             },

@@ -79,6 +79,8 @@ class CapturaViewModelTest {
     lateinit var tokenManager: TokenManager
     @MockK
     lateinit var obtenerObservacionesFrecuentesUseCase: ObtenerObservacionesFrecuentesUseCase
+    @MockK
+    lateinit var obtenerOrdenAsignadaUseCase: com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.ObtenerOrdenAsignadaUseCase
 
     private lateinit var viewModel: CapturaViewModel
 
@@ -87,6 +89,13 @@ class CapturaViewModelTest {
     private val actividad = ActividadCatalogo(id = 20L, nombre = "Inspección y mantenimiento compuertas")
 
     private val hoy = LocalDate.now()
+
+    private val orden = com.example.testusoandroidstudio_1_usochicamocha.domain.model.OrdenAsignada(
+        id = 7L, consecutivo = "OT-EB-00007", prioridad = "ALTA", fechaLimite = "2026-10-25", vencida = false,
+        estacionId = estacion.id, estacionNombre = "Duitama", actividadId = 30L, actividadNombre = "Corrección hallazgos",
+        instrucciones = "Sellar la fisura", hallazgoFecha = "2026-10-12", hallazgoResultado = "REQUIERE_INTERVENCION",
+        hallazgoObservaciones = "Fisura en el muro norte", motivoDevolucion = null, fotosHallazgo = emptyList()
+    )
 
     /** Cita PENDIENTE (mes/año actuales, sin cumplir) que calza exactamente con [estacion]+[actividad]. */
     private val citaCoincide = CitaProgramada(
@@ -115,6 +124,8 @@ class CapturaViewModelTest {
         coEvery { obtenerPendientesUseCase(any(), any()) } returns Result.success(emptyList())
         coEvery { obtenerCitaLocalUseCase(any()) } returns null
         every { guardarEjecucionLocalUseCase.observarEnvio(any()) } returns flowOf(null)
+        coEvery { obtenerOrdenAsignadaUseCase(any()) } returns null
+        coEvery { obtenerOrdenAsignadaUseCase(7L) } returns orden
     }
 
     private fun createViewModel(savedStateHandle: SavedStateHandle = SavedStateHandle()) {
@@ -130,6 +141,7 @@ class CapturaViewModelTest {
             localSyncCoordinator,
             tokenManager,
             obtenerObservacionesFrecuentesUseCase,
+            obtenerOrdenAsignadaUseCase,
             savedStateHandle
         )
     }
@@ -896,5 +908,94 @@ class CapturaViewModelTest {
         viewModel.onDescripcionLibreChange("y".repeat(800))
         assertEquals(500, viewModel.uiState.value.observaciones.length)
         assertEquals(500, viewModel.uiState.value.descripcionLibre.length)
+    }
+
+    // ---- Órdenes de trabajo (OT-EB) ----
+
+    /** Una foto sin pasar por la compresión real (necesita Android): ImageUtils devuelve la misma. */
+    private fun fotoComprimida(): android.net.Uri {
+        val uri = io.mockk.mockk<android.net.Uri>(relaxed = true)
+        io.mockk.mockkObject(com.example.testusoandroidstudio_1_usochicamocha.util.ImageUtils)
+        coEvery { com.example.testusoandroidstudio_1_usochicamocha.util.ImageUtils.compressAndSaveImage(any(), any()) } returns uri
+        return uri
+    }
+
+    @Test
+    fun `una orden de trabajo fija estacion actividad y correctivo, sin cita del cronograma`() = runTest {
+        createViewModel()
+        viewModel.cargarDesdeOrden(7L)
+        advanceUntilIdle()
+
+        val s = viewModel.uiState.value
+        assertTrue(s.ordenMode)
+        assertTrue(s.citaMode)
+        assertEquals(3, s.nSteps)
+        assertEquals(7L, s.ordenId)
+        assertEquals(null, s.programacionId)
+        assertEquals(estacion.id, s.estacionId)
+        assertEquals(30L, s.actividadId)
+        assertEquals("CORRECTIVO", s.tipoMantenimiento)
+        assertEquals("MANTENIMIENTO", s.tipoActividad)
+        assertEquals("OT-EB-00007", s.orden?.consecutivo)
+    }
+
+    @Test
+    fun `en una orden de trabajo la foto del despues es obligatoria aunque quede conforme`() = runTest {
+        createViewModel()
+        viewModel.cargarDesdeOrden(7L)
+        advanceUntilIdle()
+        viewModel.onResultadoChange("CONFORME")
+        viewModel.onObservacionesChange("Fisura sellada")
+
+        assertFalse(viewModel.esPasoValido(3))
+        viewModel.onFotoSeleccionada(fotoComprimida())
+        advanceUntilIdle()
+        assertTrue(viewModel.esPasoValido(3))
+    }
+
+    @Test
+    fun `al guardar una orden de trabajo el registro lleva su ordenId y no es programado`() = runTest {
+        val guardada = io.mockk.slot<com.example.testusoandroidstudio_1_usochicamocha.domain.model.Ejecucion>()
+        coEvery { guardarEjecucionLocalUseCase(capture(guardada), any()) } just Runs
+        createViewModel()
+        viewModel.cargarDesdeOrden(7L)
+        advanceUntilIdle()
+
+        viewModel.onSiguiente()
+        viewModel.onResultadoChange("CONFORME")
+        viewModel.onObservacionesChange("Fisura sellada")
+        viewModel.onSiguiente()
+        viewModel.onFotoSeleccionada(fotoComprimida())
+        advanceUntilIdle()
+        viewModel.onSiguiente()
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.saveCompleted)
+        assertEquals(7L, guardada.captured.ordenId)
+        assertEquals(null, guardada.captured.programacionId)
+        assertFalse(guardada.captured.esProgramada)
+        assertEquals("CORRECTIVO", guardada.captured.tipoMantenimiento)
+        assertEquals(30L, guardada.captured.actividadId)
+    }
+
+    @Test
+    fun `si Android mata el proceso la orden de trabajo se recupera del borrador`() = runTest {
+        val handle = SavedStateHandle()
+        createViewModel(handle)
+        viewModel.cargarDesdeOrden(7L)
+        advanceUntilIdle()
+        viewModel.onSiguiente()
+        viewModel.onObservacionesChange("A medio camino")
+        advanceUntilIdle()
+
+        createViewModel(handle)
+        viewModel.cargarDesdeOrden(7L)
+        advanceUntilIdle()
+
+        val s = viewModel.uiState.value
+        assertEquals(7L, s.ordenId)
+        assertEquals(2, s.currentStep)
+        assertEquals("A medio camino", s.observaciones)
+        assertEquals("OT-EB-00007", s.orden?.consecutivo)
     }
 }

@@ -40,6 +40,8 @@ data class SubestacionHomeUiState(
     val realizadasCount: Int = 0,
     val estacionesTotal: Int = 0,
     val responsableNombre: String = "",
+    /** Órdenes de trabajo asignadas al operario (lista "Prioritarias"). */
+    val ordenes: List<com.example.testusoandroidstudio_1_usochicamocha.domain.model.OrdenAsignada> = emptyList(),
     val isLoading: Boolean = true
 )
 
@@ -51,6 +53,8 @@ class SubestacionHomeViewModel @Inject constructor(
     private val sincronizarEjecucionesNoProgramadasAnioUseCase: SincronizarEjecucionesNoProgramadasAnioUseCase,
     private val obtenerEstacionesCacheUseCase: ObtenerEstacionesCacheUseCase,
     private val sincronizarCatalogosSubestacionUseCase: SincronizarCatalogosSubestacionUseCase,
+    private val obtenerOrdenesAsignadasUseCase: com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.ObtenerOrdenesAsignadasUseCase,
+    private val sincronizarOrdenesAsignadasUseCase: com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.SincronizarOrdenesAsignadasUseCase,
     private val tokenManager: TokenManager
 ) : ViewModel() {
 
@@ -66,6 +70,11 @@ class SubestacionHomeViewModel @Inject constructor(
         viewModelScope.launch {
             obtenerEstacionesCacheUseCase().collect { lista ->
                 _uiState.update { it.copy(estacionesTotal = lista.size) }
+            }
+        }
+        viewModelScope.launch {
+            obtenerOrdenesAsignadasUseCase().collect { lista ->
+                _uiState.update { it.copy(ordenes = lista) }
             }
         }
         viewModelScope.launch {
@@ -132,6 +141,10 @@ class SubestacionHomeViewModel @Inject constructor(
         // "Las 0 estaciones". Best-effort: sin señal se queda con lo que haya en caché.
         viewModelScope.launch {
             sincronizarCatalogosSubestacionUseCase()
+        }
+        // Órdenes de trabajo nuevas o devueltas por el supervisor. Sin señal: la última lista.
+        viewModelScope.launch {
+            sincronizarOrdenesAsignadasUseCase()
         }
     }
 }

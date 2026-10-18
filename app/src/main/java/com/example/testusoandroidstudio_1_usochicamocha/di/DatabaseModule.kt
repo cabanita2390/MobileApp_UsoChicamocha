@@ -54,7 +54,8 @@ object DatabaseModule {
                 AppDatabase.MIGRATION_46_47,
                 AppDatabase.MIGRATION_47_48,
                 AppDatabase.MIGRATION_48_49,
-                AppDatabase.MIGRATION_49_50
+                AppDatabase.MIGRATION_49_50,
+                AppDatabase.MIGRATION_50_51
             )
             .build()
     }
@@ -147,4 +148,9 @@ object DatabaseModule {
     @Provides
     @Singleton
     fun provideEjecucionNoProgramadaCacheDao(db: AppDatabase): EjecucionNoProgramadaCacheDao = db.ejecucionNoProgramadaCacheDao()
+
+    @Provides
+    @Singleton
+    fun provideOrdenAsignadaCacheDao(db: AppDatabase): com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.OrdenAsignadaCacheDao =
+        db.ordenAsignadaCacheDao()
 }

@@ -63,7 +63,8 @@ fun SubestacionHomeScreen(
     onNavigateToCronograma: () -> Unit,
     onNavigateToPendientes: () -> Unit,
     onNavigateToRealizadas: () -> Unit = {},
-    onNavigateToCola: () -> Unit
+    onNavigateToCola: () -> Unit,
+    onNavigateToOrden: (Long) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
@@ -101,6 +102,9 @@ fun SubestacionHomeScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(13.dp)
         ) {
+
+            // Lo urgente primero: las correcciones que el supervisor asignó.
+            PrioritariasSection(ordenes = uiState.ordenes, onAbrir = { onNavigateToOrden(it.id) })
 
             SubestacionHeroCard(
                 uiState = uiState,

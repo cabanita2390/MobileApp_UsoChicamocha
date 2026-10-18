@@ -14,6 +14,8 @@ import com.google.gson.Gson
 internal data class BorradorCaptura(
     val currentStep: Int,
     val programacionId: Long?,
+    /** Gson deja null en borradores de versiones anteriores (sin órdenes de trabajo). */
+    val ordenId: Long?,
     val mesProgramado: Int?,
     val fecha: String,
     val estacionId: Long?,
@@ -34,6 +36,7 @@ internal data class BorradorCaptura(
     fun aplicarA(s: CapturaUiState): CapturaUiState = s.copy(
         currentStep = currentStep,
         programacionId = programacionId,
+        ordenId = ordenId,
         mesProgramado = mesProgramado,
         fecha = fecha,
         estacionId = estacionId,
@@ -61,6 +64,7 @@ internal data class BorradorCaptura(
         fun de(s: CapturaUiState) = BorradorCaptura(
             currentStep = s.currentStep,
             programacionId = s.programacionId,
+            ordenId = s.ordenId,
             mesProgramado = s.mesProgramado,
             fecha = s.fecha,
             estacionId = s.estacionId,

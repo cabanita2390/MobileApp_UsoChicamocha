@@ -97,4 +97,12 @@ interface SubestacionRepository {
 
     /** Trae el detalle del backend y lo cachea en Room (best-effort, no bloquea la UI). */
     suspend fun sincronizarDetalle(id: Long): Result<Unit>
+
+    // ---- Órdenes de trabajo (OT-EB) ----
+    /** Las órdenes asignadas al usuario en sesión (caché offline), primero las de prioridad alta. */
+    fun getOrdenesAsignadas(): Flow<List<com.example.testusoandroidstudio_1_usochicamocha.domain.model.OrdenAsignada>>
+    suspend fun getOrdenAsignada(id: Long): com.example.testusoandroidstudio_1_usochicamocha.domain.model.OrdenAsignada?
+    /** Ya se registró en el teléfono: sale de la lista sin esperar al servidor. */
+    suspend fun quitarOrdenAsignada(id: Long)
+    suspend fun sincronizarOrdenesAsignadas(): Result<Unit>
 }

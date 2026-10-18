@@ -168,6 +168,10 @@ interface ApiService {
         @Query("disciplina") disciplina: String
     ): Response<List<ProgramacionDto>>
 
+    /** Órdenes de trabajo (OT-EB) asignadas al usuario: lista "Prioritarias". */
+    @GET("v1/substation/ordenes/asignadas")
+    suspend fun getOrdenesAsignadas(): Response<List<com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.OrdenAsignadaDto>>
+
     @POST("v1/substation/ejecuciones")
     suspend fun registrarEjecucionSubestacion(@Body request: EjecucionRequestDto): Response<EjecucionResponseDto>
 

@@ -1,5 +1,8 @@
 package com.example.testusoandroidstudio_1_usochicamocha.data.repository
 
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.OrdenAsignadaCacheEntity
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.toDomain
+import com.example.testusoandroidstudio_1_usochicamocha.domain.model.OrdenAsignada
 import androidx.datastore.preferences.core.edit
 import android.content.Context
 import android.net.Uri
@@ -55,6 +58,7 @@ class SubestacionRepositoryImpl @Inject constructor(
     private val cumplimientoCacheDao: CumplimientoCacheDao,
     private val ejecucionDetalleCacheDao: EjecucionDetalleCacheDao,
     private val ejecucionNoProgramadaCacheDao: EjecucionNoProgramadaCacheDao,
+    private val ordenAsignadaCacheDao: com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.OrdenAsignadaCacheDao,
     private val dataStore: androidx.datastore.core.DataStore<androidx.datastore.preferences.core.Preferences>
 ) : SubestacionRepository {
 
@@ -105,6 +109,8 @@ class SubestacionRepositoryImpl @Inject constructor(
     override suspend fun saveEjecucionLocally(ejecucion: Ejecucion, imageUris: List<String>) {
         val entity = ejecucion.toEntity()
         ejecucionDao.insertEjecucion(entity)
+        // La orden ya se ejecutó en el teléfono: sale de "Prioritarias" aunque no haya señal.
+        ejecucion.ordenId?.let { ordenAsignadaCacheDao.deleteById(it) }
 
         if (imageUris.isNotEmpty()) {
             val imageEntities = imageUris.map { uri ->
@@ -154,7 +160,8 @@ class SubestacionRepositoryImpl @Inject constructor(
                 resultado = ejecucion.resultado,
                 observaciones = ejecucion.observaciones,
                 descripcionLibre = ejecucion.descripcionLibre,
-                uuidCliente = ejecucion.uuidCliente
+                uuidCliente = ejecucion.uuidCliente,
+                ordenId = ejecucion.ordenId
             )
             val response = apiService.registrarEjecucionSubestacion(request)
 
@@ -248,6 +255,54 @@ class SubestacionRepositoryImpl @Inject constructor(
     override fun getActividadesCache(): Flow<List<ActividadCatalogo>> {
         return actividadCacheDao.getAllFlow().map { entities -> entities.map { it.toDomain() } }
     }
+
+    // ---- Órdenes de trabajo (OT-EB) ----
+
+    override fun getOrdenesAsignadas(): Flow<List<OrdenAsignada>> =
+        ordenAsignadaCacheDao.delUsuarioFlow().map { lista -> lista.map { it.toDomain() } }
+
+    override suspend fun getOrdenAsignada(id: Long): OrdenAsignada? = ordenAsignadaCacheDao.getById(id)?.toDomain()
+
+    override suspend fun quitarOrdenAsignada(id: Long) = ordenAsignadaCacheDao.deleteById(id)
+
+    /**
+     * Trae las órdenes del usuario en sesión y reemplaza la caché. Las que ya se registraron en el
+     * teléfono y siguen en la cola no vuelven a aparecer (el servidor todavía las ve asignadas).
+     */
+    override suspend fun sincronizarOrdenesAsignadas(): Result<Unit> = try {
+        val usuarioId = ordenAsignadaCacheDao.usuarioEnSesion()
+        val response = apiService.getOrdenesAsignadas()
+        if (usuarioId != null && response.isSuccessful && response.body() != null) {
+            val enCola = ejecucionDao.ordenesEnCola().toSet()
+            ordenAsignadaCacheDao.reemplazar(usuarioId, response.body()!!.map { it.toCache(usuarioId) }, enCola)
+            Result.success(Unit)
+        } else {
+            Result.failure(Exception("No se pudieron traer las órdenes de trabajo: ${response.code()}"))
+        }
+    } catch (e: Exception) {
+        Log.w(TAG, "Órdenes de trabajo sin actualizar (sin red?): ${e.message}")
+        Result.failure(e)
+    }
+
+    private fun com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.OrdenAsignadaDto.toCache(usuarioId: Long) =
+        OrdenAsignadaCacheEntity(
+            id = orden.id,
+            usuarioId = usuarioId,
+            consecutivo = orden.consecutivo,
+            prioridad = orden.prioridad,
+            fechaLimite = orden.fechaLimite,
+            vencida = orden.vencida == true,
+            estacionId = orden.estacionId,
+            estacionNombre = orden.estacionNombre,
+            actividadId = orden.actividadId,
+            actividadNombre = orden.actividadNombre,
+            instrucciones = orden.instrucciones,
+            hallazgoFecha = orden.hallazgoFecha ?: "",
+            hallazgoResultado = orden.hallazgoResultado ?: "",
+            hallazgoObservaciones = orden.hallazgoObservaciones ?: "",
+            motivoDevolucion = motivoDevolucion,
+            fotosHallazgo = evidenciasHallazgo.orEmpty().joinToString("\n") { it.rutaArchivo }
+        )
 
     override suspend fun sincronizarCatalogos(): Result<Unit> {
         return try {

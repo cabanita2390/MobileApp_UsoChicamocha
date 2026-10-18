@@ -73,9 +73,10 @@ import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.Ejecuc
         com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.CumplimientoCacheEntity::class,
         com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.EjecucionDetalleCacheEntity::class,
         com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.EjecucionNoProgramadaCacheEntity::class,
-        com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.SesionActualEntity::class
+        com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.SesionActualEntity::class,
+        com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.OrdenAsignadaCacheEntity::class
     ],
-    version = 50,
+    version = 51,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -837,6 +838,24 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Órdenes de trabajo (OT-EB): la lista "Prioritarias" en caché (por usuario, los teléfonos se
+         * comparten) y la orden que ejecuta cada registro pendiente.
+         */
+        val MIGRATION_50_51 = object : Migration(50, 51) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `mant_orden_asignada_cache` (`id` INTEGER NOT NULL, `usuarioId` INTEGER NOT NULL, " +
+                        "`consecutivo` TEXT NOT NULL, `prioridad` TEXT NOT NULL, `fechaLimite` TEXT NOT NULL, `vencida` INTEGER NOT NULL, " +
+                        "`estacionId` INTEGER NOT NULL, `estacionNombre` TEXT NOT NULL, `actividadId` INTEGER NOT NULL, " +
+                        "`actividadNombre` TEXT NOT NULL, `instrucciones` TEXT NOT NULL, `hallazgoFecha` TEXT NOT NULL, " +
+                        "`hallazgoResultado` TEXT NOT NULL, `hallazgoObservaciones` TEXT NOT NULL, `motivoDevolucion` TEXT, " +
+                        "`fotosHallazgo` TEXT NOT NULL, PRIMARY KEY(`id`))"
+                )
+                database.execSQL("ALTER TABLE `pending_mant_ejecucion` ADD COLUMN `ordenId` INTEGER")
+            }
+        }
+
         /** Foto pendiente cuyo archivo ya no existe: deja de reintentarse y la Cola lo avisa. */
         val MIGRATION_48_49 = object : Migration(48, 49) {
             override fun migrate(database: SupportSQLiteDatabase) {
@@ -868,4 +887,5 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun ejecucionDetalleCacheDao(): EjecucionDetalleCacheDao
     abstract fun ejecucionNoProgramadaCacheDao(): EjecucionNoProgramadaCacheDao
     abstract fun propietarioColasDao(): com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.PropietarioColasDao
+    abstract fun ordenAsignadaCacheDao(): com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.OrdenAsignadaCacheDao
 }

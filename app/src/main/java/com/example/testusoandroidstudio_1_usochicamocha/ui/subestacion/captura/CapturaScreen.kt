@@ -90,6 +90,7 @@ fun CapturaScreen(
     editandoId: Long = -1L,
     motivoEdicionInicial: String = "",
     libre: Boolean = false,
+    ordenId: Long = -1L,
     viewModel: CapturaViewModel = hiltViewModel(),
     onNavigateBack: () -> Unit,
     onNavigateToCola: () -> Unit = {},
@@ -130,6 +131,9 @@ fun CapturaScreen(
     }
     LaunchedEffect(libre) {
         if (libre) viewModel.iniciarLibre()
+    }
+    LaunchedEffect(ordenId) {
+        if (ordenId > 0L) viewModel.cargarDesdeOrden(ordenId)
     }
     LaunchedEffect(editandoId) {
         if (editandoId > 0L) {
@@ -858,7 +862,9 @@ private fun PasoCita(uiState: CapturaUiState, viewModel: CapturaViewModel) {
                 Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
                         Text(
-                            "DEL CRONOGRAMA", color = SubestacionColors.Purple, fontWeight = FontWeight.ExtraBold,
+                            if (uiState.ordenMode) "ORDEN DE TRABAJO · ${uiState.orden?.consecutivo ?: ""}" else "DEL CRONOGRAMA",
+                            color = if (uiState.ordenMode) SubestacionColors.Red else SubestacionColors.Purple,
+                            fontWeight = FontWeight.ExtraBold,
                             fontSize = 9.5.sp, letterSpacing = 1.2.sp, modifier = Modifier.padding(bottom = 6.dp)
                         )
                         Text(
@@ -875,7 +881,14 @@ private fun PasoCita(uiState: CapturaUiState, viewModel: CapturaViewModel) {
                         uiState.mesProgramado?.let { mes ->
                             LockedChip("MES", nombreMes(mes))
                         }
+                        if (uiState.ordenMode) {
+                            LockedChip("TIPO", "Correctivo")
+                            uiState.orden?.let { o ->
+                                LockedChip(if (o.vencida) "VENCIÓ" else "VENCE", fechaDiaMes(o.fechaLimite), danger = o.vencida)
+                            }
+                        }
                     }
+                    uiState.orden?.let { o -> OrdenInstrucciones(o) }
                     Row(
                         Modifier.fillMaxWidth().clip(SubestacionShapes.Input).background(SubestacionColors.SectionHeaderBackground)
                             .padding(12.dp, 10.dp),
@@ -906,14 +919,45 @@ private fun PasoCita(uiState: CapturaUiState, viewModel: CapturaViewModel) {
         item { FechaEjecucionField(uiState.fecha, viewModel::onFechaChange) }
         item { PeriodoEjecucionSection(uiState, viewModel) }
         item { TipoActividadSection(uiState, viewModel, titulo = "Tipo de actividad realizada") }
-        item {
-            TipoMantenimientoSection(
-                uiState, viewModel, OPCIONES_MANT,
-                ayuda = "Sugerido: correctivo si la cita está vencida, preventivo si no. Cámbialo si se hizo otro tipo."
-            )
+        // En una orden de trabajo el tipo es siempre correctivo (va fijo arriba).
+        if (!uiState.ordenMode) {
+            item {
+                TipoMantenimientoSection(
+                    uiState, viewModel, OPCIONES_MANT,
+                    ayuda = "Sugerido: correctivo si la cita está vencida, preventivo si no. Cámbialo si se hizo otro tipo."
+                )
+            }
         }
     }
 }
+
+/** Lo que pidió el supervisor, lo que se encontró y, si la devolvió, por qué. */
+@Composable
+private fun OrdenInstrucciones(orden: com.example.testusoandroidstudio_1_usochicamocha.domain.model.OrdenAsignada) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        orden.motivoDevolucion?.let {
+            Column(
+                Modifier.fillMaxWidth().clip(SubestacionShapes.Input).background(SubestacionColors.RedBg)
+                    .border(1.dp, SubestacionColors.RedBorder, SubestacionShapes.Input).padding(12.dp, 10.dp)
+            ) {
+                Text("DEVUELTA POR EL SUPERVISOR", color = SubestacionColors.Red, fontWeight = FontWeight.ExtraBold, fontSize = 9.sp, letterSpacing = 0.6.sp)
+                Text(it, color = SubestacionColors.TextPrimary, fontWeight = FontWeight.SemiBold, fontSize = 12.5.sp, modifier = Modifier.padding(top = 3.dp))
+            }
+        }
+        Column(
+            Modifier.fillMaxWidth().clip(SubestacionShapes.Input).background(SubestacionColors.SectionHeaderBackground).padding(12.dp, 10.dp)
+        ) {
+            Text("QUÉ HAY QUE HACER", color = SubestacionColors.TextTertiary, fontWeight = FontWeight.SemiBold, fontSize = 8.5.sp, letterSpacing = 0.6.sp)
+            Text(orden.instrucciones, color = SubestacionColors.TextPrimary, fontWeight = FontWeight.SemiBold, fontSize = 12.5.sp, modifier = Modifier.padding(top = 3.dp))
+            Text("HALLAZGO DEL ${fechaDiaMes(orden.hallazgoFecha)}", color = SubestacionColors.TextTertiary, fontWeight = FontWeight.SemiBold, fontSize = 8.5.sp, letterSpacing = 0.6.sp, modifier = Modifier.padding(top = 8.dp))
+            Text(orden.hallazgoObservaciones, color = SubestacionColors.TextSecondary, fontWeight = FontWeight.Medium, fontSize = 12.sp, modifier = Modifier.padding(top = 3.dp))
+        }
+    }
+}
+
+/** "2026-10-25" → "25/10". */
+private fun fechaDiaMes(iso: String): String =
+    iso.split("-").takeIf { it.size == 3 }?.let { "${it[2]}/${it[1]}" } ?: iso
 
 @Composable
 private fun PasoResultado(uiState: CapturaUiState, viewModel: CapturaViewModel) {
@@ -1000,7 +1044,7 @@ private fun PasoEvidencia(
     onPickPhoto: () -> Unit,
     onRemovePhoto: (Uri) -> Unit
 ) {
-    val fotoObligatoria = !uiState.esEdicion && uiState.resultado != "CONFORME" && uiState.fotos.isEmpty()
+    val fotoObligatoria = uiState.fotoObligatoria && uiState.fotos.isEmpty()
     LazyColumn(Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         item {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -1008,7 +1052,7 @@ private fun PasoEvidencia(
                 if (!uiState.esEdicion) {
                     SubestacionType.Hint(
                         if (uiState.fotos.isNotEmpty()) "${uiState.fotos.size} en el equipo"
-                        else if (fotoObligatoria) "Obligatoria" else "Opcional",
+                        else if (fotoObligatoria) (if (uiState.ordenMode) "Obligatoria · cómo quedó" else "Obligatoria") else "Opcional",
                         color = if (fotoObligatoria) SubestacionColors.Red else SubestacionColors.TextQuaternary
                     )
                 }

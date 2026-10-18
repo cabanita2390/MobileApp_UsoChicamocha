@@ -35,7 +35,9 @@ data class Ejecucion(
     /** Fotos cuyo archivo ya no existe en el equipo: hay que tomarlas de nuevo o descartarlas. */
     val fotosPerdidas: Int = 0,
     /** Registro pendiente de otro usuario: se envía cuando él vuelva a iniciar sesión. */
-    val deOtroUsuario: Boolean = false
+    val deOtroUsuario: Boolean = false,
+    /** Orden de trabajo (OT-EB) que este registro ejecuta; null en citas y registros libres. */
+    val ordenId: Long? = null
 )
 
 fun Ejecucion.toEntity(): EjecucionEntity {
@@ -60,6 +62,7 @@ fun Ejecucion.toEntity(): EjecucionEntity {
         descripcionLibre = descripcionLibre,
         isSynced = isSynced,
         isSyncing = isSyncing,
-        syncFallido = syncFallido
+        syncFallido = syncFallido,
+        ordenId = ordenId
     )
 }

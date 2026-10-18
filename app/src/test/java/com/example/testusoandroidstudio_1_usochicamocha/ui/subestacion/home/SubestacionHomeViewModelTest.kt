@@ -60,6 +60,10 @@ class SubestacionHomeViewModelTest {
     lateinit var obtenerEstacionesCacheUseCase: ObtenerEstacionesCacheUseCase
     @MockK
     lateinit var tokenManager: TokenManager
+    @MockK
+    lateinit var obtenerOrdenesAsignadasUseCase: com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.ObtenerOrdenesAsignadasUseCase
+    @MockK
+    lateinit var sincronizarOrdenesAsignadasUseCase: com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.SincronizarOrdenesAsignadasUseCase
 
     private val hoy = LocalDate.now()
 
@@ -83,6 +87,8 @@ class SubestacionHomeViewModelTest {
         every { obtenerEjecucionesNoProgramadasAnioLocalUseCase(any()) } returns flowOf(emptyList())
         coEvery { sincronizarEjecucionesNoProgramadasAnioUseCase(any()) } returns Result.success(Unit)
         coEvery { sincronizarCatalogosSubestacionUseCase() } returns Result.success(Unit)
+        every { obtenerOrdenesAsignadasUseCase() } returns flowOf(emptyList())
+        coEvery { sincronizarOrdenesAsignadasUseCase() } returns Result.success(Unit)
     }
 
     @After
@@ -98,6 +104,8 @@ class SubestacionHomeViewModelTest {
         sincronizarEjecucionesNoProgramadasAnioUseCase,
         obtenerEstacionesCacheUseCase,
         sincronizarCatalogosSubestacionUseCase,
+        obtenerOrdenesAsignadasUseCase,
+        sincronizarOrdenesAsignadasUseCase,
         tokenManager
     )
 
@@ -192,5 +200,22 @@ class SubestacionHomeViewModelTest {
         val vm = createViewModel()
         advanceUntilIdle()
         assertEquals(0, vm.uiState.value.porcentaje)
+    }
+
+    @Test
+    fun `las ordenes de trabajo asignadas llegan a Prioritarias y se piden al servidor al cargar`() = runTest {
+        val orden = com.example.testusoandroidstudio_1_usochicamocha.domain.model.OrdenAsignada(
+            id = 7L, consecutivo = "OT-EB-00007", prioridad = "ALTA", fechaLimite = "2026-10-25", vencida = false,
+            estacionId = 1L, estacionNombre = "Duitama", actividadId = 30L, actividadNombre = "Corrección",
+            instrucciones = "Sellar", hallazgoFecha = "2026-10-12", hallazgoResultado = "REQUIERE_INTERVENCION",
+            hallazgoObservaciones = "Fisura", motivoDevolucion = null, fotosHallazgo = emptyList()
+        )
+        every { obtenerOrdenesAsignadasUseCase() } returns flowOf(listOf(orden))
+
+        val viewModel = createViewModel()
+        advanceUntilIdle()
+
+        assertEquals(listOf(orden), viewModel.uiState.value.ordenes)
+        coVerify { sincronizarOrdenesAsignadasUseCase() }
     }
 }
