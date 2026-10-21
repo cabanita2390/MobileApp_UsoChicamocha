@@ -428,6 +428,13 @@ class CapturaViewModelTest {
     }
 
     @Test
+    fun `el primer paso se llama ORDEN en una orden de trabajo y CITA en una cita del cronograma`() {
+        assertEquals("ORDEN", CapturaUiState(ordenId = 1L).stepName)
+        assertEquals("CITA", CapturaUiState(programacionId = 100L).stepName)
+        assertEquals("CONTEXTO", CapturaUiState().stepName)
+    }
+
+    @Test
     fun `onToggleModoLibre desde una cita limpia programacionId — cierra el hueco senalado en el fix anterior`() = runTest {
         createViewModel()
         viewModel.cargarDesdeCita(

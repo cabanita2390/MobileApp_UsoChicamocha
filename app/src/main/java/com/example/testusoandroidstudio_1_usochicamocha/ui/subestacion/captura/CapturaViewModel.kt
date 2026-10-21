@@ -152,7 +152,7 @@ data class CapturaUiState(
     val stepName: String
         get() = if (citaMode) {
             when (currentStep) {
-                1 -> "CITA"
+                1 -> if (ordenMode) "ORDEN" else "CITA"
                 2 -> "RESULTADO"
                 else -> "EVIDENCIA"
             }
