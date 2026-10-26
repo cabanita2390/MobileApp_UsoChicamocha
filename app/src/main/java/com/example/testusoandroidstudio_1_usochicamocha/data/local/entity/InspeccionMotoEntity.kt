@@ -46,7 +46,9 @@ data class InspeccionMotoEntity(
     @ColumnInfo(defaultValue = "") val placaVehiculo: String = "",
     @ColumnInfo(defaultValue = "") val tipoVehiculo: String = "",
     /** Usuario que hizo el registro (ver PropietarioColas); null = de la sesión actual. */
-    val propietarioId: Long? = null
+    val propietarioId: Long? = null,
+    /** Presión por llanta (JSON de LecturaPresionLlanta, ver PresionLlantasJson); "" = sin lecturas. */
+    @ColumnInfo(defaultValue = "") val presionesLlantasJson: String = ""
 )
 
 fun InspeccionMotoEntity.toDomain() = InspeccionMotoPendiente(
@@ -74,7 +76,8 @@ fun InspeccionMotoEntity.toDomain() = InspeccionMotoPendiente(
     placaVehiculo = placaVehiculo,
     tipoVehiculo = tipoVehiculo,
     isSynced = isSynced,
-    isSyncing = isSyncing
+    isSyncing = isSyncing,
+    presionesLlantasJson = presionesLlantasJson
 )
 
 fun InspeccionMotoPendiente.toEntity() = InspeccionMotoEntity(
@@ -102,5 +105,6 @@ fun InspeccionMotoPendiente.toEntity() = InspeccionMotoEntity(
     placaVehiculo = placaVehiculo,
     tipoVehiculo = tipoVehiculo,
     isSynced = isSynced,
-    isSyncing = isSyncing
+    isSyncing = isSyncing,
+    presionesLlantasJson = presionesLlantasJson
 )

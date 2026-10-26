@@ -1,4 +1,5 @@
 package com.example.testusoandroidstudio_1_usochicamocha.data.local.entity
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.Form
@@ -33,7 +34,9 @@ data class FormEntity(
     var isSynced: Boolean = false,
     var isSyncing: Boolean = false,
     /** Usuario que hizo el registro (ver PropietarioColas); null = de la sesión actual. */
-    val propietarioId: Long? = null
+    val propietarioId: Long? = null,
+    /** Presión por llanta (JSON de LecturaPresionLlanta, ver PresionLlantasJson); "" = sin lecturas. */
+    @ColumnInfo(defaultValue = "") val presionesLlantasJson: String = ""
 )
 
 fun FormEntity.toDomain(): Form {
@@ -65,7 +68,8 @@ fun FormEntity.toDomain(): Form {
         greasingObservations = this.greasingObservations,
         isUnexpected = this.isUnexpected,
         isSynced = isSynced,
-        isSyncing = isSyncing
+        isSyncing = isSyncing,
+        presionesLlantasJson = presionesLlantasJson
     )
 }
 

@@ -14,7 +14,10 @@ import androidx.lifecycle.viewModelScope
 // AÑADIDO: Importaciones necesarias para WorkManager
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.TokenManager
 // AÑADIDO: Importa tus workers
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.PresionLlantasJson
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.Form
+import com.example.testusoandroidstudio_1_usochicamocha.domain.repository.LlantasRepository
+import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.llantas.PresionLlantasState
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.LocalSyncCoordinator
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.Machine
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.form.SaveFormUseCase
@@ -62,7 +65,9 @@ data class FormUiState(
     val documentosVencidos: List<String> = emptyList(),
     val documentosPorVencer: List<String> = emptyList(),
     val showDocumentoVencidoDialog: Boolean = false,
-    val showDocumentoPorVencerDialog: Boolean = false
+    val showDocumentoPorVencerDialog: Boolean = false,
+    // Presión de llantas según el perfil de la máquina (no bloquea si está fuera de rango)
+    val presionLlantas: PresionLlantasState = PresionLlantasState()
 )
 
 /** Días antes del vencimiento para marcar "Próximo a Vencer" — alineado con el umbral
@@ -76,7 +81,8 @@ class FormViewModel @Inject constructor(
     private val saveFormUseCase: SaveFormUseCase,
     private val getLocalMachinesUseCase: GetLocalMachinesUseCase,
     private val tokenManager: TokenManager,
-    private val localSyncCoordinator: LocalSyncCoordinator
+    private val localSyncCoordinator: LocalSyncCoordinator,
+    private val llantasRepository: LlantasRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(FormUiState())
@@ -127,15 +133,39 @@ class FormViewModel @Inject constructor(
                 state.greasingStatus.isNotBlank() &&
                 (state.greasingStatus == "No" || (state.greasingStatus == "Sí" && state.greasingAction.isNotBlank())) &&
                 state.vigenciaExtintor.isNotBlank() && // AÑADIDO: Validar que la fecha del extintor esté seleccionada
+                state.presionLlantas.completa &&
                 state.documentosVencidos.isEmpty()
 
         _uiState.update { it.copy(isSaveButtonEnabled = isFormValid) }
     }
 
     fun onMachineSelected(machine: Machine) {
-        _uiState.update { it.copy(selectedMachine = machine) }
+        _uiState.update { it.copy(selectedMachine = machine, presionLlantas = it.presionLlantas.paraActivo(null)) }
         evaluarBloqueoDocumentos(machine)
         validateForm()
+        viewModelScope.launch {
+            val config = llantasRepository.configMaquina(machine.id.toLong())
+            // Si mientras tanto eligió otra máquina, este resultado ya no aplica.
+            if (_uiState.value.selectedMachine?.id == machine.id) {
+                _uiState.update { it.copy(presionLlantas = it.presionLlantas.paraActivo(config)) }
+                validateForm()
+            }
+        }
+    }
+
+    fun onPresionLlantaChange(codigo: String, texto: String) {
+        _uiState.update { it.copy(presionLlantas = it.presionLlantas.conValor(codigo, texto)) }
+        validateForm()
+    }
+
+    /** Aviso de llantas fuera de rango: el operario decide guardar igual y calibrar después. */
+    fun onPresionLlantasGuardarIgual() {
+        _uiState.update { it.copy(presionLlantas = it.presionLlantas.copy(mostrarAvisoCalibrar = false, avisoConfirmado = true)) }
+        onSaveClick()
+    }
+
+    fun onPresionLlantasRevisar() {
+        _uiState.update { it.copy(presionLlantas = it.presionLlantas.copy(mostrarAvisoCalibrar = false)) }
     }
 
     /** Calcula estado SOAT / Seguro Todo Riesgo de la máquina seleccionada y decide si
@@ -296,6 +326,10 @@ class FormViewModel @Inject constructor(
 
     fun onSaveClick() {
         if (!_uiState.value.isSaveButtonEnabled) return
+        if (_uiState.value.presionLlantas.requiereAviso) {
+            _uiState.update { it.copy(presionLlantas = it.presionLlantas.copy(mostrarAvisoCalibrar = true)) }
+            return
+        }
 
         val selectedMachineId = _uiState.value.selectedMachine?.id?.toLong() ?: return
 
@@ -340,7 +374,8 @@ class FormViewModel @Inject constructor(
                 greasingObservations = if (currentState.greasingStatus == "Sí") currentState.greasingObservations else "",
                 isUnexpected = false,
                 isSynced = false,
-                isSyncing = false
+                isSyncing = false,
+                presionesLlantasJson = PresionLlantasJson.lecturasToJson(currentState.presionLlantas.lecturas())
             )
             val imageUrisAsString = currentState.selectedImageUris.map { it.toString() }
 

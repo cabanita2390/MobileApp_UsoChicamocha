@@ -66,5 +66,8 @@ data class FormDto(
     val greasingObservations: String,
 
     @field:Json(name = "isUnexpected")
-    val isUnexpected: Boolean
+    val isUnexpected: Boolean,
+
+    @field:Json(name = "presionesLlantas")
+    val presionesLlantas: List<LecturaPresionLlantaDto>? = null
 )

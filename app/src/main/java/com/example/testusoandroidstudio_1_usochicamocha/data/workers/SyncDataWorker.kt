@@ -16,6 +16,7 @@ import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.auth.Sess
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.auth.ValidateSessionUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.form.GetPendingFormsUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.form.SyncFormUseCase
+import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.llantas.SincronizarPerfilesLlantasUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.machine.SyncMachinesUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.machineoilchange.GetPendingMachineOilChangeFormsUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.machineoilchange.SyncMachineOilChangeFormsUseCase
@@ -69,7 +70,8 @@ class SyncDataWorker @AssistedInject constructor(
     private val sincronizarCumplimientoAnioUseCase: SincronizarCumplimientoAnioUseCase,
     private val sincronizarEjecucionesNoProgramadasAnioUseCase: SincronizarEjecucionesNoProgramadasAnioUseCase,
     private val liberadorLocks: LiberadorLocksHuerfanos,
-    private val propietarioColas: PropietarioColas
+    private val propietarioColas: PropietarioColas,
+    private val sincronizarPerfilesLlantasUseCase: SincronizarPerfilesLlantasUseCase
 ) : CoroutineWorker(appContext, workerParams) {
 
     override suspend fun doWork(): Result {
@@ -441,6 +443,22 @@ class SyncDataWorker @AssistedInject constructor(
                 } catch (e: Exception) {
                     totalErrors++
                     Log.e("SyncDataWorker", "❌ [$workId] Error syncing master data", e)
+                }
+
+                // Perfiles de llantas: acompañan al catálogo de activos. Best-effort, igual que el
+                // caché de cumplimiento: sin red (o con un backend sin el módulo) se queda lo último
+                // sincronizado y la inspección sigue funcionando.
+                val sincronizaActivos = syncMachinesOnly || syncMotosOnly || syncVehiclesCatalogOnly ||
+                        !(syncOilsOnly || syncUbicacionesOnly || syncDocumentsOnly || syncVehiclesDocumentsOnly || syncSubstationCatalogOnly)
+                if (sincronizaActivos) {
+                    try {
+                        withTimeout(60000) {
+                            sincronizarPerfilesLlantasUseCase()
+                        }
+                        Log.d("SyncDataWorker", "✅ [$workId] Tire profiles synced successfully")
+                    } catch (e: Exception) {
+                        Log.w("SyncDataWorker", "⚠️ [$workId] Could not refresh tire profiles cache", e)
+                    }
                 }
             }
 

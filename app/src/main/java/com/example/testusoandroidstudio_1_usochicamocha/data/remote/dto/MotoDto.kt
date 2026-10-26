@@ -39,5 +39,8 @@ data class InspeccionMotoRequest(
     val checkEstadoLuces: String,
 
     // Ubicacion
-    val idUbicacion: Int
+    val idUbicacion: Int,
+
+    // Presión de llantas (opcional)
+    val presionesLlantas: List<LecturaPresionLlantaDto>? = null
 )

@@ -1,5 +1,6 @@
 package com.example.testusoandroidstudio_1_usochicamocha.data.repository
 
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.PresionLlantasJson
 import android.util.Log
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.DocumentoVehiculoDao
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.VehiculoDao
@@ -207,6 +208,7 @@ class VehiculoInspectionRepositoryImpl @Inject constructor(
             conscienteResponsabilidad = this.conscienteResponsabilidad,
             condicionParaConducir = this.condicionParaConducir,
             idUbicacion = null,
+            presionesLlantas = PresionLlantasJson.lecturasParaEnvio(this.presionesLlantasJson),
         )
     }
 

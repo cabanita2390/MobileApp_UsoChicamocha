@@ -3,6 +3,7 @@ package com.example.testusoandroidstudio_1_usochicamocha.ui.login
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.auth.LoginUseCase
+import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.llantas.SincronizarPerfilesLlantasUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.machine.SyncMachinesUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.util.TokenRefreshMonitor
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -27,7 +28,8 @@ data class LoginUiState(
 class LoginViewModel @Inject constructor(
     private val loginUseCase: LoginUseCase,
     private val syncMachinesUseCase: SyncMachinesUseCase,
-    private val tokenRefreshMonitor: TokenRefreshMonitor
+    private val tokenRefreshMonitor: TokenRefreshMonitor,
+    private val sincronizarPerfilesLlantasUseCase: SincronizarPerfilesLlantasUseCase
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(LoginUiState())
@@ -56,6 +58,8 @@ class LoginViewModel @Inject constructor(
                     syncResult.onFailure { syncException ->
                         // Log error but don't show to user since login was successful
                     }
+                    // Perfiles de llantas para pedir la presión sin conexión (best-effort).
+                    sincronizarPerfilesLlantasUseCase()
                 }
 
                 // Si el login es exitoso, procedemos inmediatamente

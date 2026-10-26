@@ -41,6 +41,8 @@ import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.inspection.Doc
 import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.inspection.DocumentoPorVencerWarningDialog
 import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.inspection.SearchableSelectorField
 import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.inspection.SegmentedOptionSelector
+import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.llantas.PresionLlantasAvisoDialog
+import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.llantas.PresionLlantasSection
 import android.content.Intent
 import android.net.Uri
 
@@ -266,6 +268,19 @@ fun MotocicletaScreen(
                 }
             }
 
+            // 4b. PRESIÓN DE LLANTAS (solo si la moto tiene perfil)
+            if (uiState.presionLlantas.aplica) {
+                item {
+                    SectionCard("Presión de Llantas (PSI) (*)", modifier = Modifier.testTag("section_presion_llantas")) {
+                        PresionLlantasSection(
+                            state = uiState.presionLlantas,
+                            onValorChange = { codigo, texto -> viewModel.onPresionLlantaChange(codigo, texto) },
+                            mostrarTitulo = false
+                        )
+                    }
+                }
+            }
+
             // 7. ESTADO GENERAL
             item {
                 SectionCard("Estado de la Motocicleta", modifier = Modifier.testTag("section_estado")) {
@@ -435,6 +450,15 @@ fun MotocicletaScreen(
                 onDismissRequest = { viewModel.onCancelKmHighlight() },
                 onConfirmException = { viewModel.onConfirmKmException() },
                 onCorrect = { viewModel.onCancelKmHighlight() }
+            )
+        }
+
+        // ─ Aviso: llantas fuera de rango (no bloquea; se calibra después) ─
+        if (uiState.presionLlantas.mostrarAvisoCalibrar) {
+            PresionLlantasAvisoDialog(
+                fueraDeRango = uiState.presionLlantas.fueraDeRango(),
+                onGuardarIgual = { viewModel.onPresionLlantasGuardarIgual() },
+                onRevisar = { viewModel.onPresionLlantasRevisar() }
             )
         }
 

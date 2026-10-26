@@ -53,6 +53,8 @@ import coil.compose.AsyncImage
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.Machine
 import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.inspection.DocumentoVencidoBlockingDialog
 import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.inspection.DocumentoPorVencerWarningDialog
+import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.llantas.PresionLlantasAvisoDialog
+import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.llantas.PresionLlantasSection
 import java.io.File
 import java.util.Calendar
 
@@ -163,6 +165,15 @@ MachineSelector(
             item { Divider(modifier = Modifier.padding(vertical = 8.dp)) }
             item { StatusSelector("Estado de Llantas y/o Carriles (*)", uiState.estadoLlantasCarriles) { viewModel.onEstadoChange("LlantasCarriles", it) } }
             item { Divider(modifier = Modifier.padding(vertical = 8.dp)) }
+            if (uiState.presionLlantas.aplica) {
+                item {
+                    PresionLlantasSection(
+                        state = uiState.presionLlantas,
+                        onValorChange = { codigo, texto -> viewModel.onPresionLlantaChange(codigo, texto) }
+                    )
+                }
+                item { Divider(modifier = Modifier.padding(vertical = 8.dp)) }
+            }
             item { StatusSelector("Sistema de Encendido (*)", uiState.estadoEncendido) { viewModel.onEstadoChange("Encendido", it) } }
             item { Divider(modifier = Modifier.padding(vertical = 8.dp)) }
             item { StatusSelector("Sistema Eléctrico en General (*)", uiState.estadoElectrico) { viewModel.onEstadoChange("Electrico", it) } }
@@ -240,6 +251,15 @@ MachineSelector(
             uri = uiState.previewingImageUri!!,
             onDismiss = { viewModel.onDismissPreview() },
             onDelete = { viewModel.onImageRemoved(uiState.previewingImageUri!!) }
+        )
+    }
+
+    // ─ Aviso: llantas fuera de rango (no bloquea; se calibra después) ─
+    if (uiState.presionLlantas.mostrarAvisoCalibrar) {
+        PresionLlantasAvisoDialog(
+            fueraDeRango = uiState.presionLlantas.fueraDeRango(),
+            onGuardarIgual = { viewModel.onPresionLlantasGuardarIgual() },
+            onRevisar = { viewModel.onPresionLlantasRevisar() }
         )
     }
 

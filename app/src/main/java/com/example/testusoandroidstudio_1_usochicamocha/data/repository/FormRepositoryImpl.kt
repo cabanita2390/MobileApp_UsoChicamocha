@@ -1,5 +1,6 @@
 package com.example.testusoandroidstudio_1_usochicamocha.data.repository
 
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.PresionLlantasJson
 import android.content.Context
 import android.net.Uri
 import android.util.Log
@@ -228,7 +229,8 @@ class FormRepositoryImpl @Inject constructor(
             machineId = this.machineId,
             greasingAction = this.greasingAction,
             greasingObservations = this.greasingObservations,
-            isUnexpected = this.isUnexpected
+            isUnexpected = this.isUnexpected,
+            presionesLlantas = PresionLlantasJson.lecturasParaEnvio(this.presionesLlantasJson)
         )
     }
 }

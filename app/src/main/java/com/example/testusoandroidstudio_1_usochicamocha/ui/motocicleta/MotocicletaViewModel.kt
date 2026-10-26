@@ -18,6 +18,9 @@ import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.inspeccio
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.inspeccionmoto.SyncInspeccionMotoUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.LocalSyncCoordinator
 import com.example.testusoandroidstudio_1_usochicamocha.domain.repository.MotoOilChangeRepository
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.PresionLlantasJson
+import com.example.testusoandroidstudio_1_usochicamocha.domain.repository.LlantasRepository
+import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.llantas.PresionLlantasState
 // import com.example.testusoandroidstudio_1_usochicamocha.util.Constants // Removido por solicitud del usuario
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -95,6 +98,9 @@ data class MotocicletaUiState(
     val checkEstadoLlantas: String = "",
     val checkEstadoLuces: String = "",
 
+    // Presión de llantas según el perfil de la moto (no bloquea si está fuera de rango)
+    val presionLlantas: PresionLlantasState = PresionLlantasState(),
+
     val isSaveButtonEnabled: Boolean = false,
     val isSaving: Boolean = false,
     val saveCompleted: Boolean = false,
@@ -123,7 +129,8 @@ class MotocicletaViewModel @Inject constructor(
     private val getPendingInspeccionesMotoUseCase: com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.inspeccionmoto.GetPendingInspeccionesMotoUseCase,
     private val documentoMotoDao: DocumentoMotoDao,
     private val localSyncCoordinator: LocalSyncCoordinator,
-    private val motoOilChangeRepository: MotoOilChangeRepository
+    private val motoOilChangeRepository: MotoOilChangeRepository,
+    private val llantasRepository: LlantasRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MotocicletaUiState())
@@ -319,10 +326,34 @@ class MotocicletaViewModel @Inject constructor(
 
         _uiState.update { it.copy(
             selectedMoto = moto,
-            selectedUbicacion = autoUbicacion ?: it.selectedUbicacion
+            selectedUbicacion = autoUbicacion ?: it.selectedUbicacion,
+            presionLlantas = it.presionLlantas.paraActivo(null)
         ) }
         loadDocumentosForMoto(moto.placa)
         validate()
+        viewModelScope.launch {
+            val config = llantasRepository.configVehiculo(moto.id)
+            // Si mientras tanto eligió otra moto, este resultado ya no aplica.
+            if (_uiState.value.selectedMoto?.id == moto.id) {
+                _uiState.update { it.copy(presionLlantas = it.presionLlantas.paraActivo(config)) }
+                validate()
+            }
+        }
+    }
+
+    fun onPresionLlantaChange(codigo: String, texto: String) {
+        _uiState.update { it.copy(presionLlantas = it.presionLlantas.conValor(codigo, texto)) }
+        validate()
+    }
+
+    /** Aviso de llantas fuera de rango: el operario decide guardar igual y calibrar después. */
+    fun onPresionLlantasGuardarIgual() {
+        _uiState.update { it.copy(presionLlantas = it.presionLlantas.copy(mostrarAvisoCalibrar = false, avisoConfirmado = true)) }
+        onSaveClick()
+    }
+
+    fun onPresionLlantasRevisar() {
+        _uiState.update { it.copy(presionLlantas = it.presionLlantas.copy(mostrarAvisoCalibrar = false)) }
     }
 
     fun onUbicacionSelected(ubicacion: Ubicacion) {
@@ -740,6 +771,7 @@ class MotocicletaViewModel @Inject constructor(
                 s.checkNivelAceite.isNotBlank() &&
                 s.checkEstadoLlantas.isNotBlank() &&
                 s.checkEstadoLuces.isNotBlank() &&
+                s.presionLlantas.completa &&
                 s.documentosVencidos.isEmpty()
 
         _uiState.update { it.copy(isSaveButtonEnabled = valid) }
@@ -777,6 +809,12 @@ class MotocicletaViewModel @Inject constructor(
                 showKmYellowAlert = true,
                 kmAlertMessage = "El kilómetraje parece inusual. ¿Está seguro de que es correcto?"
             ) }
+            return
+        }
+
+        // Llantas fuera de rango: aviso que no bloquea (el operario puede guardar y calibrar después)
+        if (s.presionLlantas.requiereAviso) {
+            _uiState.update { it.copy(presionLlantas = it.presionLlantas.copy(mostrarAvisoCalibrar = true)) }
             return
         }
 
@@ -827,7 +865,8 @@ class MotocicletaViewModel @Inject constructor(
                     idUbicacion = s.selectedUbicacion!!.id,
                     placaVehiculo = s.selectedMoto!!.placa,
                     tipoVehiculo = "MOTOCICLETA",
-                    isSynced = false
+                    isSynced = false,
+                    presionesLlantasJson = PresionLlantasJson.lecturasToJson(s.presionLlantas.lecturas())
                 )
 
                 saveInspeccionMotoLocalUseCase(inspeccion)

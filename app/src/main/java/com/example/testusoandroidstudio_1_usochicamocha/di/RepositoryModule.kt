@@ -93,6 +93,14 @@ object RepositoryModule {
 
     @Provides
     @Singleton
+    fun provideLlantasRepository(
+        apiService: ApiService,
+        dao: com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.LlantaConfigCacheDao
+    ): com.example.testusoandroidstudio_1_usochicamocha.domain.repository.LlantasRepository =
+        com.example.testusoandroidstudio_1_usochicamocha.data.repository.LlantasRepositoryImpl(apiService, dao)
+
+    @Provides
+    @Singleton
     fun provideSubestacionRepository(
         @ApplicationContext context: Context,
         ejecucionDao: EjecucionDao,

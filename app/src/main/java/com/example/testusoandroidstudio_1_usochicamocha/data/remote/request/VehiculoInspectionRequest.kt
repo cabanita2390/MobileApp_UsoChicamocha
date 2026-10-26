@@ -63,4 +63,7 @@ data class VehiculoInspectionRequest(
     val conscienteResponsabilidad: Boolean,
     val condicionParaConducir: Boolean,
     val idUbicacion: Int? = null,
+
+    // ── insp_presion_llanta (opcional) ───────────────────────────────────────
+    val presionesLlantas: List<com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.LecturaPresionLlantaDto>? = null,
 )

@@ -33,7 +33,9 @@ data class Form(
     val greasingObservations: String,
     val isUnexpected: Boolean,
     val isSynced: Boolean,
-    val isSyncing: Boolean
+    val isSyncing: Boolean,
+    /** Presión por llanta en JSON (ver PresionLlantasJson); "" = sin lecturas. */
+    val presionesLlantasJson: String = ""
 )
 
 /**
@@ -67,7 +69,8 @@ fun Form.toEntity(): FormEntity {
         greasingObservations = this.greasingObservations,
         isUnexpected = this.isUnexpected,
         isSynced = this.isSynced,
-        isSyncing = this.isSyncing
+        isSyncing = this.isSyncing,
+        presionesLlantasJson = this.presionesLlantasJson
     )
 }
 

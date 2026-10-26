@@ -1,5 +1,8 @@
 package com.example.testusoandroidstudio_1_usochicamocha.ui.motocicleta
 
+import com.example.testusoandroidstudio_1_usochicamocha.domain.model.ConfigLlantas
+import com.example.testusoandroidstudio_1_usochicamocha.domain.model.PosicionLlanta
+import com.example.testusoandroidstudio_1_usochicamocha.domain.repository.LlantasRepository
 import android.content.Context
 import android.util.Log
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.TokenManager
@@ -52,6 +55,8 @@ class MotocicletaViewModelTest {
     lateinit var localSyncCoordinator: LocalSyncCoordinator
     @MockK
     lateinit var motoOilChangeRepository: MotoOilChangeRepository
+    @MockK
+    lateinit var llantasRepository: LlantasRepository
 
     private lateinit var viewModel: MotocicletaViewModel
 
@@ -79,6 +84,7 @@ class MotocicletaViewModelTest {
         coEvery { localSyncCoordinator.coordinateSync(any()) } returns Result.success(Unit)
 
         every { motoOilChangeRepository.getAllFlow() } returns flowOf(emptyList())
+        coEvery { llantasRepository.configVehiculo(any()) } returns null
     }
 
     private fun createViewModel() {
@@ -92,7 +98,8 @@ class MotocicletaViewModelTest {
             getPendingInspeccionesMotoUseCase,
             documentoMotoDao,
             localSyncCoordinator,
-            motoOilChangeRepository
+            motoOilChangeRepository,
+            llantasRepository
         )
     }
 
@@ -125,6 +132,31 @@ class MotocicletaViewModelTest {
         viewModel.onMotoSelected(moto)
 
         assertEquals(moto, viewModel.uiState.value.selectedMoto)
+    }
+
+    @Test
+    fun `selecting a moto with tire profile loads its positions`() = runTest {
+        val config = ConfigLlantas(
+            "Moto 2 llantas",
+            listOf(
+                PosicionLlanta("DEL", "Delantera", 1, 28.0, 30.0, 33.0),
+                PosicionLlanta("TRA", "Trasera", 2, 30.0, null, 36.0)
+            )
+        )
+        coEvery { llantasRepository.configVehiculo(7) } returns config
+        createViewModel()
+
+        viewModel.onMotoSelected(Moto(7, "MOT12A"))
+        advanceUntilIdle()
+
+        val presion = viewModel.uiState.value.presionLlantas
+        assertEquals(config, presion.config)
+        assertEquals(false, presion.completa)
+
+        viewModel.onPresionLlantaChange("DEL", "22")
+        viewModel.onPresionLlantaChange("TRA", "32")
+        assertEquals(true, viewModel.uiState.value.presionLlantas.completa)
+        assertEquals(listOf("DEL"), viewModel.uiState.value.presionLlantas.fueraDeRango().map { it.posicion.codigo })
     }
 
     @Test

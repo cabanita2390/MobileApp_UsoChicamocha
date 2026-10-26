@@ -39,6 +39,8 @@ import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.inspection.Sec
 import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.inspection.InspectionSavedDialog
 import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.inspection.KmBlockingAlertDialog
 import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.inspection.KmWarningAlertDialog
+import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.llantas.PresionLlantasAvisoDialog
+import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.llantas.PresionLlantasSection
 import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.inspection.DocumentoVencidoBlockingDialog
 import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.inspection.DocumentoPorVencerWarningDialog
 import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.inspection.SearchableSelectorField
@@ -220,6 +222,15 @@ fun VehiculoScreen(
         )
     }
 
+    // ─ Aviso: llantas fuera de rango (no bloquea; se calibra después) ─
+    if (uiState.presionLlantas.mostrarAvisoCalibrar) {
+        PresionLlantasAvisoDialog(
+            fueraDeRango = uiState.presionLlantas.fueraDeRango(),
+            onGuardarIgual = { viewModel.onPresionLlantasGuardarIgual() },
+            onRevisar = { viewModel.onPresionLlantasRevisar() }
+        )
+    }
+
     // ─ Alerta: Documento(s) vencido(s) (BLOQUEANTE) ─
     if (uiState.showDocumentoVencidoDialog) {
         DocumentoVencidoBlockingDialog(
@@ -345,6 +356,19 @@ fun VehiculoScreen(
                     mecItems.forEachIndexed { i, (key, label) ->
                         VehicleStatusSelector(label, mecValues[key] ?: "") { viewModel.onMecanicoChange(key, it) }
                         if (i < mecItems.lastIndex) { Divider(Modifier.padding(vertical = 10.dp)) }
+                    }
+                }
+            }
+
+            // ── 2b. PRESIÓN DE LLANTAS (solo si el vehículo tiene perfil) ─────
+            if (uiState.presionLlantas.aplica) {
+                item {
+                    SectionCard("Presión de Llantas (PSI) (*)") {
+                        PresionLlantasSection(
+                            state = uiState.presionLlantas,
+                            onValorChange = { codigo, texto -> viewModel.onPresionLlantaChange(codigo, texto) },
+                            mostrarTitulo = false
+                        )
                     }
                 }
             }

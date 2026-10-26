@@ -38,5 +38,8 @@ data class InspeccionMotoPendiente(
     val tipoVehiculo: String = "",
 
     val isSynced: Boolean = false,
-    val isSyncing: Boolean = false
+    val isSyncing: Boolean = false,
+
+    /** Presión por llanta en JSON (ver PresionLlantasJson); "" = sin lecturas. */
+    val presionesLlantasJson: String = ""
 )

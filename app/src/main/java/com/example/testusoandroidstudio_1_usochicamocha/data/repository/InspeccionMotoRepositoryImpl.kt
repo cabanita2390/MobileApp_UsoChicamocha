@@ -1,5 +1,6 @@
 package com.example.testusoandroidstudio_1_usochicamocha.data.repository
 
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.PresionLlantasJson
 import android.util.Log
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.InspeccionMotoDao
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.toDomain
@@ -71,6 +72,7 @@ class InspeccionMotoRepositoryImpl @Inject constructor(
                 checkEstadoLlantas = inspeccion.checkEstadoLlantas,
                 checkEstadoLuces = inspeccion.checkEstadoLuces,
                 idUbicacion = inspeccion.idUbicacion,
+                presionesLlantas = PresionLlantasJson.lecturasParaEnvio(inspeccion.presionesLlantasJson),
             )
 
             Log.d(TAG, "📤 [syncOne] Enviando request a v1/moto/inspeccion")

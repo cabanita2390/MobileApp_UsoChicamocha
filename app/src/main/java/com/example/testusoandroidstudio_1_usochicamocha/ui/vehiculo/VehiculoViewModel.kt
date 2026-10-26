@@ -13,6 +13,9 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.VehiculoInspectionEntity
 import com.example.testusoandroidstudio_1_usochicamocha.domain.repository.VehiculoInspectionRepository
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.PresionLlantasJson
+import com.example.testusoandroidstudio_1_usochicamocha.domain.repository.LlantasRepository
+import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.llantas.PresionLlantasState
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.LocalSyncCoordinator
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.vehiculo.SaveVehiculoInspectionUseCase
 import java.time.LocalDate
@@ -125,6 +128,8 @@ data class VehiculoUiState(
     val kilometrajeDB: String = "",
     val kilometrajeError: String? = null, // Error inmediato debajo del campo
     val kmColorEstado: Int? = null,  // null=vacío/sin vehículo, 0=verde, 1=amarillo, 2=rojo
+    // ─ Presión de llantas según el perfil del vehículo (no bloquea si está fuera de rango) ─
+    val presionLlantas: PresionLlantasState = PresionLlantasState(),
 )
 
 // ─── VIEWMODEL ───────────────────────────────────────────────────────────────
@@ -135,6 +140,7 @@ class VehiculoViewModel @Inject constructor(
     private val repository: VehiculoInspectionRepository,
     private val saveVehiculoInspectionUseCase: SaveVehiculoInspectionUseCase,
     private val localSyncCoordinator: LocalSyncCoordinator,
+    private val llantasRepository: LlantasRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(VehiculoUiState())
@@ -448,9 +454,11 @@ class VehiculoViewModel @Inject constructor(
         _uiState.update { it.copy(
             selectedVehicle = v,
             kilometrajeMinimo = v.kilometrajeActual,
-            kilometrajeDB = v.kilometrajeActual.toString()
+            kilometrajeDB = v.kilometrajeActual.toString(),
+            presionLlantas = it.presionLlantas.paraActivo(null)
         ) }
         loadDocumentosVehiculo(v.idVehiculo)
+        loadConfigLlantas(v.idVehiculo)
         val kmStr = _uiState.value.kilometraje
         val km = kmStr.toIntOrNull()
         if (km != null) {
@@ -459,6 +467,33 @@ class VehiculoViewModel @Inject constructor(
         validateForm()
     }
 
+
+    // ── Presión de llantas ───────────────────────────────────────────────────
+    private fun loadConfigLlantas(idVehiculo: Int) {
+        viewModelScope.launch {
+            val config = llantasRepository.configVehiculo(idVehiculo)
+            // Si mientras tanto eligió otro vehículo, este resultado ya no aplica.
+            if (_uiState.value.selectedVehicle?.idVehiculo == idVehiculo) {
+                _uiState.update { it.copy(presionLlantas = it.presionLlantas.paraActivo(config)) }
+                validateForm()
+            }
+        }
+    }
+
+    fun onPresionLlantaChange(codigo: String, texto: String) {
+        _uiState.update { it.copy(presionLlantas = it.presionLlantas.conValor(codigo, texto)) }
+        validateForm()
+    }
+
+    /** Aviso de llantas fuera de rango: el operario decide guardar igual y calibrar después. */
+    fun onPresionLlantasGuardarIgual() {
+        _uiState.update { it.copy(presionLlantas = it.presionLlantas.copy(mostrarAvisoCalibrar = false, avisoConfirmado = true)) }
+        onSaveClick()
+    }
+
+    fun onPresionLlantasRevisar() {
+        _uiState.update { it.copy(presionLlantas = it.presionLlantas.copy(mostrarAvisoCalibrar = false)) }
+    }
 
     // ── Documentación — confirmación manual del inspector ────────────────────
     fun onDocEstadoChange(doc: String, estado: String) {
@@ -604,6 +639,7 @@ class VehiculoViewModel @Inject constructor(
                 s.conscienteResponsabilidad.isNotBlank() &&
                 s.aprobadoRuta.isNotBlank() &&
                 s.responsableInspeccion.isNotBlank() &&
+                s.presionLlantas.completa &&
                 s.documentosVencidos.isEmpty()
         _uiState.update { it.copy(isSaveButtonEnabled = valid) }
     }
@@ -639,6 +675,12 @@ class VehiculoViewModel @Inject constructor(
                 showKmYellowAlert = true,
                 kmAlertMessage = "El kilómetraje parece inusual. ¿Está seguro de que es correcto?"
             ) }
+            return
+        }
+
+        // Llantas fuera de rango: aviso que no bloquea (el operario puede guardar y calibrar después)
+        if (s.presionLlantas.requiereAviso) {
+            _uiState.update { it.copy(presionLlantas = it.presionLlantas.copy(mostrarAvisoCalibrar = true)) }
             return
         }
 
@@ -692,7 +734,8 @@ class VehiculoViewModel @Inject constructor(
                     sobrio                 = s.sobrio == "Si",
                     medicamentos           = s.medicamentos == "Si",
                     conscienteResponsabilidad = s.conscienteResponsabilidad == "Si",
-                    condicionParaConducir  = s.condicionParaConducir == "Si"
+                    condicionParaConducir  = s.condicionParaConducir == "Si",
+                    presionesLlantasJson   = PresionLlantasJson.lecturasToJson(s.presionLlantas.lecturas())
                 )
 
                 delay(1500)

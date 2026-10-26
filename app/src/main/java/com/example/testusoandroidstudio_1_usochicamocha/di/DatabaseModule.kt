@@ -57,7 +57,8 @@ object DatabaseModule {
                 AppDatabase.MIGRATION_49_50,
                 AppDatabase.MIGRATION_50_51,
                 AppDatabase.MIGRATION_51_52,
-                AppDatabase.MIGRATION_52_53
+                AppDatabase.MIGRATION_52_53,
+                AppDatabase.MIGRATION_53_54
             )
             .build()
     }
@@ -155,4 +156,9 @@ object DatabaseModule {
     @Singleton
     fun provideOrdenAsignadaCacheDao(db: AppDatabase): com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.OrdenAsignadaCacheDao =
         db.ordenAsignadaCacheDao()
+
+    @Provides
+    @Singleton
+    fun provideLlantaConfigCacheDao(db: AppDatabase): com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.LlantaConfigCacheDao =
+        db.llantaConfigCacheDao()
 }

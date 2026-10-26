@@ -70,5 +70,7 @@ data class VehiculoInspectionEntity(
     var isSynced: Boolean = false,
     var isSyncing: Boolean = false,
     /** Usuario que hizo el registro (ver PropietarioColas); null = de la sesión actual. */
-    val propietarioId: Long? = null
+    val propietarioId: Long? = null,
+    /** Presión por llanta (JSON de LecturaPresionLlanta, ver PresionLlantasJson); "" = sin lecturas. */
+    @ColumnInfo(defaultValue = "") val presionesLlantasJson: String = ""
 )

@@ -74,9 +74,10 @@ import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.Ejecuc
         com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.EjecucionDetalleCacheEntity::class,
         com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.EjecucionNoProgramadaCacheEntity::class,
         com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.SesionActualEntity::class,
-        com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.OrdenAsignadaCacheEntity::class
+        com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.OrdenAsignadaCacheEntity::class,
+        com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.LlantaConfigCacheEntity::class
     ],
-    version = 53,
+    version = 54,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -883,6 +884,22 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Presión de llantas: caché del perfil de cada activo y lecturas (JSON) en las tres colas de
+         * inspección. Las inspecciones ya pendientes quedan sin lecturas ("").
+         */
+        val MIGRATION_53_54 = object : Migration(53, 54) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `llanta_config_cache` (`tipoActivo` TEXT NOT NULL, `activoId` INTEGER NOT NULL, " +
+                        "`perfilNombre` TEXT NOT NULL, `posicionesJson` TEXT NOT NULL, PRIMARY KEY(`tipoActivo`, `activoId`))"
+                )
+                database.execSQL("ALTER TABLE `pending_forms` ADD COLUMN `presionesLlantasJson` TEXT NOT NULL DEFAULT ''")
+                database.execSQL("ALTER TABLE `pending_inspecciones_moto` ADD COLUMN `presionesLlantasJson` TEXT NOT NULL DEFAULT ''")
+                database.execSQL("ALTER TABLE `vehiculo_inspections` ADD COLUMN `presionesLlantasJson` TEXT NOT NULL DEFAULT ''")
+            }
+        }
+
         /** Foto pendiente cuyo archivo ya no existe: deja de reintentarse y la Cola lo avisa. */
         val MIGRATION_48_49 = object : Migration(48, 49) {
             override fun migrate(database: SupportSQLiteDatabase) {
@@ -915,4 +932,5 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun ejecucionNoProgramadaCacheDao(): EjecucionNoProgramadaCacheDao
     abstract fun propietarioColasDao(): com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.PropietarioColasDao
     abstract fun ordenAsignadaCacheDao(): com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.OrdenAsignadaCacheDao
+    abstract fun llantaConfigCacheDao(): com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.LlantaConfigCacheDao
 }

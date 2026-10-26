@@ -53,6 +53,10 @@ interface ApiService {
     @GET("v1/vehicle")
     suspend fun getVehicles(): Response<List<VehicleDto>>
 
+    /** Perfil de llantas vigente de cada vehículo, moto y máquina (caché para la presión sin conexión). */
+    @GET("v1/tire/asignaciones")
+    suspend fun getAsignacionesLlantas(): Response<List<com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.ConfigLlantasActivoDto>>
+
     /** Busca un vehículo por placa para autocompletar datos */
     @GET("v1/vehicle/{placa}")
     suspend fun getVehicleByPlaca(
