@@ -17,6 +17,10 @@ import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestaci
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.ObtenerEstacionesCacheUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.ObtenerCitaLocalUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.ObtenerPendientesUseCase
+import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.ObtenerItemsIntervenidosUseCase
+import com.example.testusoandroidstudio_1_usochicamocha.domain.model.ItemIntervenido
+import com.example.testusoandroidstudio_1_usochicamocha.domain.model.ItemRef
+import com.example.testusoandroidstudio_1_usochicamocha.domain.repository.claveObsFrecuentes
 import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.EstadoCita
 import androidx.lifecycle.SavedStateHandle
 import io.mockk.MockKAnnotations
@@ -81,6 +85,8 @@ class CapturaViewModelTest {
     lateinit var obtenerObservacionesFrecuentesUseCase: ObtenerObservacionesFrecuentesUseCase
     @MockK
     lateinit var obtenerOrdenAsignadaUseCase: com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.ObtenerOrdenAsignadaUseCase
+    @MockK
+    lateinit var obtenerItemsIntervenidosUseCase: ObtenerItemsIntervenidosUseCase
 
     private lateinit var viewModel: CapturaViewModel
 
@@ -126,6 +132,7 @@ class CapturaViewModelTest {
         every { guardarEjecucionLocalUseCase.observarEnvio(any()) } returns flowOf(null)
         coEvery { obtenerOrdenAsignadaUseCase(any()) } returns null
         coEvery { obtenerOrdenAsignadaUseCase(7L) } returns orden
+        every { obtenerItemsIntervenidosUseCase() } returns flowOf(emptyList())
     }
 
     private fun createViewModel(savedStateHandle: SavedStateHandle = SavedStateHandle()) {
@@ -142,6 +149,7 @@ class CapturaViewModelTest {
             tokenManager,
             obtenerObservacionesFrecuentesUseCase,
             obtenerOrdenAsignadaUseCase,
+            obtenerItemsIntervenidosUseCase,
             savedStateHandle
         )
     }
@@ -151,7 +159,7 @@ class CapturaViewModelTest {
     @Test
     fun `sugerencias - con historial salen las mas usadas (top 5) con titulo MAS USADAS`() = runTest {
         val top = listOf("A", "B", "C", "D", "E", "F")
-        every { obtenerObservacionesFrecuentesUseCase() } returns flowOf(mapOf("MANTENIMIENTO" to top))
+        every { obtenerObservacionesFrecuentesUseCase() } returns flowOf(mapOf(claveObsFrecuentes("CIVIL", "MANTENIMIENTO") to top))
         createViewModel()
         advanceUntilIdle()
         viewModel.onTipoActividadChange("MANTENIMIENTO")
@@ -1015,5 +1023,184 @@ class CapturaViewModelTest {
         assertEquals(2, s.currentStep)
         assertEquals("A medio camino", s.observaciones)
         assertEquals("OT-EB-00007", s.orden?.consecutivo)
+    }
+
+    // ---- Disciplina Eléctrico: catálogo propio y paso «¿Qué se intervino?» ----
+
+    private val actividadElectrica = ActividadCatalogo(id = 21L, nombre = "Inspección eléctrica general", disciplina = "ELECTRICO")
+    private val gabinetes = ItemIntervenido(id = 101L, nombre = "Gabinetes de control", disciplina = "ELECTRICO", tipo = ItemIntervenido.CONJUNTO)
+    private val breaker = ItemIntervenido(id = 203L, nombre = "Breaker", disciplina = "ELECTRICO", tipo = ItemIntervenido.ELEMENTO)
+
+    private fun conCatalogoElectrico() {
+        every { obtenerActividadesCacheUseCase() } returns flowOf(listOf(actividad, actividadElectrica))
+        every { obtenerItemsIntervenidosUseCase() } returns flowOf(listOf(gabinetes, breaker))
+    }
+
+    @Test
+    fun `electrico agrega el paso Que se intervino y usa su catalogo de actividades`() = runTest {
+        conCatalogoElectrico()
+        createViewModel()
+        advanceUntilIdle()
+        assertEquals(4, viewModel.uiState.value.nSteps)
+        assertEquals(listOf(actividad), viewModel.uiState.value.actividadesDisciplina)
+
+        viewModel.onDisciplinaSeleccionada("ELECTRICO")
+
+        val s = viewModel.uiState.value
+        assertEquals(listOf(PASO_CONTEXTO, PASO_ACTIVIDAD, PASO_INTERVENIDO, PASO_RESULTADO, PASO_EVIDENCIA), s.pasos)
+        assertEquals(listOf(actividadElectrica), s.actividadesDisciplina)
+        assertEquals(listOf(gabinetes), s.conjuntosDisciplina)
+        // Todo opcional: sin marcar nada se puede seguir ("No aplica").
+        assertTrue(viewModel.esPasoValido(3))
+    }
+
+    @Test
+    fun `cambiar de disciplina limpia la actividad y lo marcado de la otra`() = runTest {
+        conCatalogoElectrico()
+        createViewModel()
+        advanceUntilIdle()
+        viewModel.onDisciplinaSeleccionada("ELECTRICO")
+        viewModel.onActividadSeleccionada(actividadElectrica)
+        viewModel.onConjuntoToggle(gabinetes.id)
+
+        viewModel.onDisciplinaSeleccionada("CIVIL")
+
+        val s = viewModel.uiState.value
+        assertEquals("CIVIL", s.disciplinaSeleccionada)
+        assertNull(s.actividadId)
+        assertTrue(s.conjuntosSeleccionados.isEmpty())
+        assertEquals(4, s.nSteps)
+    }
+
+    @Test
+    fun `electromecanico muestra el aviso y no cambia la disciplina`() = runTest {
+        createViewModel()
+        viewModel.onDisciplinaSeleccionada("ELECTROMECANICO")
+
+        assertTrue(viewModel.uiState.value.mostrarAlertaDisciplinaEnDesarrollo)
+        assertEquals("CIVIL", viewModel.uiState.value.disciplinaSeleccionada)
+        viewModel.onAlertaDisciplinaEnDesarrolloCerrada()
+        assertFalse(viewModel.uiState.value.mostrarAlertaDisciplinaEnDesarrollo)
+    }
+
+    @Test
+    fun `al guardar un registro electrico lleva su disciplina, lo marcado y el texto de Otro`() = runTest {
+        val guardada = io.mockk.slot<Ejecucion>()
+        coEvery { guardarEjecucionLocalUseCase(capture(guardada), any()) } just Runs
+        conCatalogoElectrico()
+        createViewModel()
+        advanceUntilIdle()
+        viewModel.onEstacionSeleccionada(estacion)
+        viewModel.onDisciplinaSeleccionada("ELECTRICO")
+        viewModel.onSiguiente()
+        viewModel.onTipoActividadChange("INSPECCION")
+        viewModel.onTipoMantenimientoChange("PREVENTIVO")
+        viewModel.onActividadSeleccionada(actividadElectrica)
+        advanceUntilIdle()
+        viewModel.onSiguiente()
+        assertEquals(PASO_INTERVENIDO, viewModel.uiState.value.pasoActual)
+        viewModel.onConjuntoToggle(gabinetes.id)
+        viewModel.onElementoToggle(breaker.id)
+        viewModel.onElementoOtroToggle()
+        viewModel.onElementoOtroChange("  Celda de medida ")
+        assertEquals(3, viewModel.uiState.value.totalIntervenido)
+        viewModel.onSiguiente()
+        viewModel.onResultadoChange("CONFORME")
+        viewModel.onObservacionesChange("Sin novedades")
+        viewModel.onSiguiente()
+        viewModel.onSiguiente()
+        advanceUntilIdle()
+
+        assertTrue(viewModel.uiState.value.saveCompleted)
+        assertEquals("ELECTRICO", guardada.captured.disciplina)
+        assertEquals(listOf(gabinetes.id), guardada.captured.conjuntoIds)
+        assertEquals(listOf(breaker.id), guardada.captured.elementoIds)
+        assertNull(guardada.captured.conjuntoOtro)
+        assertEquals("Celda de medida", guardada.captured.elementoOtro)
+    }
+
+    @Test
+    fun `apagar Otro borra lo escrito`() = runTest {
+        createViewModel()
+        viewModel.onConjuntoOtroToggle()
+        viewModel.onConjuntoOtroChange("Tablero auxiliar")
+        viewModel.onConjuntoOtroToggle()
+
+        assertFalse(viewModel.uiState.value.conjuntoOtroActivo)
+        assertEquals("", viewModel.uiState.value.conjuntoOtro)
+    }
+
+    @Test
+    fun `una cita electrica toma la disciplina de su actividad y tiene 4 pasos`() = runTest {
+        conCatalogoElectrico()
+        createViewModel()
+        advanceUntilIdle()
+        viewModel.cargarDesdeCita(
+            programacionId = 300L, estacionId = estacion.id, actividadId = actividadElectrica.id,
+            esInspeccion = true, vencida = false
+        )
+
+        val s = viewModel.uiState.value
+        assertEquals("ELECTRICO", s.disciplinaSeleccionada)
+        assertEquals(listOf(PASO_CITA, PASO_INTERVENIDO, PASO_RESULTADO, PASO_EVIDENCIA), s.pasos)
+    }
+
+    @Test
+    fun `una orden de trabajo electrica se registra en Electrico`() = runTest {
+        coEvery { obtenerOrdenAsignadaUseCase(8L) } returns orden.copy(id = 8L, disciplina = "ELECTRICO")
+        createViewModel()
+        viewModel.cargarDesdeOrden(8L)
+        advanceUntilIdle()
+
+        assertEquals("ELECTRICO", viewModel.uiState.value.disciplinaSeleccionada)
+        assertEquals(PASO_INTERVENIDO, viewModel.uiState.value.pasos[1])
+    }
+
+    @Test
+    fun `editar un registro electrico carga lo marcado y envia lo que quede, aunque se quite todo`() = runTest {
+        conCatalogoElectrico()
+        coEvery { obtenerDetalleEjecucionUseCase(55L) } returns Result.success(
+            detalleFixture().copy(
+                id = 55L, disciplina = "ELECTRICO",
+                conjuntos = listOf(ItemRef(gabinetes.id, gabinetes.nombre)), elementos = emptyList(),
+                conjuntoOtro = "Tablero auxiliar", elementoOtro = null
+            )
+        )
+        var enviada: EjecucionEdicion? = null
+        coEvery { editarEjecucionUseCase(55L, any()) } answers { enviada = secondArg(); Result.success(detalleFixture()) }
+        createViewModel()
+        viewModel.cargarParaEditar(55L)
+        advanceUntilIdle()
+
+        val s = viewModel.uiState.value
+        assertEquals(setOf(gabinetes.id), s.conjuntosSeleccionados)
+        assertTrue(s.conjuntoOtroActivo)
+        assertEquals("Tablero auxiliar", s.conjuntoOtro)
+
+        viewModel.onConjuntoToggle(gabinetes.id)
+        viewModel.onConjuntoOtroToggle()
+        viewModel.onMotivoEdicionChange("Se marcó el conjunto equivocado")
+        repeat(s.nSteps) { viewModel.onSiguiente() }
+        advanceUntilIdle()
+
+        assertEquals(emptyList<Long>(), enviada?.conjuntoIds)
+        assertEquals("", enviada?.conjuntoOtro)
+    }
+
+    @Test
+    fun `las sugerencias de observaciones son las de la disciplina elegida`() = runTest {
+        every { obtenerObservacionesFrecuentesUseCase() } returns flowOf(
+            mapOf(
+                claveObsFrecuentes("CIVIL", "INSPECCION") to listOf("Muro en buen estado"),
+                claveObsFrecuentes("ELECTRICO", "INSPECCION") to listOf("Tablero sin novedades")
+            )
+        )
+        createViewModel()
+        advanceUntilIdle()
+        viewModel.onTipoActividadChange("INSPECCION")
+        assertEquals(listOf("Muro en buen estado"), viewModel.uiState.value.observacionesRapidas)
+
+        viewModel.onDisciplinaSeleccionada("ELECTRICO")
+        assertEquals(listOf("Tablero sin novedades"), viewModel.uiState.value.observacionesRapidas)
     }
 }

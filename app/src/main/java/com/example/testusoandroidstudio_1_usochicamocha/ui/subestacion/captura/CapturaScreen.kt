@@ -28,6 +28,8 @@ import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -248,6 +250,9 @@ fun CapturaScreen(
                         SubestacionType.Hint(uiState.errorEdicion!!, color = SubestacionColors.Red, modifier = Modifier.padding(bottom = 8.dp))
                     }
                     val label = when {
+                        uiState.pasoActual == PASO_INTERVENIDO ->
+                            if (uiState.totalIntervenido == 0) "Continuar sin marcar"
+                            else "Continuar · ${uiState.totalIntervenido} ${if (uiState.totalIntervenido == 1) "marcado" else "marcados"}"
                         uiState.currentStep < uiState.nSteps -> "Continuar"
                         !puedeAvanzar && uiState.esEdicion -> "Falta el motivo de la edición"
                         !puedeAvanzar -> "Falta al menos una fotografía"
@@ -307,24 +312,14 @@ fun CapturaScreen(
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(color = SubestacionColors.Purple)
                 }
-            } else if (uiState.citaMode) {
-                // Modo cita (3 pasos): la estación/actividad/disciplina/tipo de
-                // mantenimiento ya vienen fijos de la cita — no hay paso "Actividad"
-                // separado, PasoCita reemplaza a Contexto+Actividad en uno solo.
-                when (uiState.currentStep) {
-                    1 -> PasoCita(uiState, viewModel)
-                    2 -> PasoResultado(uiState, viewModel)
-                    else -> PasoEvidencia(
-                        uiState = uiState,
-                        onTakePhoto = { cameraPermissionLauncher.launch(Manifest.permission.CAMERA) },
-                        onPickPhoto = { pickImageLauncher.launch("image/*") },
-                        onRemovePhoto = { viewModel.onFotoRemovida(it) }
-                    )
-                }
-            } else when (uiState.currentStep) {
-                1 -> PasoContexto(uiState, viewModel)
-                2 -> PasoActividad(uiState, viewModel)
-                3 -> PasoResultado(uiState, viewModel)
+            } else when (uiState.pasoActual) {
+                // Modo cita: la estación/actividad/disciplina/tipo de mantenimiento ya vienen fijos
+                // de la cita — PasoCita reemplaza a Contexto+Actividad en uno solo.
+                PASO_CITA -> PasoCita(uiState, viewModel)
+                PASO_CONTEXTO -> PasoContexto(uiState, viewModel)
+                PASO_ACTIVIDAD -> PasoActividad(uiState, viewModel)
+                PASO_INTERVENIDO -> PasoIntervenido(uiState, viewModel)
+                PASO_RESULTADO -> PasoResultado(uiState, viewModel)
                 else -> PasoEvidencia(
                     uiState = uiState,
                     onTakePhoto = { cameraPermissionLauncher.launch(Manifest.permission.CAMERA) },
@@ -551,7 +546,7 @@ private fun PasoContexto(uiState: CapturaUiState, viewModel: CapturaViewModel) {
                         Text(
                             "Aún estamos desarrollando la captura para " +
                                 "${nombreDisciplina(uiState.disciplinaSeleccionadaPendiente ?: "")}. " +
-                                "Por ahora solo está disponible Civil."
+                                "Por ahora están disponibles Civil y Eléctrico."
                         )
                     },
                     confirmButton = {
@@ -601,29 +596,7 @@ private fun PasoContexto(uiState: CapturaUiState, viewModel: CapturaViewModel) {
     }
 }
 
-@Composable
-private fun ChipOption(label: String, sub: String?, seleccionado: Boolean, modifier: Modifier = Modifier, onClick: () -> Unit) {
-    Box(
-        modifier
-            .clip(SubestacionShapes.Chip)
-            .background(if (seleccionado) SubestacionColors.Purple else SubestacionColors.ChipBg)
-            .border(2.dp, if (seleccionado) SubestacionColors.Purple else SubestacionColors.ChipBorder, SubestacionShapes.Chip)
-            .clickable(onClick = onClick)
-            .padding(14.dp, 13.dp)
-    ) {
-        Column {
-            Text(label, color = if (seleccionado) Color.White else SubestacionColors.TextPrimary, fontWeight = FontWeight.ExtraBold, fontSize = 13.5.sp)
-            if (sub != null) {
-                Text(
-                    sub, color = if (seleccionado) Color.White.copy(alpha = 0.78f) else SubestacionColors.TextTertiary,
-                    fontWeight = FontWeight.SemiBold, fontSize = 10.sp, modifier = Modifier.padding(top = 2.dp)
-                )
-            }
-        }
-    }
-}
-
-/** Chips de tipo de actividad (Inspección/Mantenimiento/No programado) — usado por
+/** Tarjetas de tipo de actividad (Inspección/Mantenimiento) — usado por
  * el paso Actividad en modo libre ("Tipo de actividad") y por PasoCita en modo cita
  * ("Tipo de actividad realizada"), donde es lo único de esta sección que se captura. */
 @Composable
@@ -642,11 +615,53 @@ private fun TipoActividadSection(
         )
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             opciones.forEach { (valor, label, sub) ->
-                ChipOption(label, sub, uiState.tipoActividad == valor, Modifier.weight(1f)) { viewModel.onTipoActividadChange(valor) }
+                TipoActividadCard(
+                    label = label,
+                    sub = sub,
+                    icono = if (valor == "INSPECCION") Icons.Filled.Visibility else Icons.Filled.Build,
+                    seleccionado = uiState.tipoActividad == valor,
+                    modifier = Modifier.weight(1f)
+                ) { viewModel.onTipoActividadChange(valor) }
             }
         }
     }
 }
+
+/** Tarjeta grande con ícono (ojo / llave) para Inspección y Mantenimiento. */
+@Composable
+private fun TipoActividadCard(
+    label: String,
+    sub: String,
+    icono: androidx.compose.ui.graphics.vector.ImageVector,
+    seleccionado: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    Column(
+        modifier
+            .heightIn(min = 104.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(if (seleccionado) SubestacionColors.Purple else Color.White)
+            .border(2.dp, if (seleccionado) SubestacionColors.Purple else SubestacionColors.PurpleBorderLight, RoundedCornerShape(16.dp))
+            .clickable(onClick = onClick)
+            .padding(14.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Icon(icono, contentDescription = null, tint = if (seleccionado) Color.White else SubestacionColors.Purple, modifier = Modifier.size(24.dp))
+        Text(label, color = if (seleccionado) Color.White else SubestacionColors.TextPrimary, fontWeight = FontWeight.ExtraBold, fontSize = 14.sp)
+        Text(
+            sub, color = if (seleccionado) Color.White.copy(alpha = 0.85f) else SubestacionColors.TextTertiary,
+            fontWeight = FontWeight.SemiBold, fontSize = 11.sp
+        )
+    }
+}
+
+/** Qué significa cada tipo de mantenimiento, debajo del selector. */
+private val AYUDA_MANT = mapOf(
+    "PREVENTIVO" to "Planeado para que no falle.",
+    "CORRECTIVO" to "Se arregló algo que ya estaba fallando.",
+    "PREDICTIVO" to "Por medición o tendencia: termografía, vibración, aislamiento."
+)
 
 /**
  * Las mismas en registro libre y en cita. "No programado" ya no se ofrece: un registro sin cita
@@ -663,24 +678,43 @@ private fun TipoMantenimientoSection(
     opciones: List<Pair<String, String>>,
     ayuda: String? = null
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         SubestacionType.SectionLabel("Tipo de mantenimiento")
-        opciones.chunked(2).forEach { fila ->
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                fila.forEach { (valor, label) ->
-                    val on = uiState.tipoMantenimiento == valor
-                    val danger = valor == "CORRECTIVO"
-                    val bg = if (on) (if (danger) SubestacionColors.Red else SubestacionColors.Purple) else SubestacionColors.ChipBg
-                    val fg = if (on) Color.White else SubestacionColors.TextPrimary
-                    val bd = if (on) bg else SubestacionColors.ChipBorder
-                    Box(
-                        Modifier.clip(SubestacionShapes.Chip).background(bg).border(2.dp, bd, SubestacionShapes.Chip)
-                            .clickable { viewModel.onTipoMantenimientoChange(valor) }.padding(17.dp, 14.dp)
-                    ) { Text(label, color = fg, fontWeight = FontWeight.Bold, fontSize = 13.5.sp) }
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(15.dp))
+                .background(SubestacionColors.PurpleSurface)
+                .padding(4.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            opciones.forEach { (valor, label) ->
+                val on = uiState.tipoMantenimiento == valor
+                val color = if (valor == "CORRECTIVO") SubestacionColors.Red else SubestacionColors.Purple
+                Box(
+                    Modifier
+                        .weight(1f)
+                        .heightIn(min = 44.dp)
+                        .clip(RoundedCornerShape(11.dp))
+                        .background(if (on) Color.White else Color.Transparent)
+                        .clickable { viewModel.onTipoMantenimientoChange(valor) },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        label, color = if (on) color else SubestacionColors.TextSecondary,
+                        fontWeight = FontWeight.ExtraBold, fontSize = 13.sp
+                    )
                 }
             }
         }
-        if (ayuda != null) SubestacionType.Hint(ayuda)
+        val explicacion = AYUDA_MANT[uiState.tipoMantenimiento]
+        val texto = listOfNotNull(ayuda, explicacion).joinToString(" ")
+        if (texto.isNotBlank()) {
+            SubestacionType.Hint(
+                texto,
+                color = if (uiState.tipoMantenimiento == "CORRECTIVO") SubestacionColors.Red else SubestacionColors.TextTertiary
+            )
+        }
     }
 }
 
@@ -692,14 +726,14 @@ private fun PasoActividad(uiState: CapturaUiState, viewModel: CapturaViewModel) 
         if (uiState.actividadBloqueada) {
             item {
                 CampoFijo(
-                    etiqueta = "Actividad civil",
+                    etiqueta = "Actividad ${nombreDisciplina(uiState.disciplinaSeleccionada).lowercase()}",
                     valor = uiState.actividadNombre ?: "—",
                     nota = "Registro del cronograma: la actividad no se puede cambiar."
                 )
             }
         } else item {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                SubestacionType.SectionLabel("Actividad civil")
+                SubestacionType.SectionLabel("Actividad ${nombreDisciplina(uiState.disciplinaSeleccionada).lowercase()}")
                 Text(
                     if (uiState.modoLibre) "Usar catálogo" else "No está en el catálogo",
                     color = SubestacionColors.Purple, fontWeight = FontWeight.Bold, fontSize = 11.5.sp,
@@ -716,7 +750,7 @@ private fun PasoActividad(uiState: CapturaUiState, viewModel: CapturaViewModel) 
                     OutlinedTextField(
                         value = uiState.descripcionLibre,
                         onValueChange = { viewModel.onDescripcionLibreChange(it) },
-                        placeholder = { Text("Describa la actividad civil no programada…") },
+                        placeholder = { Text("Describa la actividad ${nombreDisciplina(uiState.disciplinaSeleccionada).lowercase()} no programada…") },
                         shape = SubestacionShapes.Input,
                         colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = SubestacionColors.Purple, unfocusedBorderColor = SubestacionColors.PurpleBorder),
                         modifier = Modifier.fillMaxWidth().height(120.dp)
@@ -724,7 +758,7 @@ private fun PasoActividad(uiState: CapturaUiState, viewModel: CapturaViewModel) 
                 }
             }
         } else {
-            items(uiState.actividades) { actividad: ActividadCatalogo ->
+            items(uiState.actividadesDisciplina) { actividad: ActividadCatalogo ->
                 val seleccionada = uiState.actividadId == actividad.id
                 Row(
                     Modifier.fillMaxWidth().clip(SubestacionShapes.Chip)
@@ -745,7 +779,7 @@ private fun PasoActividad(uiState: CapturaUiState, viewModel: CapturaViewModel) 
                     Text(actividad.nombre, color = SubestacionColors.TextPrimary, fontWeight = FontWeight.SemiBold, fontSize = 13.5.sp, modifier = Modifier.weight(1f))
                 }
             }
-            if (uiState.actividades.isEmpty()) {
+            if (uiState.actividadesDisciplina.isEmpty()) {
                 item { SubestacionType.Hint("El catálogo de actividades aún no se ha sincronizado.", color = SubestacionColors.Red) }
             }
         }
@@ -796,7 +830,7 @@ private fun PasoActividad(uiState: CapturaUiState, viewModel: CapturaViewModel) 
 }
 
 /** Un dato fijo de la cita, mostrado como chip de solo lectura dentro de la tarjeta
- * "Del cronograma" de PasoCita — mismo look que ChipOption pero sin `clickable`. */
+ * "Del cronograma" de PasoCita — chip de solo lectura, sin `clickable`. */
 @Composable
 private fun LockedChip(etiqueta: String, valor: String, danger: Boolean = false, modifier: Modifier = Modifier) {
     val bg = if (danger) SubestacionColors.RedBg else SubestacionColors.PurpleSurface
@@ -1166,10 +1200,11 @@ private fun PasoEvidencia(
                     add("Responsable" to responsableDelRegistro(uiState).ifBlank { "—" })
                     if (uiState.esEdicion) add("Editado por" to uiState.responsableNombre.ifBlank { "—" })
                     add("Estación" to uiState.estacionNombre)
-                    add("Disciplina" to "Civil")
+                    add("Disciplina" to nombreDisciplina(uiState.disciplinaSeleccionada))
                     add("Tipo actividad" to (L_ACT[uiState.tipoActividad] ?: uiState.tipoActividad))
                     add("Mantenimiento" to (L_MANT[uiState.tipoMantenimiento] ?: uiState.tipoMantenimiento))
                     add("Actividad" to (uiState.actividadNombre ?: uiState.descripcionLibre.ifBlank { "—" }))
+                    if (uiState.conIntervenido) add("Qué se intervino" to resumenIntervenido(uiState))
                     add("Resultado" to (L_RES[uiState.resultado] ?: uiState.resultado))
                     add("Observaciones" to uiState.observaciones.ifBlank { "Sin observaciones" })
                     if (!uiState.esEdicion) add("Fotografías" to "${uiState.fotos.size} adjunta(s)")

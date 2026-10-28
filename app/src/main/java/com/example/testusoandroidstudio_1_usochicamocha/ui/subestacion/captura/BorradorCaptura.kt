@@ -31,7 +31,13 @@ internal data class BorradorCaptura(
     val descripcionLibre: String,
     val resultado: String,
     val observaciones: String,
-    val fotos: List<String>
+    val fotos: List<String>,
+    // Nulos en borradores de versiones anteriores (sin Eléctrico): Gson no usa los valores por defecto.
+    val disciplina: String? = null,
+    val conjuntos: List<Long>? = null,
+    val elementos: List<Long>? = null,
+    val conjuntoOtro: String? = null,
+    val elementoOtro: String? = null
 ) {
     fun aplicarA(s: CapturaUiState): CapturaUiState = s.copy(
         currentStep = currentStep,
@@ -52,7 +58,14 @@ internal data class BorradorCaptura(
         descripcionLibre = descripcionLibre,
         resultado = resultado,
         observaciones = observaciones,
-        fotos = fotos.map(Uri::parse)
+        fotos = fotos.map(Uri::parse),
+        disciplinaSeleccionada = disciplina ?: "CIVIL",
+        conjuntosSeleccionados = conjuntos.orEmpty().toSet(),
+        elementosSeleccionados = elementos.orEmpty().toSet(),
+        conjuntoOtroActivo = conjuntoOtro != null,
+        conjuntoOtro = conjuntoOtro ?: "",
+        elementoOtroActivo = elementoOtro != null,
+        elementoOtro = elementoOtro ?: ""
     )
 
     fun aJson(): String = gson.toJson(this)
@@ -80,7 +93,12 @@ internal data class BorradorCaptura(
             descripcionLibre = s.descripcionLibre,
             resultado = s.resultado,
             observaciones = s.observaciones,
-            fotos = s.fotos.map(Uri::toString)
+            fotos = s.fotos.map(Uri::toString),
+            disciplina = s.disciplinaSeleccionada,
+            conjuntos = s.conjuntosSeleccionados.toList(),
+            elementos = s.elementosSeleccionados.toList(),
+            conjuntoOtro = s.conjuntoOtro.takeIf { s.conjuntoOtroActivo },
+            elementoOtro = s.elementoOtro.takeIf { s.elementoOtroActivo }
         )
 
         fun desdeJson(json: String?): BorradorCaptura? =

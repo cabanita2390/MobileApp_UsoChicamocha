@@ -10,6 +10,11 @@ import com.example.testusoandroidstudio_1_usochicamocha.domain.model.CitaProgram
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.EstacionCatalogo
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.Ejecucion
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.EjecucionEdicion
+import com.example.testusoandroidstudio_1_usochicamocha.domain.model.DISCIPLINAS_CON_CAPTURA
+import com.example.testusoandroidstudio_1_usochicamocha.domain.model.DISCIPLINAS_CON_INTERVENIDO
+import com.example.testusoandroidstudio_1_usochicamocha.domain.model.ItemIntervenido
+import com.example.testusoandroidstudio_1_usochicamocha.domain.repository.claveObsFrecuentes
+import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.ObtenerItemsIntervenidosUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.LocalSyncCoordinator
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.EditarEjecucionUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.GuardarEjecucionLocalUseCase
@@ -80,11 +85,9 @@ data class CapturaUiState(
     val semanaEjecucion: Int = semanaDeDia(LocalDate.now().dayOfMonth),
     val periodoAjustadoManualmente: Boolean = false,
 
-    // Selector de disciplina (mockup de Contexto). El MVP solo captura CIVIL — el
-    // catálogo de estaciones/actividades que ya se carga sigue siendo siempre el de
-    // Civil, esto es solo el control visual. Elegir ELECTRICO/ELECTROMECANICO no
-    // cambia este valor (ver `onDisciplinaSeleccionada`): dispara un aviso de "en
-    // desarrollo" y el estado real se queda en CIVIL.
+    // Disciplina del registro. Decide el catálogo de actividades, las observaciones sugeridas y si
+    // aparece el paso «¿Qué se intervino?». Una disciplina sin captura móvil (Electromecánico) no se
+    // deja elegir: muestra el aviso de "en desarrollo" (ver `onDisciplinaSeleccionada`).
     val disciplinaSeleccionada: String = "CIVIL",
     val mostrarAlertaDisciplinaEnDesarrollo: Boolean = false,
     /** Qué disciplina no disponible tocó el técnico — para mostrarla por nombre en el diálogo. */
@@ -106,6 +109,16 @@ data class CapturaUiState(
     val citaSugerida: CitaProgramada? = null,
     val citaSugeridaEstado: EstadoCita? = null,
 
+    // Paso «¿Qué se intervino?» (solo Eléctrico): conjuntos y elementos marcados y sus "Otro".
+    val conjuntosSeleccionados: Set<Long> = emptySet(),
+    val elementosSeleccionados: Set<Long> = emptySet(),
+    val conjuntoOtroActivo: Boolean = false,
+    val conjuntoOtro: String = "",
+    val elementoOtroActivo: Boolean = false,
+    val elementoOtro: String = "",
+    val busquedaElemento: String = "",
+    val verTodosElementos: Boolean = false,
+
     // Paso 3 — Resultado
     val resultado: String = "",
     val observaciones: String = "",
@@ -116,6 +129,7 @@ data class CapturaUiState(
     // Catálogos (cache offline)
     val estaciones: List<EstacionCatalogo> = emptyList(),
     val actividades: List<ActividadCatalogo> = emptyList(),
+    val itemsIntervenidos: List<ItemIntervenido> = emptyList(),
 
     val isSaving: Boolean = false,
     val saveCompleted: Boolean = false,
@@ -146,36 +160,67 @@ data class CapturaUiState(
     /** La foto es obligatoria si hay hallazgo, y siempre en una orden de trabajo (es la prueba del arreglo). */
     val fotoObligatoria: Boolean get() = !esEdicion && (ordenMode || resultado != "CONFORME")
 
-    /** 3 pasos en modo cita (Cita/Resultado/Evidencia), 4 en modo libre (como hoy). */
-    val nSteps: Int get() = if (citaMode) 3 else 4
+    /** La disciplina tiene el paso «¿Qué se intervino?» (hoy solo Eléctrico). */
+    val conIntervenido: Boolean get() = disciplinaSeleccionada in DISCIPLINAS_CON_INTERVENIDO
+
+    /**
+     * Pasos del wizard, por clave. Cita u orden: Cita → Resultado → Evidencia (3). Registro libre:
+     * Contexto → Actividad → Resultado → Evidencia (4). Eléctrico agrega «¿Qué se intervino?» después
+     * de la cita o de la actividad.
+     */
+    val pasos: List<String>
+        get() = buildList {
+            if (citaMode) add(PASO_CITA) else { add(PASO_CONTEXTO); add(PASO_ACTIVIDAD) }
+            if (conIntervenido) add(PASO_INTERVENIDO)
+            add(PASO_RESULTADO)
+            add(PASO_EVIDENCIA)
+        }
+
+    val nSteps: Int get() = pasos.size
+
+    /** Clave del paso en pantalla. */
+    val pasoActual: String get() = pasos.getOrElse(currentStep - 1) { pasos.last() }
 
     val stepName: String
-        get() = if (citaMode) {
-            when (currentStep) {
-                1 -> if (ordenMode) "ORDEN" else "CITA"
-                2 -> "RESULTADO"
-                else -> "EVIDENCIA"
-            }
-        } else {
-            when (currentStep) {
-                1 -> "CONTEXTO"
-                2 -> "ACTIVIDAD"
-                3 -> "RESULTADO"
-                else -> "EVIDENCIA"
-            }
+        get() = when (pasoActual) {
+            PASO_CITA -> if (ordenMode) "ORDEN" else "CITA"
+            PASO_INTERVENIDO -> "¿QUÉ SE INTERVINO?"
+            else -> pasoActual
         }
+
+    /** Actividades del catálogo de la disciplina elegida. */
+    val actividadesDisciplina: List<ActividadCatalogo>
+        get() = actividades.filter { it.disciplina == disciplinaSeleccionada }
+
+    val conjuntosDisciplina: List<ItemIntervenido>
+        get() = itemsIntervenidos.filter { it.tipo == ItemIntervenido.CONJUNTO && it.disciplina == disciplinaSeleccionada }
+
+    val elementosDisciplina: List<ItemIntervenido>
+        get() = itemsIntervenidos.filter { it.tipo == ItemIntervenido.ELEMENTO && it.disciplina == disciplinaSeleccionada }
+
+    /** Cuántas cosas lleva marcadas en «¿Qué se intervino?» (los "Otro" con texto cuentan). */
+    val totalIntervenido: Int
+        get() = conjuntosSeleccionados.size + elementosSeleccionados.size +
+            (if (conjuntoOtroActivo && conjuntoOtro.isNotBlank()) 1 else 0) +
+            (if (elementoOtroActivo && elementoOtro.isNotBlank()) 1 else 0)
+
+    private val obsHistorial: List<String>?
+        get() = obsFrecuentes[claveObsFrecuentes(disciplinaSeleccionada, tipoActividad)]
 
     /** true si las sugerencias salen de los registros reales; false = lista fija de respaldo. */
     val observacionesDeHistorial: Boolean
-        get() = !obsFrecuentes[tipoActividad].isNullOrEmpty()
+        get() = !obsHistorial.isNullOrEmpty()
 
     /**
-     * Top 5: las observaciones más usadas de verdad (las calcula el backend con los registros);
-     * sin historial todavía (primera instalación sin red, tipo nuevo) se usa la lista fija.
+     * Top 5: las observaciones más usadas de verdad (las calcula el backend con los registros de la
+     * disciplina); sin historial todavía (primera instalación sin red, tipo nuevo) se usa la lista fija.
      */
     val observacionesRapidas: List<String>
-        get() = (obsFrecuentes[tipoActividad]?.takeIf { it.isNotEmpty() }
-            ?: OBS_BY_TIPO[tipoActividad] ?: OBS_BY_TIPO_DEFAULT).take(5)
+        get() {
+            val fijas = if (disciplinaSeleccionada == "ELECTRICO") OBS_ELECTRICO_BY_TIPO else OBS_BY_TIPO
+            return (obsHistorial?.takeIf { it.isNotEmpty() }
+                ?: fijas[tipoActividad] ?: OBS_BY_TIPO_DEFAULT).take(5)
+        }
 
     val observacionesRapidasTitulo: String
         get() = if (!observacionesDeHistorial) "SUGERENCIAS" else when (tipoActividad) {
@@ -184,6 +229,31 @@ data class CapturaUiState(
             else -> "MÁS USADAS"
         }
 }
+
+const val PASO_CITA = "CITA"
+const val PASO_CONTEXTO = "CONTEXTO"
+const val PASO_ACTIVIDAD = "ACTIVIDAD"
+const val PASO_INTERVENIDO = "INTERVENIDO"
+const val PASO_RESULTADO = "RESULTADO"
+const val PASO_EVIDENCIA = "EVIDENCIA"
+
+/** Respaldo de Eléctrico mientras no haya historial en el teléfono. */
+private val OBS_ELECTRICO_BY_TIPO = mapOf(
+    "MANTENIMIENTO" to listOf(
+        "Se realiza limpieza de gabinetes y ajuste de contactos",
+        "Se ajustan bornes y conexiones del tablero",
+        "Se verifica el sistema de puesta a tierra",
+        "Se revisa el nivel de aceite del transformador",
+        "Se cambia breaker en mal estado"
+    ),
+    "INSPECCION" to listOf(
+        "Se inspecciona y no se evidencian novedades",
+        "Tablero y protecciones en buen estado",
+        "Se evidencia recalentamiento en bornes",
+        "Iluminación con luminarias fuera de servicio",
+        "Variador con alarma, requiere revisión"
+    )
+)
 
 private val OBS_BY_TIPO_DEFAULT = listOf(
     "Atención de emergencia por temporada de lluvias",
@@ -235,6 +305,7 @@ class CapturaViewModel @Inject constructor(
     private val tokenManager: com.example.testusoandroidstudio_1_usochicamocha.data.local.TokenManager,
     private val obtenerObservacionesFrecuentesUseCase: ObtenerObservacionesFrecuentesUseCase,
     private val obtenerOrdenAsignadaUseCase: com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.ObtenerOrdenAsignadaUseCase,
+    private val obtenerItemsIntervenidosUseCase: ObtenerItemsIntervenidosUseCase,
     private val savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -287,11 +358,18 @@ class CapturaViewModel @Inject constructor(
         viewModelScope.launch {
             obtenerActividadesCacheUseCase().collect { lista ->
                 _uiState.update { s ->
-                    val nombre = if (s.actividadNombre.isNullOrBlank() && s.actividadId != null) {
-                        lista.find { it.id == s.actividadId }?.nombre ?: s.actividadNombre
-                    } else s.actividadNombre
-                    s.copy(actividades = lista, actividadNombre = nombre)
+                    val delCatalogo = s.actividadId?.let { id -> lista.find { it.id == id } }
+                    val nombre = if (s.actividadNombre.isNullOrBlank() && delCatalogo != null) delCatalogo.nombre else s.actividadNombre
+                    // Una cita que se abrió antes de que llegara el catálogo toma ahora la disciplina de su actividad.
+                    val disciplina = if (s.programacionId != null && !s.esEdicion && delCatalogo != null) delCatalogo.disciplina
+                        else s.disciplinaSeleccionada
+                    s.copy(actividades = lista, actividadNombre = nombre, disciplinaSeleccionada = disciplina)
                 }
+            }
+        }
+        viewModelScope.launch {
+            obtenerItemsIntervenidosUseCase().collect { lista ->
+                _uiState.update { it.copy(itemsIntervenidos = lista) }
             }
         }
         // Asegura que el catálogo llegue pronto en el primer uso del módulo; si no hay
@@ -326,10 +404,12 @@ class CapturaViewModel @Inject constructor(
         // Tras la muerte del proceso la pantalla vuelve a pedir la cita: no pisar el borrador.
         if (borradorRestaurado && _uiState.value.programacionId == programacionId) return
         val nombreEstacion = _uiState.value.estaciones.find { it.id == estacionId }?.nombre
-        val nombreActividad = _uiState.value.actividades.find { it.id == actividadId }?.nombre
+        val actividadCatalogo = _uiState.value.actividades.find { it.id == actividadId }
+        val nombreActividad = actividadCatalogo?.nombre
         _uiState.update {
             it.copy(
                 programacionId = programacionId,
+                disciplinaSeleccionada = actividadCatalogo?.disciplina ?: it.disciplinaSeleccionada,
                 estacionId = if (estacionId > 0L) estacionId else it.estacionId,
                 estacionNombre = nombreEstacion ?: it.estacionNombre,
                 actividadId = if (actividadId > 0L) actividadId else it.actividadId,
@@ -341,7 +421,7 @@ class CapturaViewModel @Inject constructor(
             )
         }
         // Una actividad con "captura desde el móvil" deshabilitada no viene en el catálogo,
-        // pero sus citas ya publicadas siguen apareciendo: el nombre sale de la propia cita.
+        // pero sus citas ya publicadas siguen apareciendo: el nombre (y la disciplina) salen de la propia cita.
         if (nombreActividad == null) {
             viewModelScope.launch {
                 val cita = obtenerCitaLocalUseCase(programacionId) ?: return@launch
@@ -349,7 +429,8 @@ class CapturaViewModel @Inject constructor(
                     if (it.programacionId != programacionId || !it.actividadNombre.isNullOrBlank()) it
                     else it.copy(
                         actividadNombre = cita.actividadNombre,
-                        estacionNombre = it.estacionNombre.ifBlank { cita.estacionNombre }
+                        estacionNombre = it.estacionNombre.ifBlank { cita.estacionNombre },
+                        disciplinaSeleccionada = cita.disciplina
                     )
                 }
             }
@@ -385,6 +466,7 @@ class CapturaViewModel @Inject constructor(
                     estacionNombre = orden.estacionNombre,
                     actividadId = orden.actividadId,
                     actividadNombre = orden.actividadNombre,
+                    disciplinaSeleccionada = orden.disciplina,
                     modoLibre = false,
                     tipoActividad = "MANTENIMIENTO",
                     tipoMantenimiento = "CORRECTIVO"
@@ -421,7 +503,14 @@ class CapturaViewModel @Inject constructor(
                             actividadNombre = d.actividadNombre,
                             descripcionLibre = d.descripcionLibre ?: "",
                             resultado = d.resultado,
-                            observaciones = d.observaciones
+                            observaciones = d.observaciones,
+                            disciplinaSeleccionada = d.disciplina,
+                            conjuntosSeleccionados = d.conjuntos.map { c -> c.id }.toSet(),
+                            elementosSeleccionados = d.elementos.map { e -> e.id }.toSet(),
+                            conjuntoOtroActivo = !d.conjuntoOtro.isNullOrBlank(),
+                            conjuntoOtro = d.conjuntoOtro ?: "",
+                            elementoOtroActivo = !d.elementoOtro.isNullOrBlank(),
+                            elementoOtro = d.elementoOtro ?: ""
                         )
                     }
                 }
@@ -558,28 +647,82 @@ class CapturaViewModel @Inject constructor(
     }
 
     /**
-     * Selector de disciplina del paso Contexto (mockup). Solo CIVIL está habilitada en
-     * el MVP (`captura_movil_habilitada=FALSE` en backend para las otras dos) — elegir
-     * ELECTRICO/ELECTROMECANICO no debe dejar seleccionar esa disciplina de verdad
-     * (el catálogo cargado y lo que se envía a las rutas de substation siguen siendo
-     * CIVIL), así que el estado se queda en CIVIL y solo se activa el flag para que la
-     * UI muestre el diálogo de aviso.
+     * Selector de disciplina del paso Contexto. Cambiarla cambia el catálogo de actividades y lo
+     * que se marca en «¿Qué se intervino?», así que lo elegido de la otra disciplina se limpia. Una
+     * disciplina sin captura móvil (Electromecánico) no se deja elegir: solo muestra el aviso.
      */
     fun onDisciplinaSeleccionada(disciplina: String) {
-        if (disciplina == "CIVIL") {
-            _uiState.update {
-                it.copy(disciplinaSeleccionada = "CIVIL", mostrarAlertaDisciplinaEnDesarrollo = false, disciplinaSeleccionadaPendiente = null)
-            }
-        } else {
+        if (disciplina !in DISCIPLINAS_CON_CAPTURA) {
             _uiState.update { it.copy(mostrarAlertaDisciplinaEnDesarrollo = true, disciplinaSeleccionadaPendiente = disciplina) }
+            return
+        }
+        _uiState.update {
+            if (it.disciplinaSeleccionada == disciplina) {
+                it.copy(mostrarAlertaDisciplinaEnDesarrollo = false, disciplinaSeleccionadaPendiente = null)
+            } else {
+                it.copy(
+                    disciplinaSeleccionada = disciplina,
+                    mostrarAlertaDisciplinaEnDesarrollo = false,
+                    disciplinaSeleccionadaPendiente = null,
+                    actividadId = null,
+                    actividadNombre = null,
+                    citaSugerida = null,
+                    citaSugeridaEstado = null,
+                    conjuntosSeleccionados = emptySet(),
+                    elementosSeleccionados = emptySet(),
+                    conjuntoOtroActivo = false,
+                    conjuntoOtro = "",
+                    elementoOtroActivo = false,
+                    elementoOtro = "",
+                    busquedaElemento = "",
+                    verTodosElementos = false
+                )
+            }
         }
     }
 
-    /** Cierra el aviso de "disciplina en desarrollo" — la disciplina real ya se quedó en CIVIL. */
+    /** Cierra el aviso de "disciplina en desarrollo": la disciplina elegida no cambia. */
     fun onAlertaDisciplinaEnDesarrolloCerrada() {
-        _uiState.update {
-            it.copy(disciplinaSeleccionada = "CIVIL", mostrarAlertaDisciplinaEnDesarrollo = false, disciplinaSeleccionadaPendiente = null)
+        _uiState.update { it.copy(mostrarAlertaDisciplinaEnDesarrollo = false, disciplinaSeleccionadaPendiente = null) }
+    }
+
+    // ---- «¿Qué se intervino?» (Eléctrico) ----
+
+    fun onConjuntoToggle(id: Long) {
+        _uiState.update { s ->
+            s.copy(conjuntosSeleccionados = if (id in s.conjuntosSeleccionados) s.conjuntosSeleccionados - id else s.conjuntosSeleccionados + id)
         }
+    }
+
+    fun onElementoToggle(id: Long) {
+        _uiState.update { s ->
+            s.copy(elementosSeleccionados = if (id in s.elementosSeleccionados) s.elementosSeleccionados - id else s.elementosSeleccionados + id)
+        }
+    }
+
+    /** Apagar "Otro" borra lo escrito: si no, se enviaría un texto que ya no se ve. */
+    fun onConjuntoOtroToggle() {
+        _uiState.update { it.copy(conjuntoOtroActivo = !it.conjuntoOtroActivo, conjuntoOtro = if (it.conjuntoOtroActivo) "" else it.conjuntoOtro) }
+    }
+
+    fun onConjuntoOtroChange(texto: String) {
+        _uiState.update { it.copy(conjuntoOtro = texto.take(LARGO_MAXIMO_OTRO)) }
+    }
+
+    fun onElementoOtroToggle() {
+        _uiState.update { it.copy(elementoOtroActivo = !it.elementoOtroActivo, elementoOtro = if (it.elementoOtroActivo) "" else it.elementoOtro) }
+    }
+
+    fun onElementoOtroChange(texto: String) {
+        _uiState.update { it.copy(elementoOtro = texto.take(LARGO_MAXIMO_OTRO)) }
+    }
+
+    fun onBusquedaElementoChange(texto: String) {
+        _uiState.update { it.copy(busquedaElemento = texto) }
+    }
+
+    fun onVerTodosElementosToggle() {
+        _uiState.update { it.copy(verTodosElementos = !it.verTodosElementos) }
     }
 
     fun onMesManualChange(mes: Int) {
@@ -729,22 +872,16 @@ class CapturaViewModel @Inject constructor(
      */
     fun esPasoValido(step: Int): Boolean {
         val s = _uiState.value
-        if (s.citaMode) {
-            return when (step) {
-                1 -> s.fecha.isNotBlank() && s.tipoActividad.isNotBlank()
-                2 -> s.resultado.isNotBlank() && s.observaciones.isNotBlank()
-                3 -> if (s.esEdicion) s.motivoEdicion.trim().length >= 15
-                     else (!s.fotoObligatoria || s.fotos.isNotEmpty())
-                else -> true
-            }
-        }
-        return when (step) {
-            1 -> s.estacionId != null && s.fecha.isNotBlank()
-            2 -> s.tipoActividad.isNotBlank() && s.tipoMantenimiento.isNotBlank() &&
-                    (if (s.modoLibre) s.descripcionLibre.trim().length > 3 else s.actividadId != null)
-            3 -> s.resultado.isNotBlank() && s.observaciones.isNotBlank()
-            4 -> if (s.esEdicion) s.motivoEdicion.trim().length >= 15
-                 else (s.resultado == "CONFORME" || s.fotos.isNotEmpty())
+        return when (s.pasos.getOrNull(step - 1)) {
+            PASO_CITA -> s.fecha.isNotBlank() && s.tipoActividad.isNotBlank()
+            PASO_CONTEXTO -> s.estacionId != null && s.fecha.isNotBlank()
+            PASO_ACTIVIDAD -> s.tipoActividad.isNotBlank() && s.tipoMantenimiento.isNotBlank() &&
+                (if (s.modoLibre) s.descripcionLibre.trim().length > 3 else s.actividadId != null)
+            // Todo opcional: no marcar nada es "No aplica".
+            PASO_INTERVENIDO -> true
+            PASO_RESULTADO -> s.resultado.isNotBlank() && s.observaciones.isNotBlank()
+            PASO_EVIDENCIA -> if (s.esEdicion) s.motivoEdicion.trim().length >= 15
+                else (!s.fotoObligatoria || s.fotos.isNotEmpty())
             else -> true
         }
     }
@@ -793,7 +930,12 @@ class CapturaViewModel @Inject constructor(
                 motivoNoCatalogado = if (s.modoLibre) "NO_PROGRAMADO" else null,
                 resultado = s.resultado,
                 observaciones = s.observaciones,
-                descripcionLibre = if (s.modoLibre) s.descripcionLibre.trim() else null
+                descripcionLibre = if (s.modoLibre) s.descripcionLibre.trim() else null,
+                disciplina = s.disciplinaSeleccionada,
+                conjuntoIds = if (s.conIntervenido) s.conjuntosSeleccionados.toList() else emptyList(),
+                elementoIds = if (s.conIntervenido) s.elementosSeleccionados.toList() else emptyList(),
+                conjuntoOtro = s.conjuntoOtro.trim().takeIf { s.conIntervenido && s.conjuntoOtroActivo && it.isNotEmpty() },
+                elementoOtro = s.elementoOtro.trim().takeIf { s.conIntervenido && s.elementoOtroActivo && it.isNotEmpty() }
             )
             guardarEjecucionLocalUseCase(ejecucion, s.fotos.map { it.toString() })
             observarEnvio(ejecucion.uuidCliente)
@@ -840,7 +982,12 @@ class CapturaViewModel @Inject constructor(
                 resultado = s.resultado,
                 observaciones = s.observaciones,
                 descripcionLibre = if (s.modoLibre) s.descripcionLibre.trim() else null,
-                motivoEdicion = s.motivoEdicion.trim()
+                motivoEdicion = s.motivoEdicion.trim(),
+                // Eléctrico envía siempre lo marcado ("" o lista vacía = se quitó); Civil no lo envía.
+                conjuntoIds = if (s.conIntervenido) s.conjuntosSeleccionados.toList() else null,
+                elementoIds = if (s.conIntervenido) s.elementosSeleccionados.toList() else null,
+                conjuntoOtro = if (s.conIntervenido) (if (s.conjuntoOtroActivo) s.conjuntoOtro.trim() else "") else null,
+                elementoOtro = if (s.conIntervenido) (if (s.elementoOtroActivo) s.elementoOtro.trim() else "") else null
             )
             editarEjecucionUseCase(id, edicion)
                 .onSuccess { _uiState.update { it.copy(isSaving = false, saveCompleted = true) } }
@@ -868,3 +1015,6 @@ internal fun estadoEnvioDe(local: Ejecucion?): EstadoEnvio = when {
  * El backend acepta hasta 2000 por los registros que ya estén encolados.
  */
 internal const val LARGO_MAXIMO_TEXTO = 500
+
+/** Textos de "Otro" en «¿Qué se intervino?»: la columna del backend es de 200. */
+internal const val LARGO_MAXIMO_OTRO = 200
