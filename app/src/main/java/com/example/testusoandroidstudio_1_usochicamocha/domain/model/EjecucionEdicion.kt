@@ -12,5 +12,10 @@ data class EjecucionEdicion(
     val resultado: String,
     val observaciones: String,
     val descripcionLibre: String?,
-    val motivoEdicion: String
+    val motivoEdicion: String,
+    /** Eléctrico: lo marcado en «¿Qué se intervino?». null = no se envía y el servidor lo deja igual (Civil). */
+    val conjuntoIds: List<Long>? = null,
+    val elementoIds: List<Long>? = null,
+    val conjuntoOtro: String? = null,
+    val elementoOtro: String? = null
 )

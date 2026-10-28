@@ -24,7 +24,18 @@ data class EjecucionDetalle(
     val evidenciaPendiente: Boolean,
     val ediciones: List<EdicionDetalle>,
     /** Visita que ejecutó una orden de trabajo: como las de las citas, su actividad no se cambia al editar. */
-    val deOrden: Boolean = false
+    val deOrden: Boolean = false,
+    /** Eléctrico: lo marcado en «¿Qué se intervino?»; vacío en Civil y en registros anteriores. */
+    val conjuntos: List<ItemRef> = emptyList(),
+    val elementos: List<ItemRef> = emptyList(),
+    val conjuntoOtro: String? = null,
+    val elementoOtro: String? = null
+)
+
+/** Conjunto o elemento marcado en una visita (id para editar, nombre para mostrar). */
+data class ItemRef(
+    val id: Long,
+    val nombre: String
 )
 
 data class EvidenciaDetalle(

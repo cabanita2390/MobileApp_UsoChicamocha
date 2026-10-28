@@ -44,8 +44,10 @@ interface SubestacionRepository {
     // --- Catálogos cacheados (para que el wizard funcione sin señal) ---
     fun getEstacionesCache(): Flow<List<EstacionCatalogo>>
     fun getActividadesCache(): Flow<List<ActividadCatalogo>>
+    /** Conjuntos y elementos de «¿Qué se intervino?» (Eléctrico), de todas las disciplinas. */
+    fun getItemsIntervenidosCache(): Flow<List<com.example.testusoandroidstudio_1_usochicamocha.domain.model.ItemIntervenido>>
     suspend fun sincronizarCatalogos(): Result<Unit>
-    /** Top de observaciones por tipo de actividad (clave: INSPECCION / MANTENIMIENTO), del último sync. */
+    /** Top de observaciones por disciplina y tipo de actividad (clave: "ELECTRICO:INSPECCION", ver [claveObsFrecuentes]), del último sync. */
     fun getObservacionesFrecuentes(): Flow<Map<String, List<String>>>
 
     // --- Consultas online (usadas hoy solo por el wizard de captura — CapturaViewModel;
@@ -106,3 +108,6 @@ interface SubestacionRepository {
     suspend fun quitarOrdenAsignada(id: Long)
     suspend fun sincronizarOrdenesAsignadas(): Result<Unit>
 }
+
+/** Clave del mapa de observaciones frecuentes: cada disciplina tiene las suyas. */
+fun claveObsFrecuentes(disciplina: String, tipoActividad: String): String = "$disciplina:$tipoActividad"

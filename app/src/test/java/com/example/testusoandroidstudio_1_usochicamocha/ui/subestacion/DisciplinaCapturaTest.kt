@@ -10,7 +10,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** El móvil muestra las citas de todas las disciplinas, pero solo registra las de Civil por ahora. */
+/** El móvil muestra las citas de todas las disciplinas, y registra las de Civil y Eléctrico. */
 class DisciplinaCapturaTest {
 
     private fun cita(disciplina: String) = CitaProgramada(
@@ -20,9 +20,9 @@ class DisciplinaCapturaTest {
     )
 
     @Test
-    fun soloCivilSeRegistra_lasDemasSonSoloConsulta() {
+    fun civilYElectricoSeRegistran_electromecanicoEsSoloConsulta() {
         assertTrue(cita("CIVIL").capturaHabilitada)
-        assertFalse(cita("ELECTRICO").capturaHabilitada)
+        assertTrue(cita("ELECTRICO").capturaHabilitada)
         assertFalse(cita("ELECTROMECANICO").capturaHabilitada)
     }
 
@@ -31,10 +31,10 @@ class DisciplinaCapturaTest {
         val dto = CumplimientoDto(
             programacionId = 7, anio = 2026, mes = 10, estacionId = 1, estacionNombre = "Ayalas",
             estacionTipo = "BOMBEO", actividadId = 3, actividadNombre = "Inspección eléctrica",
-            disciplina = "ELECTRICO", ejecutado = 0, cumple = false
+            disciplina = "ELECTROMECANICO", ejecutado = 0, cumple = false
         )
-        assertEquals("ELECTRICO", dto.toDomain().disciplina)
-        assertEquals("ELECTRICO", dto.toEntity().toDomain().disciplina)
+        assertEquals("ELECTROMECANICO", dto.toDomain().disciplina)
+        assertEquals("ELECTROMECANICO", dto.toEntity().toDomain().disciplina)
         assertFalse(dto.toEntity().toDomain().capturaHabilitada)
     }
 
@@ -43,6 +43,6 @@ class DisciplinaCapturaTest {
         assertEquals("Civil", nombreDisciplina("CIVIL"))
         assertEquals("Eléctrico", nombreDisciplina("ELECTRICO"))
         assertEquals("Electromecánico", nombreDisciplina("ELECTROMECANICO"))
-        assertTrue(mensajeCapturaEnDesarrollo("ELECTRICO").startsWith("La captura de Eléctrico aún está en desarrollo"))
+        assertTrue(mensajeCapturaEnDesarrollo("ELECTROMECANICO").startsWith("La captura de Electromecánico aún está en desarrollo"))
     }
 }

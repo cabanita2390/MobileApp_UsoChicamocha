@@ -5,6 +5,7 @@ import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.Ejecuc
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.EdicionDetalle
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.EjecucionDetalle
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.EvidenciaDetalle
+import com.example.testusoandroidstudio_1_usochicamocha.domain.model.ItemRef
 import com.google.gson.annotations.SerializedName
 
 data class EvidenciaSubestacionDto(
@@ -44,7 +45,17 @@ data class EjecucionResponseDto(
     @SerializedName("evidenciaPendiente") val evidenciaPendiente: Boolean,
     @SerializedName("ediciones") val ediciones: List<EdicionSubestacionDto>,
     /** Orden de trabajo (OT-EB) que esta visita ejecutó; null en citas e imprevistos. */
-    @SerializedName("orden") val orden: OrdenRefDto? = null
+    @SerializedName("orden") val orden: OrdenRefDto? = null,
+    // Eléctrico. Nulos en respuestas de backends anteriores y en detalles ya cacheados (Gson no usa los default).
+    @SerializedName("conjuntos") val conjuntos: List<ItemRefDto>? = null,
+    @SerializedName("elementos") val elementos: List<ItemRefDto>? = null,
+    @SerializedName("conjuntoOtro") val conjuntoOtro: String? = null,
+    @SerializedName("elementoOtro") val elementoOtro: String? = null
+)
+
+data class ItemRefDto(
+    @SerializedName("id") val id: Long,
+    @SerializedName("nombre") val nombre: String
 )
 
 data class OrdenRefDto(
@@ -75,7 +86,12 @@ fun EjecucionResponseDto.toEntity(localId: Int): EjecucionEntity {
         observaciones = observaciones,
         descripcionLibre = descripcionLibre,
         isSynced = true,
-        isSyncing = false
+        isSyncing = false,
+        disciplina = disciplina,
+        conjuntoIds = conjuntos.orEmpty().joinToString(",") { it.id.toString() },
+        elementoIds = elementos.orEmpty().joinToString(",") { it.id.toString() },
+        conjuntoOtro = conjuntoOtro,
+        elementoOtro = elementoOtro
     )
 }
 
@@ -102,7 +118,11 @@ fun EjecucionResponseDto.toDomain(): EjecucionDetalle {
         evidencias = evidencias.map { EvidenciaDetalle(it.id, it.rutaArchivo, it.nombreOriginal, it.subidoEn) },
         evidenciaPendiente = evidenciaPendiente,
         ediciones = ediciones.map { EdicionDetalle(it.usuario, it.motivo, it.editadoEn) },
-        deOrden = orden != null
+        deOrden = orden != null,
+        conjuntos = conjuntos.orEmpty().map { ItemRef(it.id, it.nombre) },
+        elementos = elementos.orEmpty().map { ItemRef(it.id, it.nombre) },
+        conjuntoOtro = conjuntoOtro,
+        elementoOtro = elementoOtro
     )
 }
 

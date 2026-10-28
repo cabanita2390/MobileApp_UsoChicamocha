@@ -1,5 +1,6 @@
 package com.example.testusoandroidstudio_1_usochicamocha.data.local.entity
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.Ejecucion
@@ -30,8 +31,18 @@ data class EjecucionEntity(
     /** Usuario que hizo el registro (ver PropietarioColas); null = de la sesión actual. */
     val propietarioId: Long? = null,
     /** Orden de trabajo (OT-EB) que este registro ejecuta; null en citas y registros libres. */
-    val ordenId: Long? = null
+    val ordenId: Long? = null,
+    /** Disciplina del registro; los encolados antes de Eléctrico quedan en CIVIL. */
+    @ColumnInfo(defaultValue = "CIVIL") val disciplina: String = "CIVIL",
+    /** Eléctrico: ids marcados en «¿Qué se intervino?», separados por coma ("" = ninguno). */
+    @ColumnInfo(defaultValue = "") val conjuntoIds: String = "",
+    @ColumnInfo(defaultValue = "") val elementoIds: String = "",
+    val conjuntoOtro: String? = null,
+    val elementoOtro: String? = null
 )
+
+/** "3,7,12" → [3, 7, 12]; "" → []. */
+internal fun idsDeCsv(csv: String): List<Long> = csv.split(',').mapNotNull { it.trim().toLongOrNull() }
 
 fun EjecucionEntity.toDomain(): Ejecucion {
     return Ejecucion(
@@ -56,6 +67,11 @@ fun EjecucionEntity.toDomain(): Ejecucion {
         isSynced = isSynced,
         isSyncing = isSyncing,
         syncFallido = syncFallido,
-        ordenId = ordenId
+        ordenId = ordenId,
+        disciplina = disciplina,
+        conjuntoIds = idsDeCsv(conjuntoIds),
+        elementoIds = idsDeCsv(elementoIds),
+        conjuntoOtro = conjuntoOtro,
+        elementoOtro = elementoOtro
     )
 }

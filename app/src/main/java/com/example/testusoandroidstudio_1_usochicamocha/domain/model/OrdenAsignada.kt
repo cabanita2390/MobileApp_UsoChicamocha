@@ -21,5 +21,7 @@ data class OrdenAsignada(
     val motivoDevolucion: String?,
     val fotosHallazgo: List<String>,
     /** Para cualquier operario: también les aparece a los demás hasta que alguien la registre. */
-    val paraCualquiera: Boolean = false
+    val paraCualquiera: Boolean = false,
+    /** Disciplina del hallazgo: la visita que la corrige se registra en esa disciplina. */
+    val disciplina: String = "CIVIL"
 )

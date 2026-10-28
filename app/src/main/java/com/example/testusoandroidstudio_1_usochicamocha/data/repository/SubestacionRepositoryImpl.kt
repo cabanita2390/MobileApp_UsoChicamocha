@@ -59,18 +59,16 @@ class SubestacionRepositoryImpl @Inject constructor(
     private val ejecucionDetalleCacheDao: EjecucionDetalleCacheDao,
     private val ejecucionNoProgramadaCacheDao: EjecucionNoProgramadaCacheDao,
     private val ordenAsignadaCacheDao: com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.OrdenAsignadaCacheDao,
-    private val dataStore: androidx.datastore.core.DataStore<androidx.datastore.preferences.core.Preferences>
+    private val dataStore: androidx.datastore.core.DataStore<androidx.datastore.preferences.core.Preferences>,
+    private val itemIntervenidoCacheDao: com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.ItemIntervenidoCacheDao
 ) : SubestacionRepository {
 
     companion object {
         private const val TAG = "SubestacionRepositoryImpl"
-        /** Disciplina que se registra desde el móvil (captura, registro libre y sugerencias). Las citas
-         *  del cronograma se consultan de todas las disciplinas: las demás se ven en solo consulta. */
-        private const val DISCIPLINA = "CIVIL"
         /** Páginas de las no programadas del año; MAX_PAGINAS es solo un tope de seguridad. */
         private const val TAMANO_PAGINA = 500
         private const val MAX_PAGINAS = 100
-        /** JSON {tipoActividad: [textos]} con las observaciones más usadas (DataStore, sin migración de Room). */
+        /** JSON {"DISCIPLINA:TIPO": [textos]} con las observaciones más usadas (DataStore, sin migración de Room). */
         private val KEY_OBS_FRECUENTES = androidx.datastore.preferences.core.stringPreferencesKey("subestacion_obs_frecuentes")
         private val gson = com.google.gson.Gson()
         private val tipoMapa = object : com.google.gson.reflect.TypeToken<Map<String, List<String>>>() {}.type
@@ -151,7 +149,7 @@ class SubestacionRepositoryImpl @Inject constructor(
                 mesEjecucion = ejecucion.mesEjecucion,
                 semanaEjecucion = ejecucion.semanaEjecucion,
                 estacionId = ejecucion.estacionId,
-                disciplina = DISCIPLINA,
+                disciplina = ejecucion.disciplina,
                 tipoMantenimiento = ejecucion.tipoMantenimiento,
                 tipoActividad = ejecucion.tipoActividad,
                 actividadId = ejecucion.actividadId,
@@ -161,7 +159,11 @@ class SubestacionRepositoryImpl @Inject constructor(
                 observaciones = ejecucion.observaciones,
                 descripcionLibre = ejecucion.descripcionLibre,
                 uuidCliente = ejecucion.uuidCliente,
-                ordenId = ejecucion.ordenId
+                ordenId = ejecucion.ordenId,
+                conjuntoIds = ejecucion.conjuntoIds.takeIf { it.isNotEmpty() },
+                elementoIds = ejecucion.elementoIds.takeIf { it.isNotEmpty() },
+                conjuntoOtro = ejecucion.conjuntoOtro,
+                elementoOtro = ejecucion.elementoOtro
             )
             val response = apiService.registrarEjecucionSubestacion(request)
 
@@ -232,14 +234,17 @@ class SubestacionRepositoryImpl @Inject constructor(
      */
     private suspend fun sincronizarObservacionesFrecuentes() {
         try {
-            val r = apiService.getObservacionesFrecuentes(DISCIPLINA)
-            val body = r.body()
-            if (r.isSuccessful && body != null) {
-                val mapa = body.associate { it.tipoActividad to it.textos.take(5) }
-                dataStore.edit { it[KEY_OBS_FRECUENTES] = gson.toJson(mapa) }
-            } else {
-                Log.w(TAG, "Observaciones frecuentes no disponibles: ${r.code()}")
+            val mapa = mutableMapOf<String, List<String>>()
+            for (disciplina in com.example.testusoandroidstudio_1_usochicamocha.domain.model.DISCIPLINAS_CON_CAPTURA) {
+                val r = apiService.getObservacionesFrecuentes(disciplina)
+                val body = r.body()
+                if (!r.isSuccessful || body == null) {
+                    Log.w(TAG, "Observaciones frecuentes de $disciplina no disponibles: ${r.code()}")
+                    return
+                }
+                body.forEach { mapa[com.example.testusoandroidstudio_1_usochicamocha.domain.repository.claveObsFrecuentes(disciplina, it.tipoActividad)] = it.textos.take(5) }
             }
+            dataStore.edit { it[KEY_OBS_FRECUENTES] = gson.toJson(mapa) }
         } catch (e: Exception) {
             Log.w(TAG, "No se pudieron actualizar las observaciones frecuentes", e)
         }
@@ -254,6 +259,34 @@ class SubestacionRepositoryImpl @Inject constructor(
 
     override fun getActividadesCache(): Flow<List<ActividadCatalogo>> {
         return actividadCacheDao.getAllFlow().map { entities -> entities.map { it.toDomain() } }
+    }
+
+    override fun getItemsIntervenidosCache(): Flow<List<com.example.testusoandroidstudio_1_usochicamocha.domain.model.ItemIntervenido>> =
+        itemIntervenidoCacheDao.getAllFlow().map { lista -> lista.map { it.toDomain() } }
+
+    /**
+     * Conjuntos y elementos de «¿Qué se intervino?». No es crítico: si falla (sin red, backend sin
+     * Eléctrico todavía) se conserva lo último guardado y el resto del catálogo se da por sincronizado.
+     */
+    private suspend fun sincronizarItemsIntervenidos() {
+        try {
+            val conjuntos = apiService.getConjuntosSubestacion()
+            val elementos = apiService.getElementosSubestacion()
+            val tipoConjunto = com.example.testusoandroidstudio_1_usochicamocha.domain.model.ItemIntervenido.CONJUNTO
+            val tipoElemento = com.example.testusoandroidstudio_1_usochicamocha.domain.model.ItemIntervenido.ELEMENTO
+            if (conjuntos.isSuccessful && conjuntos.body() != null) {
+                itemIntervenidoCacheDao.reemplazar(tipoConjunto, conjuntos.body()!!.map { it.toEntity(tipoConjunto) })
+            } else {
+                Log.w(TAG, "Conjuntos no disponibles: ${conjuntos.code()}")
+            }
+            if (elementos.isSuccessful && elementos.body() != null) {
+                itemIntervenidoCacheDao.reemplazar(tipoElemento, elementos.body()!!.map { it.toEntity(tipoElemento) })
+            } else {
+                Log.w(TAG, "Elementos no disponibles: ${elementos.code()}")
+            }
+        } catch (e: Exception) {
+            Log.w(TAG, "No se pudieron actualizar conjuntos y elementos", e)
+        }
     }
 
     // ---- Órdenes de trabajo (OT-EB) ----
@@ -302,13 +335,15 @@ class SubestacionRepositoryImpl @Inject constructor(
             hallazgoObservaciones = orden.hallazgoObservaciones ?: "",
             motivoDevolucion = motivoDevolucion,
             fotosHallazgo = evidenciasHallazgo.orEmpty().joinToString("\n") { it.rutaArchivo },
-            paraCualquiera = orden.paraCualquiera == true
+            paraCualquiera = orden.paraCualquiera == true,
+            disciplina = orden.disciplina ?: "CIVIL"
         )
 
     override suspend fun sincronizarCatalogos(): Result<Unit> {
         return try {
             val estacionesResponse = apiService.getEstacionesSubestacion()
-            val actividadesResponse = apiService.getActividadesSubestacion(DISCIPLINA)
+            // Todas las disciplinas con captura móvil: el wizard filtra por la que elija el técnico.
+            val actividadesResponse = apiService.getActividadesSubestacion()
 
             if (estacionesResponse.isSuccessful && estacionesResponse.body() != null) {
                 estacionCacheDao.clearAndInsert(estacionesResponse.body()!!.map { it.toEntity() })
@@ -323,6 +358,7 @@ class SubestacionRepositoryImpl @Inject constructor(
             }
 
             sincronizarObservacionesFrecuentes()
+            sincronizarItemsIntervenidos()
 
             Result.success(Unit)
         } catch (e: Exception) {
@@ -335,7 +371,7 @@ class SubestacionRepositoryImpl @Inject constructor(
 
     override suspend fun getProgramacion(estacionId: Long, anio: Int, mes: Int): Result<List<ProgramacionCita>> {
         return try {
-            val response = apiService.getProgramacionSubestacion(estacionId, anio, mes, DISCIPLINA)
+            val response = apiService.getProgramacionSubestacion(estacionId, anio, mes)
             if (response.isSuccessful && response.body() != null) {
                 Result.success(response.body()!!.map { it.toDomain() })
             } else {
@@ -429,7 +465,11 @@ class SubestacionRepositoryImpl @Inject constructor(
                 resultado = edicion.resultado,
                 observaciones = edicion.observaciones,
                 descripcionLibre = edicion.descripcionLibre,
-                motivoEdicion = edicion.motivoEdicion
+                motivoEdicion = edicion.motivoEdicion,
+                conjuntoIds = edicion.conjuntoIds,
+                elementoIds = edicion.elementoIds,
+                conjuntoOtro = edicion.conjuntoOtro,
+                elementoOtro = edicion.elementoOtro
             )
             val response = apiService.editarEjecucionSubestacion(id, request)
             if (response.isSuccessful && response.body() != null) {

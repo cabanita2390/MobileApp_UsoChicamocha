@@ -112,9 +112,11 @@ object RepositoryModule {
         ejecucionDetalleCacheDao: EjecucionDetalleCacheDao,
         ejecucionNoProgramadaCacheDao: EjecucionNoProgramadaCacheDao,
         ordenAsignadaCacheDao: com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.OrdenAsignadaCacheDao,
-        dataStore: androidx.datastore.core.DataStore<androidx.datastore.preferences.core.Preferences>
+        dataStore: androidx.datastore.core.DataStore<androidx.datastore.preferences.core.Preferences>,
+        itemIntervenidoCacheDao: com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.ItemIntervenidoCacheDao
     ): SubestacionRepository = SubestacionRepositoryImpl(
         context, ejecucionDao, estacionCacheDao, actividadCacheDao, imageDao, apiService,
-        cumplimientoCacheDao, ejecucionDetalleCacheDao, ejecucionNoProgramadaCacheDao, ordenAsignadaCacheDao, dataStore
+        cumplimientoCacheDao, ejecucionDetalleCacheDao, ejecucionNoProgramadaCacheDao, ordenAsignadaCacheDao, dataStore,
+        itemIntervenidoCacheDao
     )
 }

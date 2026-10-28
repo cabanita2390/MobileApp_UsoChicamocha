@@ -155,8 +155,17 @@ interface ApiService {
     @GET("v1/substation/estaciones")
     suspend fun getEstacionesSubestacion(): Response<List<EstacionDto>>
 
+    /** Sin disciplina: las habilitadas para el móvil de todas las disciplinas (cada una trae la suya). */
     @GET("v1/substation/actividades")
-    suspend fun getActividadesSubestacion(@Query("disciplina") disciplina: String): Response<List<ActividadDto>>
+    suspend fun getActividadesSubestacion(@Query("disciplina") disciplina: String? = null): Response<List<ActividadDto>>
+
+    /** Conjuntos activos de «¿Qué se intervino?» (Eléctrico), de todas las disciplinas. */
+    @GET("v1/substation/conjuntos")
+    suspend fun getConjuntosSubestacion(): Response<List<com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.ItemCatalogoDto>>
+
+    /** Elementos activos de «¿Qué se intervino?» (Eléctrico), de todas las disciplinas. */
+    @GET("v1/substation/elementos")
+    suspend fun getElementosSubestacion(): Response<List<com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.ItemCatalogoDto>>
 
     @GET("v1/substation/observaciones/frecuentes")
     suspend fun getObservacionesFrecuentes(
@@ -169,7 +178,7 @@ interface ApiService {
         @Query("estacionId") estacionId: Long,
         @Query("anio") anio: Int,
         @Query("mes") mes: Int,
-        @Query("disciplina") disciplina: String
+        @Query("disciplina") disciplina: String? = null
     ): Response<List<ProgramacionDto>>
 
     /** Órdenes de trabajo (OT-EB) asignadas al usuario: lista "Prioritarias". */

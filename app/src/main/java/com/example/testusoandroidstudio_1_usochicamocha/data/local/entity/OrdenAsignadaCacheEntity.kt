@@ -32,7 +32,10 @@ data class OrdenAsignadaCacheEntity(
     val fotosHallazgo: String,
     /** Para cualquier operario: la ven todos y queda a nombre del primero que la registre. */
     @ColumnInfo(defaultValue = "0")
-    val paraCualquiera: Boolean = false
+    val paraCualquiera: Boolean = false,
+    /** Disciplina del hallazgo (la visita se registra en esa disciplina). */
+    @ColumnInfo(defaultValue = "CIVIL")
+    val disciplina: String = "CIVIL"
 )
 
 fun OrdenAsignadaCacheEntity.toDomain() = OrdenAsignada(
@@ -51,5 +54,6 @@ fun OrdenAsignadaCacheEntity.toDomain() = OrdenAsignada(
     hallazgoObservaciones = hallazgoObservaciones,
     motivoDevolucion = motivoDevolucion,
     fotosHallazgo = fotosHallazgo.split('\n').filter { it.isNotBlank() },
-    paraCualquiera = paraCualquiera
+    paraCualquiera = paraCualquiera,
+    disciplina = disciplina
 )

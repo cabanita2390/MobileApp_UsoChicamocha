@@ -10,8 +10,29 @@ data class EstacionCatalogo(
 
 data class ActividadCatalogo(
     val id: Long,
-    val nombre: String
+    val nombre: String,
+    /** Código de la disciplina (CIVIL, ELECTRICO…): el wizard muestra solo las de la disciplina elegida. */
+    val disciplina: String = "CIVIL"
 )
+
+/**
+ * Conjunto o elemento que el operario puede marcar en «¿Qué se intervino?» (Eléctrico).
+ * [tipo] es [ItemIntervenido.CONJUNTO] o [ItemIntervenido.ELEMENTO].
+ */
+data class ItemIntervenido(
+    val id: Long,
+    val nombre: String,
+    val disciplina: String,
+    val tipo: String
+) {
+    companion object {
+        const val CONJUNTO = "CONJUNTO"
+        const val ELEMENTO = "ELEMENTO"
+    }
+}
+
+/** Disciplinas cuyo formulario tiene el paso «¿Qué se intervino?» (conjuntos y elementos). */
+val DISCIPLINAS_CON_INTERVENIDO = setOf("ELECTRICO")
 
 /**
  * Una cita del cronograma con su estado de cumplimiento, para las pantallas Cronograma/Pendientes.
@@ -48,7 +69,7 @@ data class CitaProgramada(
 }
 
 /** Disciplinas que ya se pueden registrar desde el móvil; las demás se ven en solo consulta. */
-val DISCIPLINAS_CON_CAPTURA = setOf("CIVIL")
+val DISCIPLINAS_CON_CAPTURA = setOf("CIVIL", "ELECTRICO")
 
 /** Cita "cruda" del cronograma (sin estado de cumplimiento), para precargar el wizard de captura. */
 data class ProgramacionCita(

@@ -7,6 +7,7 @@ import androidx.test.core.app.ApplicationProvider
 import org.json.JSONObject
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -77,6 +78,45 @@ class AppDatabaseMigrationTest {
                 assertEquals("", c.getString(0))
             }
             sqlite.query("SELECT COUNT(*) FROM llanta_config_cache").use { c ->
+                c.moveToFirst()
+                assertEquals(0, c.getInt(0))
+            }
+        } finally {
+            db.close()
+        }
+    }
+
+    @Test
+    fun migracion_54_a_55_deja_lo_pendiente_en_civil_y_crea_el_cache_de_conjuntos_y_elementos() {
+        crearBaseEnVersion(54).apply {
+            execSQL(
+                "INSERT INTO pending_mant_ejecucion (uuidCliente, fecha, mesEjecucion, semanaEjecucion, estacionId, estacionNombre, " +
+                    "tipoMantenimiento, tipoActividad, esProgramada, resultado, observaciones, isSynced, isSyncing, syncFallido) " +
+                    "VALUES ('e-1', '2026-10-27', 10, 4, 1, 'Surba', 'PREVENTIVO', 'INSPECCION', 0, 'CONFORME', 'ok', 0, 0, 0)"
+            )
+            execSQL("INSERT INTO mant_actividad_cache (id, nombre) VALUES (11, 'Pintura muros')")
+            close()
+        }
+
+        val db = Room.databaseBuilder(context, AppDatabase::class.java, nombreDb)
+            .addMigrations(AppDatabase.MIGRATION_54_55)
+            .allowMainThreadQueries()
+            .build()
+        try {
+            val sqlite = db.openHelper.writableDatabase // aquí corre la migración y la validación del esquema
+            assertEquals(55, sqlite.version)
+            sqlite.query("SELECT disciplina, conjuntoIds, elementoIds, conjuntoOtro FROM pending_mant_ejecucion WHERE uuidCliente = 'e-1'").use { c ->
+                c.moveToFirst()
+                assertEquals("CIVIL", c.getString(0))
+                assertEquals("", c.getString(1))
+                assertEquals("", c.getString(2))
+                assertTrue(c.isNull(3))
+            }
+            sqlite.query("SELECT disciplina FROM mant_actividad_cache WHERE id = 11").use { c ->
+                c.moveToFirst()
+                assertEquals("CIVIL", c.getString(0))
+            }
+            sqlite.query("SELECT COUNT(*) FROM mant_intervenido_cache").use { c ->
                 c.moveToFirst()
                 assertEquals(0, c.getInt(0))
             }

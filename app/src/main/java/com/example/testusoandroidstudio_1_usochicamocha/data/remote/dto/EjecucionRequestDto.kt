@@ -19,5 +19,10 @@ data class EjecucionRequestDto(
     @SerializedName("descripcionLibre") val descripcionLibre: String?,
     @SerializedName("uuidCliente") val uuidCliente: String,
     /** Orden de trabajo (OT-EB) que esta visita ejecuta; null en citas y registros libres. */
-    @SerializedName("ordenId") val ordenId: Long? = null
+    @SerializedName("ordenId") val ordenId: Long? = null,
+    /** Eléctrico: lo marcado en «¿Qué se intervino?» (el backend ignora los de otra disciplina). */
+    @SerializedName("conjuntoIds") val conjuntoIds: List<Long>? = null,
+    @SerializedName("elementoIds") val elementoIds: List<Long>? = null,
+    @SerializedName("conjuntoOtro") val conjuntoOtro: String? = null,
+    @SerializedName("elementoOtro") val elementoOtro: String? = null
 )

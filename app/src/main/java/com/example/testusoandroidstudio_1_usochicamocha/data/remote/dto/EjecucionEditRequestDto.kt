@@ -17,5 +17,10 @@ data class EjecucionEditRequestDto(
     @SerializedName("resultado") val resultado: String,
     @SerializedName("observaciones") val observaciones: String,
     @SerializedName("descripcionLibre") val descripcionLibre: String?,
-    @SerializedName("motivoEdicion") val motivoEdicion: String
+    @SerializedName("motivoEdicion") val motivoEdicion: String,
+    /** Eléctrico. null = el servidor los deja como estaban (Civil no los envía). */
+    @SerializedName("conjuntoIds") val conjuntoIds: List<Long>? = null,
+    @SerializedName("elementoIds") val elementoIds: List<Long>? = null,
+    @SerializedName("conjuntoOtro") val conjuntoOtro: String? = null,
+    @SerializedName("elementoOtro") val elementoOtro: String? = null
 )

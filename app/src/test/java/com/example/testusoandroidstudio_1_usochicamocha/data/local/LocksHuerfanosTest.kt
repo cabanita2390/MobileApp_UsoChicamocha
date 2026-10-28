@@ -86,7 +86,7 @@ class LocksHuerfanosTest {
     private fun repositorio(api: ApiService) = SubestacionRepositoryImpl(
         ApplicationProvider.getApplicationContext(), ejecucionDao, db.estacionCacheDao(), db.actividadCacheDao(),
         imageDao, api, db.cumplimientoCacheDao(), db.ejecucionDetalleCacheDao(), db.ejecucionNoProgramadaCacheDao(),
-        db.ordenAsignadaCacheDao(), mockk(relaxed = true)
+        db.ordenAsignadaCacheDao(), mockk(relaxed = true), db.itemIntervenidoCacheDao()
     )
 
     @Test

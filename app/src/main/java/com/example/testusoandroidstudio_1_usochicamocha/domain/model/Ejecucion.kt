@@ -37,7 +37,14 @@ data class Ejecucion(
     /** Registro pendiente de otro usuario: se envía cuando él vuelva a iniciar sesión. */
     val deOtroUsuario: Boolean = false,
     /** Orden de trabajo (OT-EB) que este registro ejecuta; null en citas y registros libres. */
-    val ordenId: Long? = null
+    val ordenId: Long? = null,
+    /** Código de la disciplina del registro (CIVIL, ELECTRICO). */
+    val disciplina: String = "CIVIL",
+    /** Eléctrico: conjuntos y elementos marcados en «¿Qué se intervino?», y sus textos de "Otro". */
+    val conjuntoIds: List<Long> = emptyList(),
+    val elementoIds: List<Long> = emptyList(),
+    val conjuntoOtro: String? = null,
+    val elementoOtro: String? = null
 )
 
 fun Ejecucion.toEntity(): EjecucionEntity {
@@ -63,6 +70,11 @@ fun Ejecucion.toEntity(): EjecucionEntity {
         isSynced = isSynced,
         isSyncing = isSyncing,
         syncFallido = syncFallido,
-        ordenId = ordenId
+        ordenId = ordenId,
+        disciplina = disciplina,
+        conjuntoIds = conjuntoIds.joinToString(","),
+        elementoIds = elementoIds.joinToString(","),
+        conjuntoOtro = conjuntoOtro,
+        elementoOtro = elementoOtro
     )
 }

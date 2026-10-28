@@ -75,9 +75,10 @@ import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.Ejecuc
         com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.EjecucionNoProgramadaCacheEntity::class,
         com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.SesionActualEntity::class,
         com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.OrdenAsignadaCacheEntity::class,
-        com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.LlantaConfigCacheEntity::class
+        com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.LlantaConfigCacheEntity::class,
+        com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.ItemIntervenidoCacheEntity::class
     ],
-    version = 54,
+    version = 55,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -900,6 +901,27 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Disciplina Eléctrico: actividades, órdenes y registros pendientes guardan su disciplina
+         * (lo anterior queda en CIVIL, que era lo único que se capturaba), los registros guardan lo
+         * marcado en «¿Qué se intervino?», y se cachean los conjuntos y elementos para usarlos sin señal.
+         */
+        val MIGRATION_54_55 = object : Migration(54, 55) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE `mant_actividad_cache` ADD COLUMN `disciplina` TEXT NOT NULL DEFAULT 'CIVIL'")
+                database.execSQL("ALTER TABLE `mant_orden_asignada_cache` ADD COLUMN `disciplina` TEXT NOT NULL DEFAULT 'CIVIL'")
+                database.execSQL("ALTER TABLE `pending_mant_ejecucion` ADD COLUMN `disciplina` TEXT NOT NULL DEFAULT 'CIVIL'")
+                database.execSQL("ALTER TABLE `pending_mant_ejecucion` ADD COLUMN `conjuntoIds` TEXT NOT NULL DEFAULT ''")
+                database.execSQL("ALTER TABLE `pending_mant_ejecucion` ADD COLUMN `elementoIds` TEXT NOT NULL DEFAULT ''")
+                database.execSQL("ALTER TABLE `pending_mant_ejecucion` ADD COLUMN `conjuntoOtro` TEXT")
+                database.execSQL("ALTER TABLE `pending_mant_ejecucion` ADD COLUMN `elementoOtro` TEXT")
+                database.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `mant_intervenido_cache` (`tipo` TEXT NOT NULL, `id` INTEGER NOT NULL, " +
+                        "`nombre` TEXT NOT NULL, `disciplina` TEXT NOT NULL, PRIMARY KEY(`tipo`, `id`))"
+                )
+            }
+        }
+
         /** Foto pendiente cuyo archivo ya no existe: deja de reintentarse y la Cola lo avisa. */
         val MIGRATION_48_49 = object : Migration(48, 49) {
             override fun migrate(database: SupportSQLiteDatabase) {
@@ -933,4 +955,5 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun propietarioColasDao(): com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.PropietarioColasDao
     abstract fun ordenAsignadaCacheDao(): com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.OrdenAsignadaCacheDao
     abstract fun llantaConfigCacheDao(): com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.LlantaConfigCacheDao
+    abstract fun itemIntervenidoCacheDao(): com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.ItemIntervenidoCacheDao
 }

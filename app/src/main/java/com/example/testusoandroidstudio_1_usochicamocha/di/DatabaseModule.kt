@@ -58,7 +58,8 @@ object DatabaseModule {
                 AppDatabase.MIGRATION_50_51,
                 AppDatabase.MIGRATION_51_52,
                 AppDatabase.MIGRATION_52_53,
-                AppDatabase.MIGRATION_53_54
+                AppDatabase.MIGRATION_53_54,
+                AppDatabase.MIGRATION_54_55
             )
             .build()
     }
@@ -161,4 +162,9 @@ object DatabaseModule {
     @Singleton
     fun provideLlantaConfigCacheDao(db: AppDatabase): com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.LlantaConfigCacheDao =
         db.llantaConfigCacheDao()
+
+    @Provides
+    @Singleton
+    fun provideItemIntervenidoCacheDao(db: AppDatabase): com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.ItemIntervenidoCacheDao =
+        db.itemIntervenidoCacheDao()
 }
