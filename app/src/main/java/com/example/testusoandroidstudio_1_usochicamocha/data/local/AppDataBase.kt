@@ -78,7 +78,7 @@ import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.Ejecuc
         com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.LlantaConfigCacheEntity::class,
         com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.ItemIntervenidoCacheEntity::class
     ],
-    version = 55,
+    version = 56,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -919,6 +919,13 @@ abstract class AppDatabase : RoomDatabase() {
                     "CREATE TABLE IF NOT EXISTS `mant_intervenido_cache` (`tipo` TEXT NOT NULL, `id` INTEGER NOT NULL, " +
                         "`nombre` TEXT NOT NULL, `disciplina` TEXT NOT NULL, PRIMARY KEY(`tipo`, `id`))"
                 )
+            }
+        }
+
+        /** Ícono de cada conjunto, elegido desde Configuración en la web. */
+        val MIGRATION_55_56 = object : Migration(55, 56) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE `mant_intervenido_cache` ADD COLUMN `icono` TEXT")
             }
         }
 

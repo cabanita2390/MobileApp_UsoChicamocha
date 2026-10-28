@@ -30,7 +30,9 @@ import androidx.compose.material.icons.filled.ElectricalServices
 import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.Power
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Sensors
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -54,8 +56,27 @@ import java.text.Normalizer
 /** Fondo ámbar del ícono de cada conjunto (identidad de Eléctrico). */
 private val AmbarSuave = Color(0xFFFDF3D8)
 
-/** Ícono por nombre de conjunto; uno nuevo creado desde la web usa el genérico. */
-private fun iconoConjunto(nombre: String): ImageVector = when (sinTildes(nombre)) {
+/**
+ * Ícono de un conjunto: el código que se eligió en Configuración (web), con los mismos dibujos de
+ * Material que muestra el selector. Si todavía no llegó del servidor (caché anterior), se deduce por
+ * el nombre; si no, el genérico.
+ */
+private fun iconoConjunto(conjunto: ItemIntervenido): ImageVector = when (conjunto.icono) {
+    "SUBESTACION" -> Icons.Filled.ElectricalServices
+    "GABINETE" -> Icons.Filled.Dns
+    "RED_MT" -> Icons.Filled.Cable
+    "GENERADOR" -> Icons.Filled.Bolt
+    "ILUMINACION" -> Icons.Filled.Lightbulb
+    "MOTOR" -> Icons.Filled.Settings
+    "TRANSFORMADOR" -> Icons.Filled.ElectricBolt
+    "POSTE" -> Icons.Filled.CellTower
+    "SENSOR" -> Icons.Filled.Sensors
+    "CONTROL" -> Icons.Filled.Tune
+    "ENERGIA" -> Icons.Filled.Power
+    else -> iconoPorNombre(conjunto.nombre)
+}
+
+private fun iconoPorNombre(nombre: String): ImageVector = when (sinTildes(nombre)) {
     "subestacion" -> Icons.Filled.ElectricalServices
     "gabinetes de control" -> Icons.Filled.Dns
     "red de media tension" -> Icons.Filled.Cable
@@ -146,7 +167,7 @@ internal fun PasoIntervenido(uiState: CapturaUiState, viewModel: CapturaViewMode
             item { SubestacionType.Hint("Los conjuntos aún no se han sincronizado. Puedes escribirlo en «Otro».", color = SubestacionColors.Red) }
         }
         // Mosaicos de 3 columnas: los conjuntos y "Otro" al final.
-        val celdas = conjuntos.map { c -> Triple(c.nombre, iconoConjunto(c.nombre), c.id) } + Triple("Otro", Icons.Filled.Add, -1L)
+        val celdas = conjuntos.map { c -> Triple(c.nombre, iconoConjunto(c), c.id) } + Triple("Otro", Icons.Filled.Add, -1L)
         celdas.chunked(3).forEach { fila ->
             item {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {

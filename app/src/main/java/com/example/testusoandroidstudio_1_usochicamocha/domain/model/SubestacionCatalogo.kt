@@ -23,7 +23,9 @@ data class ItemIntervenido(
     val id: Long,
     val nombre: String,
     val disciplina: String,
-    val tipo: String
+    val tipo: String,
+    /** Solo conjuntos: código del ícono elegido en la web (SUBESTACION, GABINETE…); null = genérico. */
+    val icono: String? = null
 ) {
     companion object {
         const val CONJUNTO = "CONJUNTO"

@@ -12,7 +12,10 @@ data class ItemIntervenidoCacheEntity(
     val tipo: String,
     val id: Long,
     val nombre: String,
-    val disciplina: String
+    val disciplina: String,
+    /** Solo conjuntos: código del ícono elegido en la web; null = genérico. */
+    val icono: String? = null
 )
 
-fun ItemIntervenidoCacheEntity.toDomain() = ItemIntervenido(id = id, nombre = nombre, disciplina = disciplina, tipo = tipo)
+fun ItemIntervenidoCacheEntity.toDomain() =
+    ItemIntervenido(id = id, nombre = nombre, disciplina = disciplina, tipo = tipo, icono = icono)

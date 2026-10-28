@@ -124,4 +124,28 @@ class AppDatabaseMigrationTest {
             db.close()
         }
     }
+
+    @Test
+    fun migracion_55_a_56_agrega_el_icono_de_los_conjuntos_sin_perder_el_cache() {
+        crearBaseEnVersion(55).apply {
+            execSQL("INSERT INTO mant_intervenido_cache (tipo, id, nombre, disciplina) VALUES ('CONJUNTO', 101, 'Motores', 'ELECTRICO')")
+            close()
+        }
+
+        val db = Room.databaseBuilder(context, AppDatabase::class.java, nombreDb)
+            .addMigrations(AppDatabase.MIGRATION_55_56)
+            .allowMainThreadQueries()
+            .build()
+        try {
+            val sqlite = db.openHelper.writableDatabase // aquí corre la migración y la validación del esquema
+            assertEquals(56, sqlite.version)
+            sqlite.query("SELECT nombre, icono FROM mant_intervenido_cache WHERE id = 101").use { c ->
+                c.moveToFirst()
+                assertEquals("Motores", c.getString(0))
+                assertTrue(c.isNull(1))
+            }
+        } finally {
+            db.close()
+        }
+    }
 }

@@ -7,7 +7,10 @@ import com.google.gson.annotations.SerializedName
 data class ItemCatalogoDto(
     @SerializedName("id") val id: Long,
     @SerializedName("nombre") val nombre: String,
-    @SerializedName("disciplina") val disciplina: String
+    @SerializedName("disciplina") val disciplina: String,
+    /** Solo conjuntos: código del ícono elegido en la web; null = genérico. */
+    @SerializedName("icono") val icono: String? = null
 )
 
-fun ItemCatalogoDto.toEntity(tipo: String) = ItemIntervenidoCacheEntity(tipo = tipo, id = id, nombre = nombre, disciplina = disciplina)
+fun ItemCatalogoDto.toEntity(tipo: String) =
+    ItemIntervenidoCacheEntity(tipo = tipo, id = id, nombre = nombre, disciplina = disciplina, icono = icono)
