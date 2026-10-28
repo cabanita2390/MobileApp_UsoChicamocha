@@ -32,6 +32,10 @@ class PresionLlantasStateTest {
         assertNull(EvaluadorPresionLlanta.parsear(""))
         assertNull(EvaluadorPresionLlanta.parsear("0"))
         assertNull(EvaluadorPresionLlanta.parsear("301"))
+        // Un decimal, como el backend: 31,95 es 32,0 (OK con mínimo 32) en el teléfono y en el servidor.
+        assertEquals(32.0, EvaluadorPresionLlanta.parsear("31,95")!!, 0.0)
+        assertEquals(300.0, EvaluadorPresionLlanta.parsear("300.04")!!, 0.0)
+        assertNull(EvaluadorPresionLlanta.parsear("0,04"))
         assertNull(EvaluadorPresionLlanta.parsear("abc"))
     }
 

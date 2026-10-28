@@ -66,4 +66,8 @@ data class VehiculoInspectionRequest(
 
     // ── insp_presion_llanta (opcional) ───────────────────────────────────────
     val presionesLlantas: List<com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.LecturaPresionLlantaDto>? = null,
+
+    // UUID de la inspección en el teléfono: si el envío se reintenta (sin señal, respuesta perdida),
+    // el backend devuelve la ya registrada en vez de crear otra.
+    val uuidCliente: String? = null,
 )

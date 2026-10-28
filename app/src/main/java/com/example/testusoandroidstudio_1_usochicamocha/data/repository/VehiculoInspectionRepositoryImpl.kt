@@ -209,6 +209,7 @@ class VehiculoInspectionRepositoryImpl @Inject constructor(
             condicionParaConducir = this.condicionParaConducir,
             idUbicacion = null,
             presionesLlantas = PresionLlantasJson.lecturasParaEnvio(this.presionesLlantasJson),
+            uuidCliente = this.UUID,
         )
     }
 

@@ -73,6 +73,7 @@ class InspeccionMotoRepositoryImpl @Inject constructor(
                 checkEstadoLuces = inspeccion.checkEstadoLuces,
                 idUbicacion = inspeccion.idUbicacion,
                 presionesLlantas = PresionLlantasJson.lecturasParaEnvio(inspeccion.presionesLlantasJson),
+                uuidCliente = inspeccion.uuid,
             )
 
             Log.d(TAG, "📤 [syncOne] Enviando request a v1/moto/inspeccion")

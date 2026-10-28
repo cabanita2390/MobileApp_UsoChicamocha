@@ -47,9 +47,14 @@ object EvaluadorPresionLlanta {
         else -> ResultadoPresionLlanta.OK
     }
 
-    /** Convierte lo digitado ("28", "28,5") a PSI; null si está vacío o no es una presión válida. */
+    /**
+     * Convierte lo digitado ("28", "28,5") a PSI con un decimal, como lo guarda y evalúa el backend:
+     * sin esto 31,95 era BAJA en el teléfono y OK en el servidor (rango 32–38). Null si está vacío o
+     * no es una presión válida (0,04 redondea a 0).
+     */
     fun parsear(texto: String): Double? {
-        val valor = texto.trim().replace(',', '.').toDoubleOrNull() ?: return null
-        return if (valor > 0 && valor <= PSI_MAXIMO) valor else null
+        val valor = texto.trim().replace(',', '.').toBigDecimalOrNull() ?: return null
+        val psi = valor.setScale(1, java.math.RoundingMode.HALF_UP).toDouble()
+        return if (psi > 0 && psi <= PSI_MAXIMO) psi else null
     }
 }

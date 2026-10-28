@@ -42,5 +42,8 @@ data class InspeccionMotoRequest(
     val idUbicacion: Int,
 
     // Presión de llantas (opcional)
-    val presionesLlantas: List<LecturaPresionLlantaDto>? = null
+    val presionesLlantas: List<LecturaPresionLlantaDto>? = null,
+
+    // UUID de la inspección en el teléfono: un reintento no la duplica en el backend.
+    val uuidCliente: String? = null
 )
