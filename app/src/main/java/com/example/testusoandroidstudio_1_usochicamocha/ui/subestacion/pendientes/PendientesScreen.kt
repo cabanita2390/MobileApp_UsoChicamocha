@@ -219,11 +219,9 @@ private fun PendienteRow(citaUi: CitaUi, onClick: () -> Unit) {
                     Spacer(Modifier.width(6.dp))
                     EstadoPill("No programada", SubestacionColors.ChipBg, SubestacionColors.TextQuaternary)
                 }
-                // Disciplina que todavía no se registra desde el móvil: se ve, pero solo se consulta.
-                if (!citaUi.cita.capturaHabilitada) {
-                    Spacer(Modifier.width(6.dp))
-                    EstadoPill(nombreDisciplina(citaUi.cita.disciplina), SubestacionColors.ChipBg, SubestacionColors.TextQuaternary)
-                }
+                // Con dos disciplinas registrables, la píldora va en todas para distinguirlas.
+                Spacer(Modifier.width(6.dp))
+                com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.DisciplinaPill(citaUi.cita.disciplina)
                 Spacer(Modifier.width(8.dp))
                 Text(
                     citaUi.cita.estacionNombre,

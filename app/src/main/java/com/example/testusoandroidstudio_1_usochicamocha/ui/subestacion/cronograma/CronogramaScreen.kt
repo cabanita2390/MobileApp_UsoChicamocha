@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
@@ -15,6 +16,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -111,6 +113,30 @@ fun CronogramaScreen(
                     onSeleccionar = { a, m -> viewModel.irAMes(a, m) }
                 )
             }
+            // Filtro por disciplina: Todas / Civil / Eléctrico, con cuántas citas tiene cada una este mes.
+            Row(
+                Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 6.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                FILTROS_DISCIPLINA.forEach { (codigo, etiqueta) ->
+                    val on = uiState.filtroDisciplina == codigo
+                    Box(
+                        Modifier
+                            .heightIn(min = 38.dp)
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(if (on) SubestacionColors.Purple else SubestacionColors.PurpleSurface)
+                            .clickable { viewModel.onFiltroDisciplina(codigo) }
+                            .padding(horizontal = 14.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            "$etiqueta · ${uiState.conteoDisciplina(codigo)}",
+                            color = if (on) Color.White else SubestacionColors.TextSecondary,
+                            fontWeight = FontWeight.ExtraBold, fontSize = 12.5.sp
+                        )
+                    }
+                }
+            }
 
             when {
                 uiState.isLoading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -122,7 +148,7 @@ fun CronogramaScreen(
                 )
                 uiState.grupos.isEmpty() -> EstadoVacio(
                     mensaje = if (uiState.query.isBlank())
-                        "No hay citas Civil programadas en ${nombreMes(uiState.mes)} ${uiState.anio}."
+                        "No hay citas${uiState.filtroDisciplina?.let { " de " + nombreDisciplina(it) } ?: ""} programadas en ${nombreMes(uiState.mes)} ${uiState.anio}."
                     else "Nada coincide con \"${uiState.query}\"."
                 )
                 else -> LazyColumn(
@@ -239,11 +265,8 @@ private fun CitaRow(citaUi: CitaUi, onClick: () -> Unit) {
         Column {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 EstadoPill(etiquetaDeEstado(citaUi.estado), tono.pillBg, tono.pillFg)
-                // Disciplina que todavía no se registra desde el móvil: se ve, pero solo se consulta.
-                if (!citaUi.cita.capturaHabilitada) {
-                    Spacer(Modifier.width(6.dp))
-                    EstadoPill(nombreDisciplina(citaUi.cita.disciplina), SubestacionColors.ChipBg, SubestacionColors.TextQuaternary)
-                }
+                Spacer(Modifier.width(6.dp))
+                com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.DisciplinaPill(citaUi.cita.disciplina)
                 Spacer(Modifier.width(8.dp))
                 SubestacionType.Hint(metaDeCita(citaUi))
             }
@@ -354,3 +377,6 @@ private fun EstadoVacio(mensaje: String, onReintentar: (() -> Unit)? = null) {
         }
     }
 }
+
+/** Opciones del filtro del Cronograma (null = todas las disciplinas). */
+private val FILTROS_DISCIPLINA: List<Pair<String?, String>> = listOf(null to "Todas", "CIVIL" to "Civil", "ELECTRICO" to "Eléctrico")

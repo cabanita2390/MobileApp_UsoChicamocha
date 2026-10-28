@@ -175,7 +175,7 @@ private fun DetalleContenido(d: EjecucionDetalle, networkStatus: Boolean, onNavi
                 FilaDetalle("Tipo de actividad", L_ACT[d.tipoActividad] ?: d.tipoActividad)
                 FilaDetalle("Tipo de mantenimiento", L_MANT[d.tipoMantenimiento] ?: d.tipoMantenimiento)
                 FilaDetalle(
-                    if (d.actividadId != null) "Actividad civil" else "Descripción (no catalogada)",
+                    if (d.actividadId != null) "Actividad ${nombreDisciplina(d.disciplina).lowercase()}" else "Descripción (no catalogada)",
                     d.actividadNombre ?: d.descripcionLibre ?: "—"
                 )
                 // Mismo vocabulario que la web: Cronograma o Imprevisto.
@@ -183,6 +183,18 @@ private fun DetalleContenido(d: EjecucionDetalle, networkStatus: Boolean, onNavi
                 // "No programado" ya lo dice el Origen; solo se muestra el motivo si es otro.
                 if (d.actividadId == null && !d.motivoNoCatalogado.isNullOrBlank() && d.motivoNoCatalogado != "NO_PROGRAMADO") {
                     FilaDetalle("Motivo", L_MOT[d.motivoNoCatalogado] ?: d.motivoNoCatalogado)
+                }
+
+                if (d.disciplina in com.example.testusoandroidstudio_1_usochicamocha.domain.model.DISCIPLINAS_CON_INTERVENIDO) {
+                    SeccionEncabezado("QUÉ SE INTERVINO")
+                    val conjuntos = d.conjuntos.map { it.nombre } + listOfNotNull(d.conjuntoOtro?.takeIf { it.isNotBlank() }?.let { "Otro: $it" })
+                    val elementos = d.elementos.map { it.nombre } + listOfNotNull(d.elementoOtro?.takeIf { it.isNotBlank() }?.let { "Otro: $it" })
+                    if (conjuntos.isEmpty() && elementos.isEmpty()) {
+                        FilaDetalle("Conjuntos y elementos", "No aplica")
+                    } else {
+                        if (conjuntos.isNotEmpty()) FilaDetalle("Conjuntos", conjuntos.joinToString(", "))
+                        if (elementos.isNotEmpty()) FilaDetalle("Elementos", elementos.joinToString(", "))
+                    }
                 }
 
                 SeccionEncabezado("RESULTADO")

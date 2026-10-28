@@ -40,6 +40,10 @@ data class SubestacionHomeUiState(
     val realizadasCount: Int = 0,
     val estacionesTotal: Int = 0,
     val responsableNombre: String = "",
+    /** Días que le quedan al mes en curso. */
+    val diasRestantes: Int = 0,
+    /** Citas del mes por hacer en cada disciplina que se registra desde el móvil (Civil, Eléctrico). */
+    val porHacerPorDisciplina: List<Pair<String, Int>> = emptyList(),
     /** Órdenes de trabajo asignadas al operario (lista "Prioritarias"). */
     val ordenes: List<com.example.testusoandroidstudio_1_usochicamocha.domain.model.OrdenAsignada> = emptyList(),
     val isLoading: Boolean = true
@@ -99,7 +103,9 @@ class SubestacionHomeViewModel @Inject constructor(
                 obtenerCumplimientoAnioLocalUseCase(hoy.year),
                 obtenerEjecucionesNoProgramadasAnioLocalUseCase(hoy.year)
             ) { programadas, noProgramadas -> programadas to noProgramadas }
-                .collect { (citas, noProgramadas) ->
+                .collect { (todas, noProgramadas) ->
+                // Lo que el operario registra en la app: Electromecánico se consulta pero no suma aquí.
+                val citas = todas.filter { it.capturaHabilitada }
                 val conEstado = citas.map { it to estadoDeCita(it, hoy) }
                 val delMes = conEstado.filter { it.first.anio == hoy.year && it.first.mes == hoy.monthValue }
                 val ejecutadasDelMes = delMes.count { it.second == EstadoCita.EJECUTADA }
@@ -124,7 +130,11 @@ class SubestacionHomeViewModel @Inject constructor(
                         pendientes = pendientesDelMes + vencidas,
                         pendientesDelMes = pendientesDelMes,
                         vencidas = vencidas,
-                        realizadasCount = realizadasCount
+                        realizadasCount = realizadasCount,
+                        diasRestantes = hoy.lengthOfMonth() - hoy.dayOfMonth,
+                        porHacerPorDisciplina = com.example.testusoandroidstudio_1_usochicamocha.domain.model.DISCIPLINAS_CON_CAPTURA
+                            .sortedBy { d -> if (d == "CIVIL") 0 else 1 }
+                            .map { d -> d to delMes.count { c -> c.first.disciplina == d && c.second == EstadoCita.PENDIENTE } }
                     )
                 }
             }

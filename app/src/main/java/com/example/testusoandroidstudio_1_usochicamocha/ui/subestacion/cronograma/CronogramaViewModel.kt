@@ -34,19 +34,28 @@ data class CronogramaUiState(
     val anio: Int = LocalDate.now().year,
     val mes: Int = LocalDate.now().monthValue,
     val query: String = "",
+    /** Disciplina filtrada (CIVIL, ELECTRICO); null = todas. */
+    val filtroDisciplina: String? = null,
+    /** Citas del mes por disciplina, sin filtrar (para los conteos del filtro). */
+    val citasPorDisciplina: Map<String, Int> = emptyMap(),
     val grupos: List<EstacionGrupo> = emptyList(),
     val isLoading: Boolean = true,
     val error: String? = null
-)
+) {
+    fun conteoDisciplina(codigo: String?): Int =
+        if (codigo == null) citasPorDisciplina.values.sum() else citasPorDisciplina[codigo] ?: 0
+}
 
 @HiltViewModel
 class CronogramaViewModel @Inject constructor(
     private val obtenerCronogramaUseCase: ObtenerCronogramaUseCase,
     private val obtenerEjecucionPorProgramacionUseCase: ObtenerEjecucionPorProgramacionUseCase,
-    obtenerEstacionesCacheUseCase: ObtenerEstacionesCacheUseCase
+    obtenerEstacionesCacheUseCase: ObtenerEstacionesCacheUseCase,
+    savedStateHandle: androidx.lifecycle.SavedStateHandle
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(CronogramaUiState())
+    // Desde el Inicio ("Civil · 4 por hacer") el Cronograma abre ya filtrado por esa disciplina.
+    private val _uiState = MutableStateFlow(CronogramaUiState(filtroDisciplina = savedStateHandle.get<String>("disciplina")))
     val uiState = _uiState.asStateFlow()
 
     private var citasCrudas: List<CitaProgramada> = emptyList()
@@ -65,7 +74,7 @@ class CronogramaViewModel @Inject constructor(
         viewModelScope.launch {
             obtenerEstacionesCacheUseCase().collect { estaciones ->
                 frecuenciaPorEstacion = estaciones.associate { it.id to it.frecuenciaBase }
-                _uiState.update { it.copy(grupos = agrupar(citasCrudas, it.query)) }
+                _uiState.update { it.copy(grupos = agrupar(citasCrudas, it.query, it.filtroDisciplina)) }
             }
         }
         cargar()
@@ -84,7 +93,13 @@ class CronogramaViewModel @Inject constructor(
         localJob = viewModelScope.launch {
             obtenerCronogramaUseCase.local(s.anio, s.mes).collect { citas ->
                 citasCrudas = citas
-                _uiState.update { it.copy(isLoading = false, grupos = agrupar(citas, it.query)) }
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        grupos = agrupar(citas, it.query, it.filtroDisciplina),
+                        citasPorDisciplina = citas.groupingBy { c -> c.disciplina }.eachCount()
+                    )
+                }
             }
         }
 
@@ -124,7 +139,11 @@ class CronogramaViewModel @Inject constructor(
     fun irAMes(anio: Int, mes: Int) = onMesCambiado(anio, mes)
 
     fun onQueryChange(query: String) {
-        _uiState.update { it.copy(query = query, grupos = agrupar(citasCrudas, query)) }
+        _uiState.update { it.copy(query = query, grupos = agrupar(citasCrudas, query, it.filtroDisciplina)) }
+    }
+
+    fun onFiltroDisciplina(disciplina: String?) {
+        _uiState.update { it.copy(filtroDisciplina = disciplina, grupos = agrupar(citasCrudas, it.query, disciplina)) }
     }
 
     /** Resuelve el ejecucionId de una cita ya EJECUTADA para poder abrir su Detalle. */
@@ -138,10 +157,11 @@ class CronogramaViewModel @Inject constructor(
         }
     }
 
-    private fun agrupar(citas: List<CitaProgramada>, query: String): List<EstacionGrupo> {
+    private fun agrupar(citas: List<CitaProgramada>, query: String, disciplina: String?): List<EstacionGrupo> {
         val hoy = LocalDate.now()
         val q = norm(query)
-        val filtradas = if (q.isBlank()) citas else citas.filter {
+        val deLaDisciplina = if (disciplina == null) citas else citas.filter { it.disciplina == disciplina }
+        val filtradas = if (q.isBlank()) deLaDisciplina else deLaDisciplina.filter {
             norm(it.estacionNombre).contains(q) || norm(it.actividadNombre).contains(q)
         }
         return filtradas.groupBy { it.estacionId }

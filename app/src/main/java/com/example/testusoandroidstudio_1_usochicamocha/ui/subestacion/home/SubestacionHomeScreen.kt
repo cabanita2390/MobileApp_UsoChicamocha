@@ -10,6 +10,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.AddCircle
+import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.CloudSync
@@ -64,7 +65,8 @@ fun SubestacionHomeScreen(
     onNavigateToPendientes: () -> Unit,
     onNavigateToRealizadas: () -> Unit = {},
     onNavigateToCola: () -> Unit,
-    onNavigateToOrden: (Long) -> Unit = {}
+    onNavigateToOrden: (Long) -> Unit = {},
+    onNavigateToCronogramaDisciplina: (String) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
@@ -103,13 +105,14 @@ fun SubestacionHomeScreen(
             verticalArrangement = Arrangement.spacedBy(13.dp)
         ) {
 
-            // Lo urgente primero: las correcciones que el supervisor asignó.
-            PrioritariasSection(ordenes = uiState.ordenes, onAbrir = { onNavigateToOrden(it.id) })
-
             SubestacionHeroCard(
                 uiState = uiState,
-                onVerPendientes = onNavigateToPendientes
+                onVerPendientes = onNavigateToPendientes,
+                onVerCronograma = onNavigateToCronograma,
+                onVerDisciplina = onNavigateToCronogramaDisciplina
             )
+            // Las correcciones asignadas van debajo del avance del mes.
+            PrioritariasSection(ordenes = uiState.ordenes, onAbrir = { onNavigateToOrden(it.id) })
 
             SubestacionNavCard(
                 title = "Cronograma del mes",
@@ -153,14 +156,16 @@ fun SubestacionHomeScreen(
 }
 
 /**
- * Tarjeta "hero" del Home (mock líneas ~36-55): gradiente morado, número grande de
- * citas ejecutadas del mes, barra de progreso, y 2 mini-tarjetas de
- * pendientes/vencidas que llevan a Pendientes.
+ * Tarjeta "hero" del Home pensada para el operario de campo: cuántas citas le faltan este mes y
+ * cuántos días quedan, el avance en una barra simple, lo que falta en cada disciplina (abre el
+ * Cronograma filtrado) y, si hay, lo que quedó sin hacer de meses cerrados (lo urgente).
  */
 @Composable
 private fun SubestacionHeroCard(
     uiState: SubestacionHomeUiState,
-    onVerPendientes: () -> Unit
+    onVerPendientes: () -> Unit,
+    onVerCronograma: () -> Unit,
+    onVerDisciplina: (String) -> Unit
 ) {
     Box(
         Modifier
@@ -172,78 +177,118 @@ private fun SubestacionHeroCard(
         if (uiState.isLoading) {
             CircularProgressIndicator(color = Color.White, modifier = Modifier.size(22.dp))
         } else {
-            Column {
+            Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
                 Text(
                     "${uiState.mesLabel.uppercase()} ${uiState.anio}",
-                    color = Color.White.copy(alpha = 0.7f),
+                    color = Color.White.copy(alpha = 0.75f),
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 11.sp,
                     letterSpacing = 1.4.sp
                 )
-                Row(verticalAlignment = Alignment.Bottom, modifier = Modifier.padding(top = 10.dp)) {
-                    SubestacionType.HeroNumber("${uiState.ejecutadasDelMes}")
+                Row(
+                    Modifier.fillMaxWidth().clickable(onClick = onVerCronograma),
+                    verticalAlignment = Alignment.Bottom
+                ) {
+                    SubestacionType.HeroNumber("${uiState.pendientesDelMes}")
                     Spacer(Modifier.width(10.dp))
                     Text(
-                        "de ${uiState.programadasDelMes} citas\ndel mes ejecutadas",
-                        color = Color.White.copy(alpha = 0.85f),
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 13.sp,
-                        lineHeight = 15.sp,
-                        modifier = Modifier.padding(bottom = 5.dp)
+                        "citas por hacer\neste mes",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp,
+                        lineHeight = 17.sp,
+                        modifier = Modifier.weight(1f).padding(bottom = 4.dp)
                     )
-                }
-                Box(
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(top = 14.dp)
-                        .height(9.dp)
-                        .clip(RoundedCornerShape(5.dp))
-                        .background(Color.White.copy(alpha = 0.22f))
-                ) {
                     Box(
                         Modifier
-                            .fillMaxWidth(uiState.porcentaje / 100f)
+                            .padding(bottom = 4.dp)
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(Color.White.copy(alpha = 0.16f))
+                            .padding(horizontal = 10.dp, vertical = 6.dp)
+                    ) {
+                        Text(
+                            when (uiState.diasRestantes) {
+                                0 -> "Último día"
+                                1 -> "Queda 1 día"
+                                else -> "Quedan ${uiState.diasRestantes} días"
+                            },
+                            color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 12.sp
+                        )
+                    }
+                }
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
                             .height(9.dp)
                             .clip(RoundedCornerShape(5.dp))
-                            .background(Color(0xFF7EE2A8))
+                            .background(Color.White.copy(alpha = 0.22f))
+                    ) {
+                        Box(
+                            Modifier
+                                .fillMaxWidth(uiState.porcentaje / 100f)
+                                .height(9.dp)
+                                .clip(RoundedCornerShape(5.dp))
+                                .background(Color(0xFF7EE2A8))
+                        )
+                    }
+                    Text(
+                        "${uiState.ejecutadasDelMes} de ${uiState.programadasDelMes} ya ejecutadas",
+                        color = Color.White.copy(alpha = 0.8f), fontWeight = FontWeight.SemiBold, fontSize = 11.sp
                     )
                 }
-                Row(Modifier.fillMaxWidth().padding(top = 14.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    HeroMiniStat(
-                        valor = uiState.pendientes,
-                        label = "pendientes por\nrealizar · ver",
-                        onClick = onVerPendientes,
-                        modifier = Modifier.weight(1f)
-                    )
-                    HeroMiniStat(
-                        valor = uiState.vencidas,
-                        label = "de meses\ncerrados · ver",
-                        onClick = onVerPendientes,
-                        modifier = Modifier.weight(1f)
-                    )
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    uiState.porHacerPorDisciplina.forEach { (disciplina, porHacer) ->
+                        Column(
+                            Modifier
+                                .weight(1f)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(Color.White.copy(alpha = 0.15f))
+                                .clickable { onVerDisciplina(disciplina) }
+                                .padding(horizontal = 13.dp, vertical = 11.dp)
+                        ) {
+                            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                                if (disciplina == "ELECTRICO") {
+                                    Icon(
+                                        androidx.compose.material.icons.Icons.Filled.Bolt, contentDescription = null,
+                                        tint = Color.White, modifier = Modifier.size(14.dp)
+                                    )
+                                    Spacer(Modifier.width(4.dp))
+                                }
+                                Text(
+                                    com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.nombreDisciplina(disciplina),
+                                    color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 12.sp,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Text("›", color = Color.White.copy(alpha = 0.8f), fontWeight = FontWeight.ExtraBold, fontSize = 13.sp)
+                            }
+                            Text("$porHacer", color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 18.sp, modifier = Modifier.padding(top = 4.dp))
+                            Text("por hacer", color = Color.White.copy(alpha = 0.85f), fontWeight = FontWeight.SemiBold, fontSize = 10.5.sp)
+                        }
+                    }
+                }
+                if (uiState.vencidas > 0) {
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color.White)
+                            .clickable(onClick = onVerPendientes)
+                            .padding(horizontal = 13.dp, vertical = 11.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(Modifier.size(9.dp).clip(RoundedCornerShape(5.dp)).background(SubestacionColors.Red))
+                        Spacer(Modifier.width(10.dp))
+                        Text(
+                            "${uiState.vencidas} sin hacer de meses cerrados",
+                            color = SubestacionColors.Red, fontWeight = FontWeight.ExtraBold, fontSize = 12.5.sp,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Text("Ver ›", color = SubestacionColors.Red, fontWeight = FontWeight.ExtraBold, fontSize = 12.5.sp)
+                    }
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun HeroMiniStat(valor: Int, label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    Column(
-        modifier
-            .clip(RoundedCornerShape(12.dp))
-            .background(Color.White.copy(alpha = 0.15f))
-            .clickable(onClick = onClick)
-            .padding(horizontal = 13.dp, vertical = 11.dp)
-    ) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("$valor", color = Color.White, fontWeight = FontWeight.ExtraBold, fontSize = 18.sp)
-            Text("›", color = Color.White.copy(alpha = 0.8f), fontWeight = FontWeight.ExtraBold, fontSize = 13.sp)
-        }
-        Text(
-            label, color = Color.White.copy(alpha = 0.8f), fontWeight = FontWeight.SemiBold,
-            fontSize = 10.5.sp, lineHeight = 13.sp, modifier = Modifier.padding(top = 3.dp)
-        )
     }
 }
 

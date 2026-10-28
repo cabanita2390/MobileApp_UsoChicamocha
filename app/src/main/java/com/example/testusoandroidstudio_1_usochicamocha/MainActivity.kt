@@ -272,6 +272,9 @@ class MainActivity : ComponentActivity() {
                             onNavigateToCronograma = {
                                 navController.navigate("subestaciones_cronograma")
                             },
+                            onNavigateToCronogramaDisciplina = { disciplina ->
+                                navController.navigate("subestaciones_cronograma?disciplina=$disciplina")
+                            },
                             onNavigateToPendientes = {
                                 navController.navigate("subestaciones_pendientes")
                             },
@@ -359,7 +362,16 @@ class MainActivity : ComponentActivity() {
                             }
                         )
                     }
-                    composable("subestaciones_cronograma") {
+                    composable(
+                        route = "subestaciones_cronograma?disciplina={disciplina}",
+                        arguments = listOf(
+                            androidx.navigation.navArgument("disciplina") {
+                                type = androidx.navigation.NavType.StringType
+                                nullable = true
+                                defaultValue = null
+                            }
+                        )
+                    ) {
                         CronogramaScreen(
                             networkStatus = networkStatus,
                             onNavigateBack = {
