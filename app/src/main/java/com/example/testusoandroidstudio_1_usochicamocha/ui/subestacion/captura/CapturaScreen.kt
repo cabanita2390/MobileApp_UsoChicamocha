@@ -1187,7 +1187,9 @@ private fun PasoEvidencia(
                 // la estación/actividad/fecha ya se muestran arriba en el resumen.
                 val origen = when {
                     uiState.esEdicion -> "Corrección de un registro ya sincronizado"
-                    // Mismo vocabulario que la web: Cronograma o Imprevisto (lo decide la cita, no el técnico).
+                    // Mismo vocabulario que la web: Cronograma, Orden de trabajo o Imprevisto (lo decide la
+                    // cita o la orden, no el técnico). La visita de una orden no es un imprevisto.
+                    uiState.ordenMode -> "Orden de trabajo${uiState.orden?.consecutivo?.let { " $it" } ?: ""} · corrige un hallazgo, no suma al avance"
                     uiState.programacionId != null -> "Cronograma · suma al avance"
                     else -> "Imprevisto · sin cita del cronograma, no suma al avance"
                 }
