@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
+import com.example.testusoandroidstudio_1_usochicamocha.BuildConfig
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -29,9 +30,7 @@ class NetworkMonitor(context: Context) {
         }
 
         override fun onCapabilitiesChanged(network: Network, networkCapabilities: NetworkCapabilities) {
-            val isConnected = networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
-                    networkCapabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
-            _networkStatus.value = isConnected
+            _networkStatus.value = tieneInternet(networkCapabilities)
         }
     }
 
@@ -46,7 +45,13 @@ class NetworkMonitor(context: Context) {
     private fun hasInternetConnection(): Boolean {
         val network = connectivityManager.activeNetwork ?: return false
         val capabilities = connectivityManager.getNetworkCapabilities(network) ?: return false
-        return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
-                capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+        return tieneInternet(capabilities)
     }
+
+    // En debug (emulador) no se exige VALIDATED: el emulador suele fallar la verificación de
+    // Android aunque sí tenga internet, y la app quedaba "sin conexión". En release se exige,
+    // para no creer que hay conexión detrás de un portal cautivo.
+    private fun tieneInternet(capabilities: NetworkCapabilities): Boolean =
+        capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+            (BuildConfig.DEBUG || capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED))
 }
