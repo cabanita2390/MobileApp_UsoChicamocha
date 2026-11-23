@@ -101,11 +101,13 @@ class SubestacionHomeViewModel @Inject constructor(
         localJob = viewModelScope.launch {
             combine(
                 obtenerCumplimientoAnioLocalUseCase(hoy.year),
-                obtenerEjecucionesNoProgramadasAnioLocalUseCase(hoy.year)
-            ) { programadas, noProgramadas -> programadas to noProgramadas }
-                .collect { (todas, noProgramadas) ->
-                // Lo que el operario registra en la app: Electromecánico se consulta pero no suma aquí.
-                val citas = todas.filter { it.capturaHabilitada }
+                obtenerEjecucionesNoProgramadasAnioLocalUseCase(hoy.year),
+                com.example.testusoandroidstudio_1_usochicamocha.domain.model.DisciplinasVigentes.flujo
+            ) { programadas, noProgramadas, disciplinas -> Triple(programadas, noProgramadas, disciplinas) }
+                .collect { (todas, noProgramadas, disciplinas) ->
+                // Lo que el operario registra en la app: una disciplina sin captura móvil se consulta pero no suma aquí.
+                val conCaptura = disciplinas.filter { it.capturaMovil }.map { it.codigo }
+                val citas = todas.filter { it.disciplina in conCaptura }
                 val conEstado = citas.map { it to estadoDeCita(it, hoy) }
                 val delMes = conEstado.filter { it.first.anio == hoy.year && it.first.mes == hoy.monthValue }
                 val ejecutadasDelMes = delMes.count { it.second == EstadoCita.EJECUTADA }
@@ -132,8 +134,8 @@ class SubestacionHomeViewModel @Inject constructor(
                         vencidas = vencidas,
                         realizadasCount = realizadasCount,
                         diasRestantes = hoy.lengthOfMonth() - hoy.dayOfMonth,
-                        porHacerPorDisciplina = com.example.testusoandroidstudio_1_usochicamocha.domain.model.DISCIPLINAS_CON_CAPTURA
-                            .sortedBy { d -> if (d == "CIVIL") 0 else 1 }
+                        // En el orden del backend.
+                        porHacerPorDisciplina = conCaptura
                             .map { d -> d to delMes.count { c -> c.first.disciplina == d && c.second == EstadoCita.PENDIENTE } }
                     )
                 }

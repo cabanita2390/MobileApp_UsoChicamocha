@@ -10,8 +10,10 @@ import com.example.testusoandroidstudio_1_usochicamocha.domain.model.CitaProgram
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.EstacionCatalogo
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.Ejecucion
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.EjecucionEdicion
-import com.example.testusoandroidstudio_1_usochicamocha.domain.model.DISCIPLINAS_CON_CAPTURA
-import com.example.testusoandroidstudio_1_usochicamocha.domain.model.DISCIPLINAS_CON_INTERVENIDO
+import com.example.testusoandroidstudio_1_usochicamocha.domain.model.Disciplina
+import com.example.testusoandroidstudio_1_usochicamocha.domain.model.DisciplinasVigentes
+import com.example.testusoandroidstudio_1_usochicamocha.domain.model.capturaMovil
+import com.example.testusoandroidstudio_1_usochicamocha.domain.model.usaIntervenido
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.ItemIntervenido
 import com.example.testusoandroidstudio_1_usochicamocha.domain.repository.claveObsFrecuentes
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.ObtenerItemsIntervenidosUseCase
@@ -89,6 +91,8 @@ data class CapturaUiState(
     // aparece el paso «¿Qué se intervino?». Una disciplina sin captura móvil (Electromecánico) no se
     // deja elegir: muestra el aviso de "en desarrollo" (ver `onDisciplinaSeleccionada`).
     val disciplinaSeleccionada: String = "CIVIL",
+    /** Disciplinas y sus reglas, como las sirve el backend (ver DisciplinasVigentes). */
+    val disciplinas: List<Disciplina> = emptyList(),
     val mostrarAlertaDisciplinaEnDesarrollo: Boolean = false,
     /** Qué disciplina no disponible tocó el técnico — para mostrarla por nombre en el diálogo. */
     val disciplinaSeleccionadaPendiente: String? = null,
@@ -160,8 +164,8 @@ data class CapturaUiState(
     /** La foto es obligatoria si hay hallazgo, y siempre en una orden de trabajo (es la prueba del arreglo). */
     val fotoObligatoria: Boolean get() = !esEdicion && (ordenMode || resultado != "CONFORME")
 
-    /** La disciplina tiene el paso «¿Qué se intervino?» (hoy solo Eléctrico). */
-    val conIntervenido: Boolean get() = disciplinaSeleccionada in DISCIPLINAS_CON_INTERVENIDO
+    /** La disciplina tiene el paso «¿Qué se intervino?» (lo dice el backend: conjuntos o elementos). */
+    val conIntervenido: Boolean get() = disciplinas.usaIntervenido(disciplinaSeleccionada)
 
     /**
      * Pasos del wizard, por clave. Cita u orden: Cita → Resultado → Evidencia (3). Registro libre:
@@ -324,6 +328,9 @@ class CapturaViewModel @Inject constructor(
     private var citasPendientesCache: List<Pair<CitaProgramada, EstadoCita>>? = null
 
     init {
+        viewModelScope.launch {
+            DisciplinasVigentes.flujo.collect { lista -> _uiState.update { it.copy(disciplinas = lista) } }
+        }
         viewModelScope.launch {
             _uiState.collect { s ->
                 when {
@@ -652,7 +659,7 @@ class CapturaViewModel @Inject constructor(
      * disciplina sin captura móvil (Electromecánico) no se deja elegir: solo muestra el aviso.
      */
     fun onDisciplinaSeleccionada(disciplina: String) {
-        if (disciplina !in DISCIPLINAS_CON_CAPTURA) {
+        if (!DisciplinasVigentes.actual.capturaMovil(disciplina)) {
             _uiState.update { it.copy(mostrarAlertaDisciplinaEnDesarrollo = true, disciplinaSeleccionadaPendiente = disciplina) }
             return
         }

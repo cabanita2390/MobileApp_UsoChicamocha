@@ -76,9 +76,10 @@ import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.Ejecuc
         com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.SesionActualEntity::class,
         com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.OrdenAsignadaCacheEntity::class,
         com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.LlantaConfigCacheEntity::class,
-        com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.ItemIntervenidoCacheEntity::class
+        com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.ItemIntervenidoCacheEntity::class,
+        com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.DisciplinaCacheEntity::class
     ],
-    version = 56,
+    version = 57,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -929,6 +930,29 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Disciplinas y sus características (lo que el backend sirve en GET /substation/disciplinas).
+         * Se siembra con lo que traía el backend al publicar esta versión para que un teléfono que se
+         * actualiza sin señal siga pudiendo registrar; la primera sincronización del catálogo lo
+         * reemplaza con lo del backend.
+         */
+        val MIGRATION_56_57 = object : Migration(56, 57) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `mant_disciplina_cache` (`codigo` TEXT NOT NULL, `nombre` TEXT NOT NULL, " +
+                        "`sigla` TEXT NOT NULL, `orden` INTEGER NOT NULL, `capturaMovil` INTEGER NOT NULL, " +
+                        "`conjuntos` TEXT NOT NULL, `usaElementos` INTEGER NOT NULL, `usaEquipos` INTEGER NOT NULL, " +
+                        "`usaControles` INTEGER NOT NULL, PRIMARY KEY(`codigo`))"
+                )
+                database.execSQL(
+                    "INSERT OR IGNORE INTO `mant_disciplina_cache` VALUES " +
+                        "('CIVIL', 'Civil', 'C', 1, 1, 'NO', 0, 0, 0), " +
+                        "('ELECTRICO', 'Eléctrico', 'E', 2, 1, 'OPCIONAL', 1, 0, 0), " +
+                        "('ELECTROMECANICO', 'Electromecánico', 'M', 3, 0, 'OBLIGATORIO', 1, 0, 0)"
+                )
+            }
+        }
+
         /** Foto pendiente cuyo archivo ya no existe: deja de reintentarse y la Cola lo avisa. */
         val MIGRATION_48_49 = object : Migration(48, 49) {
             override fun migrate(database: SupportSQLiteDatabase) {
@@ -963,4 +987,5 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun ordenAsignadaCacheDao(): com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.OrdenAsignadaCacheDao
     abstract fun llantaConfigCacheDao(): com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.LlantaConfigCacheDao
     abstract fun itemIntervenidoCacheDao(): com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.ItemIntervenidoCacheDao
+    abstract fun disciplinaCacheDao(): com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.DisciplinaCacheDao
 }

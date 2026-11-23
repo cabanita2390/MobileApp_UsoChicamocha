@@ -40,6 +40,7 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
@@ -60,8 +61,19 @@ class SubestacionRepositoryImpl @Inject constructor(
     private val ejecucionNoProgramadaCacheDao: EjecucionNoProgramadaCacheDao,
     private val ordenAsignadaCacheDao: com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.OrdenAsignadaCacheDao,
     private val dataStore: androidx.datastore.core.DataStore<androidx.datastore.preferences.core.Preferences>,
-    private val itemIntervenidoCacheDao: com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.ItemIntervenidoCacheDao
+    private val itemIntervenidoCacheDao: com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.ItemIntervenidoCacheDao,
+    private val disciplinaCacheDao: com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.DisciplinaCacheDao
 ) : SubestacionRepository {
+
+    init {
+        // Las disciplinas de Room quedan en memoria para las pantallas (ver DisciplinasVigentes) y se
+        // vuelven a publicar cada vez que una sincronización las cambia.
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO).launch {
+            disciplinaCacheDao.getAllFlow().collect { filas ->
+                com.example.testusoandroidstudio_1_usochicamocha.domain.model.DisciplinasVigentes.actualizar(filas.map { it.toDomain() })
+            }
+        }
+    }
 
     companion object {
         private const val TAG = "SubestacionRepositoryImpl"
@@ -235,7 +247,7 @@ class SubestacionRepositoryImpl @Inject constructor(
     private suspend fun sincronizarObservacionesFrecuentes() {
         try {
             val mapa = mutableMapOf<String, List<String>>()
-            for (disciplina in com.example.testusoandroidstudio_1_usochicamocha.domain.model.DISCIPLINAS_CON_CAPTURA) {
+            for (disciplina in com.example.testusoandroidstudio_1_usochicamocha.domain.model.DisciplinasVigentes.actual.filter { it.capturaMovil }.map { it.codigo }) {
                 val r = apiService.getObservacionesFrecuentes(disciplina)
                 val body = r.body()
                 if (!r.isSuccessful || body == null) {
@@ -263,6 +275,26 @@ class SubestacionRepositoryImpl @Inject constructor(
 
     override fun getItemsIntervenidosCache(): Flow<List<com.example.testusoandroidstudio_1_usochicamocha.domain.model.ItemIntervenido>> =
         itemIntervenidoCacheDao.getAllFlow().map { lista -> lista.map { it.toDomain() } }
+
+    /**
+     * Disciplinas y lo que hace cada una. Si falla (sin red, backend anterior a V53) se conservan las
+     * últimas guardadas: sin ellas la app no sabría qué disciplinas registrar.
+     */
+    private suspend fun sincronizarDisciplinas() {
+        try {
+            val r = apiService.getDisciplinasSubestacion()
+            val body = r.body()
+            if (r.isSuccessful && body != null) {
+                val filas = body.mapNotNull { it.toEntity() }
+                if (filas.isNotEmpty()) disciplinaCacheDao.clearAndInsert(filas)
+            } else {
+                Log.w(TAG, "Disciplinas no disponibles: ${r.code()}")
+            }
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            Log.w(TAG, "No se pudieron actualizar las disciplinas", e)
+        }
+    }
 
     /**
      * Conjuntos y elementos de «¿Qué se intervino?». No es crítico: si falla (sin red, backend sin
@@ -307,7 +339,14 @@ class SubestacionRepositoryImpl @Inject constructor(
         val response = apiService.getOrdenesAsignadas()
         if (usuarioId != null && response.isSuccessful && response.body() != null) {
             val enCola = ejecucionDao.ordenesEnCola().toSet()
-            ordenAsignadaCacheDao.reemplazar(usuarioId, response.body()!!.map { it.toCache(usuarioId) }, enCola)
+            // Una orden sin disciplina es un error del servidor: se descarta (con aviso) en vez de suponerla Civil.
+            val ordenes = response.body()!!.mapNotNull { dto ->
+                if (dto.orden.disciplina.isNullOrBlank()) {
+                    Log.w(TAG, "Orden ${dto.orden.id} sin disciplina: se descarta")
+                    null
+                } else dto.toCache(usuarioId)
+            }
+            ordenAsignadaCacheDao.reemplazar(usuarioId, ordenes, enCola)
             Result.success(Unit)
         } else {
             Result.failure(Exception("No se pudieron traer las órdenes de trabajo: ${response.code()}"))
@@ -336,11 +375,12 @@ class SubestacionRepositoryImpl @Inject constructor(
             motivoDevolucion = motivoDevolucion,
             fotosHallazgo = evidenciasHallazgo.orEmpty().joinToString("\n") { it.rutaArchivo },
             paraCualquiera = orden.paraCualquiera == true,
-            disciplina = orden.disciplina ?: "CIVIL"
+            disciplina = orden.disciplina!!
         )
 
     override suspend fun sincronizarCatalogos(): Result<Unit> {
         return try {
+            sincronizarDisciplinas()
             val estacionesResponse = apiService.getEstacionesSubestacion()
             // Todas las disciplinas con captura móvil: el wizard filtra por la que elija el técnico.
             val actividadesResponse = apiService.getActividadesSubestacion()
@@ -352,7 +392,7 @@ class SubestacionRepositoryImpl @Inject constructor(
             }
 
             if (actividadesResponse.isSuccessful && actividadesResponse.body() != null) {
-                actividadCacheDao.clearAndInsert(actividadesResponse.body()!!.map { it.toEntity() })
+                actividadCacheDao.clearAndInsert(actividadesResponse.body()!!.mapNotNull { it.toEntity() })
             } else {
                 return Result.failure(Exception("Error al obtener actividades: ${actividadesResponse.code()}"))
             }

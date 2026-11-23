@@ -19,6 +19,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.testusoandroidstudio_1_usochicamocha.domain.model.capturaMovil
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.ConnectionStatusTopBar
@@ -48,6 +49,8 @@ fun PendientesScreen(
     onNavigateToCola: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    // Disciplinas del backend: deciden qué citas se registran (se redibuja si cambian).
+    val disciplinas by com.example.testusoandroidstudio_1_usochicamocha.domain.model.DisciplinasVigentes.flujo.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
@@ -159,9 +162,10 @@ fun PendientesScreen(
                             }
                         }
                         items(grupo.citas, key = { "cita_${it.cita.programacionId}" }) { citaUi ->
-                            PendienteRow(citaUi) {
+                            val capturaHabilitada = disciplinas.capturaMovil(citaUi.cita.disciplina)
+                            PendienteRow(citaUi, capturaHabilitada) {
                                 when (citaUi.estado) {
-                                    EstadoCita.PENDIENTE, EstadoCita.VENCIDA -> if (!citaUi.cita.capturaHabilitada) {
+                                    EstadoCita.PENDIENTE, EstadoCita.VENCIDA -> if (!capturaHabilitada) {
                                         scope.launch { snackbarHostState.showSnackbar(mensajeCapturaEnDesarrollo(citaUi.cita.disciplina)) }
                                     } else onNavigateToCaptura(
                                         citaUi.cita.programacionId,
@@ -202,7 +206,7 @@ fun PendientesScreen(
 }
 
 @Composable
-private fun PendienteRow(citaUi: CitaUi, onClick: () -> Unit) {
+private fun PendienteRow(citaUi: CitaUi, capturaHabilitada: Boolean, onClick: () -> Unit) {
     val tono = tonoDeEstado(citaUi.estado)
     AccentListCard(
         accentColor = tono.accent,
@@ -248,7 +252,7 @@ private fun PendienteRow(citaUi: CitaUi, onClick: () -> Unit) {
                     else -> "${citaUi.cita.mes}/${citaUi.cita.anio}"
                 }
                 SubestacionType.CardMeta(meta)
-                val soloConsulta = !citaUi.cita.capturaHabilitada && citaUi.estado != EstadoCita.EJECUTADA
+                val soloConsulta = !capturaHabilitada && citaUi.estado != EstadoCita.EJECUTADA
                 val cta = when {
                     citaUi.estado == EstadoCita.EJECUTADA -> "Ver detalle ›"
                     soloConsulta -> "Solo consulta"

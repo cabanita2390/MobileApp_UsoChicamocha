@@ -46,13 +46,9 @@ fun tonoDeEstado(estado: EstadoCita): SubestacionTono = when (estado) {
 
 fun colorDeEstado(estado: EstadoCita): Color = tonoDeEstado(estado).accent
 
-/** Nombre en español de una disciplina (CIVIL → Civil). */
-fun nombreDisciplina(codigo: String): String = when (codigo) {
-    "CIVIL" -> "Civil"
-    "ELECTRICO" -> "Eléctrico"
-    "ELECTROMECANICO" -> "Electromecánico"
-    else -> codigo
-}
+/** Nombre visible de una disciplina, como lo sirve el backend (CIVIL → Civil); el código si no la conoce. */
+fun nombreDisciplina(codigo: String): String =
+    com.example.testusoandroidstudio_1_usochicamocha.domain.model.DisciplinasVigentes.actual.firstOrNull { it.codigo == codigo }?.nombre ?: codigo
 
 /** Cita de una disciplina que todavía no se registra desde el móvil: solo se consulta. */
 fun mensajeCapturaEnDesarrollo(disciplina: String): String =

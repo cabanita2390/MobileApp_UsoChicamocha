@@ -61,12 +61,6 @@ import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.theme.das
 import java.io.File
 import java.util.Calendar
 
-/** Las 3 disciplinas del selector de Contexto — solo CIVIL está habilitada en el MVP. */
-private val DISCIPLINAS = listOf(
-    "CIVIL" to "Civil",
-    "ELECTRICO" to "Eléctrico",
-    "ELECTROMECANICO" to "Electromecánico"
-)
 
 /** Responsable del registro: al editar es quien lo registró (no cambia); al registrar, el usuario en sesión. */
 private fun responsableDelRegistro(uiState: CapturaUiState): String =
@@ -407,7 +401,12 @@ private fun PeriodoDropdown(
  * flecha a la derecha) que el resto de los campos del paso Contexto (Estación, Fecha),
  * en vez de la fila de chips que no coincidía con el mockup. */
 @Composable
-private fun DisciplinaField(valorSeleccionado: String, onSeleccionar: (String) -> Unit) {
+private fun DisciplinaField(
+    valorSeleccionado: String,
+    /** Las del backend, en su orden; las que no tienen captura muestran el aviso al tocarlas. */
+    disciplinas: List<com.example.testusoandroidstudio_1_usochicamocha.domain.model.Disciplina>,
+    onSeleccionar: (String) -> Unit
+) {
     var expanded by remember { mutableStateOf(false) }
     Box {
         Row(
@@ -431,8 +430,8 @@ private fun DisciplinaField(valorSeleccionado: String, onSeleccionar: (String) -
             )
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            DISCIPLINAS.forEach { (valor, label) ->
-                DropdownMenuItem(text = { Text(label) }, onClick = { onSeleccionar(valor); expanded = false })
+            disciplinas.forEach { d ->
+                DropdownMenuItem(text = { Text(d.nombre) }, onClick = { onSeleccionar(d.codigo); expanded = false })
             }
         }
     }
@@ -532,6 +531,7 @@ private fun PasoContexto(uiState: CapturaUiState, viewModel: CapturaViewModel) {
             SubestacionType.SectionLabel("Disciplina", modifier = Modifier.padding(bottom = 7.dp))
             DisciplinaField(
                 valorSeleccionado = uiState.disciplinaSeleccionada,
+                disciplinas = uiState.disciplinas,
                 onSeleccionar = { viewModel.onDisciplinaSeleccionada(it) }
             )
             SubestacionType.Hint(

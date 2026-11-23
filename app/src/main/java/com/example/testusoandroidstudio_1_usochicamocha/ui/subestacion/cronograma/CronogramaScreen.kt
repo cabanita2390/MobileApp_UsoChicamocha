@@ -23,6 +23,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.example.testusoandroidstudio_1_usochicamocha.domain.model.capturaMovil
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.ConnectionStatusTopBar
@@ -59,6 +60,8 @@ fun CronogramaScreen(
     onNavigateToCola: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    // Disciplinas del backend: deciden el filtro y qué citas se registran (se redibuja si cambian).
+    val disciplinas by com.example.testusoandroidstudio_1_usochicamocha.domain.model.DisciplinasVigentes.flujo.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
@@ -113,12 +116,13 @@ fun CronogramaScreen(
                     onSeleccionar = { a, m -> viewModel.irAMes(a, m) }
                 )
             }
-            // Filtro por disciplina: Todas / Civil / Eléctrico, con cuántas citas tiene cada una este mes.
+            // Filtro por disciplina: Todas y las que se registran desde el móvil, con cuántas citas tiene cada una este mes.
             Row(
                 Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 6.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                FILTROS_DISCIPLINA.forEach { (codigo, etiqueta) ->
+                (listOf<Pair<String?, String>>(null to "Todas") + disciplinas.filter { it.capturaMovil }.map { it.codigo to it.nombre })
+                    .forEach { (codigo, etiqueta) ->
                     val on = uiState.filtroDisciplina == codigo
                     Box(
                         Modifier
@@ -203,9 +207,10 @@ fun CronogramaScreen(
                             }
                         }
                         items(grupo.citas, key = { "cita_${it.cita.programacionId}" }) { citaUi ->
-                            CitaRow(citaUi) {
+                            val capturaHabilitada = disciplinas.capturaMovil(citaUi.cita.disciplina)
+                            CitaRow(citaUi, capturaHabilitada) {
                                 when (citaUi.estado) {
-                                    EstadoCita.PENDIENTE, EstadoCita.VENCIDA, EstadoCita.PROGRAMADA -> if (!citaUi.cita.capturaHabilitada) {
+                                    EstadoCita.PENDIENTE, EstadoCita.VENCIDA, EstadoCita.PROGRAMADA -> if (!capturaHabilitada) {
                                         scope.launch { snackbarHostState.showSnackbar(mensajeCapturaEnDesarrollo(citaUi.cita.disciplina)) }
                                     } else onNavigateToCaptura(
                                         citaUi.cita.programacionId,
@@ -254,7 +259,7 @@ fun CronogramaScreen(
 }
 
 @Composable
-private fun CitaRow(citaUi: CitaUi, onClick: () -> Unit) {
+private fun CitaRow(citaUi: CitaUi, capturaHabilitada: Boolean, onClick: () -> Unit) {
     val tono = tonoDeEstado(citaUi.estado)
     AccentListCard(
         accentColor = tono.accent,
@@ -290,7 +295,7 @@ private fun CitaRow(citaUi: CitaUi, onClick: () -> Unit) {
                         else -> "Registro completo con evidencia"
                     }
                 )
-                val soloConsulta = !citaUi.cita.capturaHabilitada && citaUi.estado != EstadoCita.EJECUTADA
+                val soloConsulta = !capturaHabilitada && citaUi.estado != EstadoCita.EJECUTADA
                 val cta = when {
                     citaUi.estado == EstadoCita.EJECUTADA -> "Ver detalle ›"
                     soloConsulta -> "Solo consulta"
@@ -378,5 +383,3 @@ private fun EstadoVacio(mensaje: String, onReintentar: (() -> Unit)? = null) {
     }
 }
 
-/** Opciones del filtro del Cronograma (null = todas las disciplinas). */
-private val FILTROS_DISCIPLINA: List<Pair<String?, String>> = listOf(null to "Todas", "CIVIL" to "Civil", "ELECTRICO" to "Eléctrico")

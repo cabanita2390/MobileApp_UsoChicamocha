@@ -30,7 +30,9 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import coil.compose.AsyncImage
 import com.example.testusoandroidstudio_1_usochicamocha.BuildConfig
+import com.example.testusoandroidstudio_1_usochicamocha.domain.model.Disciplina
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.EdicionDetalle
+import com.example.testusoandroidstudio_1_usochicamocha.domain.model.usaIntervenido
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.EjecucionDetalle
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.EvidenciaDetalle
 import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.ConnectionStatusTopBar
@@ -69,6 +71,7 @@ fun DetalleScreen(
     onNavigateToCola: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val disciplinas by com.example.testusoandroidstudio_1_usochicamocha.domain.model.DisciplinasVigentes.flujo.collectAsState()
 
     LaunchedEffect(ejecucionId) { viewModel.cargar(ejecucionId) }
 
@@ -119,7 +122,7 @@ fun DetalleScreen(
                     uiState.error ?: "No se pudo cargar el detalle.",
                     onReintentar = { viewModel.cargar(ejecucionId) }
                 )
-                uiState.detalle != null -> DetalleContenido(uiState.detalle!!, networkStatus, onNavigateToEditar)
+                uiState.detalle != null -> DetalleContenido(uiState.detalle!!, disciplinas, networkStatus, onNavigateToEditar)
             }
         }
     }
@@ -144,7 +147,7 @@ private fun EstadoVacioDetalle(mensaje: String, onReintentar: (() -> Unit)? = nu
 }
 
 @Composable
-private fun DetalleContenido(d: EjecucionDetalle, networkStatus: Boolean, onNavigateToEditar: (Long, String) -> Unit) {
+private fun DetalleContenido(d: EjecucionDetalle, disciplinas: List<Disciplina>, networkStatus: Boolean, onNavigateToEditar: (Long, String) -> Unit) {
     LazyColumn(Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         item {
             EstadoBanner(
@@ -185,7 +188,9 @@ private fun DetalleContenido(d: EjecucionDetalle, networkStatus: Boolean, onNavi
                     FilaDetalle("Motivo", L_MOT[d.motivoNoCatalogado] ?: d.motivoNoCatalogado)
                 }
 
-                if (d.disciplina in com.example.testusoandroidstudio_1_usochicamocha.domain.model.DISCIPLINAS_CON_INTERVENIDO) {
+                // Las disciplinas con «¿Qué se intervino?» (lo dice el backend), o una visita que ya trae algo marcado.
+                if (disciplinas.usaIntervenido(d.disciplina) || d.conjuntos.isNotEmpty() || d.elementos.isNotEmpty() ||
+                    !d.conjuntoOtro.isNullOrBlank() || !d.elementoOtro.isNullOrBlank()) {
                     SeccionEncabezado("QUÉ SE INTERVINO")
                     val conjuntos = d.conjuntos.map { it.nombre } + listOfNotNull(d.conjuntoOtro?.takeIf { it.isNotBlank() }?.let { "Otro: $it" })
                     val elementos = d.elementos.map { it.nombre } + listOfNotNull(d.elementoOtro?.takeIf { it.isNotBlank() }?.let { "Otro: $it" })

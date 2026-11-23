@@ -9,6 +9,11 @@ data class ActividadDto(
     @SerializedName("disciplina") val disciplina: String? = null
 )
 
-fun ActividadDto.toEntity(): ActividadCacheEntity {
-    return ActividadCacheEntity(id = id, nombre = nombre, disciplina = disciplina ?: "CIVIL")
+/** null (con aviso en el log) si llega sin disciplina: es un error del servidor, no una actividad de Civil. */
+fun ActividadDto.toEntity(): ActividadCacheEntity? {
+    if (disciplina.isNullOrBlank()) {
+        android.util.Log.w("ActividadDto", "Actividad $id sin disciplina: se descarta")
+        return null
+    }
+    return ActividadCacheEntity(id = id, nombre = nombre, disciplina = disciplina)
 }

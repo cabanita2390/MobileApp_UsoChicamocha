@@ -152,6 +152,10 @@ interface ApiService {
 
     // --- Subestaciones (mantenimiento civil) ---
 
+    /** Disciplinas y lo que hace cada una (captura, conjuntos, elementos…): la app no las tiene en su código. */
+    @GET("v1/substation/disciplinas")
+    suspend fun getDisciplinasSubestacion(): Response<List<com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.DisciplinaDto>>
+
     @GET("v1/substation/estaciones")
     suspend fun getEstacionesSubestacion(): Response<List<EstacionDto>>
 

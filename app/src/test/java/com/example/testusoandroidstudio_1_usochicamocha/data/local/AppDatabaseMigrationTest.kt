@@ -27,11 +27,24 @@ class AppDatabaseMigrationTest {
     private val context = ApplicationProvider.getApplicationContext<Context>()
     private val nombreDb = "migracion_test.db"
 
+    private companion object {
+        const val VERSION_ACTUAL = 57
+    }
+
     @Before
     @After
     fun limpiar() {
         context.deleteDatabase(nombreDb)
     }
+
+    /**
+     * Las migraciones desde [version] hasta la actual: cada test abre la base en la versión de hoy,
+     * así que al subir de versión los anteriores siguen probando su migración más las siguientes.
+     */
+    private fun migracionesDesde(version: Int) = listOf(
+        AppDatabase.MIGRATION_53_54, AppDatabase.MIGRATION_54_55, AppDatabase.MIGRATION_55_56,
+        AppDatabase.MIGRATION_56_57
+    ).filter { it.startVersion >= version }.toTypedArray()
 
     private fun crearBaseEnVersion(version: Int): SQLiteDatabase {
         val esquema = File("schemas/${AppDatabase::class.java.name}/$version.json")
@@ -67,12 +80,12 @@ class AppDatabaseMigrationTest {
         }
 
         val db = Room.databaseBuilder(context, AppDatabase::class.java, nombreDb)
-            .addMigrations(AppDatabase.MIGRATION_53_54)
+            .addMigrations(*migracionesDesde(53))
             .allowMainThreadQueries()
             .build()
         try {
             val sqlite = db.openHelper.writableDatabase // aquí corre la migración y la validación del esquema
-            assertEquals(54, sqlite.version)
+            assertEquals(VERSION_ACTUAL, sqlite.version)
             sqlite.query("SELECT presionesLlantasJson FROM pending_inspecciones_moto WHERE uuid = 'u-1'").use { c ->
                 c.moveToFirst()
                 assertEquals("", c.getString(0))
@@ -99,12 +112,12 @@ class AppDatabaseMigrationTest {
         }
 
         val db = Room.databaseBuilder(context, AppDatabase::class.java, nombreDb)
-            .addMigrations(AppDatabase.MIGRATION_54_55)
+            .addMigrations(*migracionesDesde(54))
             .allowMainThreadQueries()
             .build()
         try {
             val sqlite = db.openHelper.writableDatabase // aquí corre la migración y la validación del esquema
-            assertEquals(55, sqlite.version)
+            assertEquals(VERSION_ACTUAL, sqlite.version)
             sqlite.query("SELECT disciplina, conjuntoIds, elementoIds, conjuntoOtro FROM pending_mant_ejecucion WHERE uuidCliente = 'e-1'").use { c ->
                 c.moveToFirst()
                 assertEquals("CIVIL", c.getString(0))
@@ -133,16 +146,40 @@ class AppDatabaseMigrationTest {
         }
 
         val db = Room.databaseBuilder(context, AppDatabase::class.java, nombreDb)
-            .addMigrations(AppDatabase.MIGRATION_55_56)
+            .addMigrations(*migracionesDesde(55))
             .allowMainThreadQueries()
             .build()
         try {
             val sqlite = db.openHelper.writableDatabase // aquí corre la migración y la validación del esquema
-            assertEquals(56, sqlite.version)
+            assertEquals(VERSION_ACTUAL, sqlite.version)
             sqlite.query("SELECT nombre, icono FROM mant_intervenido_cache WHERE id = 101").use { c ->
                 c.moveToFirst()
                 assertEquals("Motores", c.getString(0))
                 assertTrue(c.isNull(1))
+            }
+        } finally {
+            db.close()
+        }
+    }
+
+    @Test
+    fun migracion_56_a_57_crea_el_cache_de_disciplinas_con_lo_que_trae_el_backend() {
+        crearBaseEnVersion(56).close()
+
+        val db = Room.databaseBuilder(context, AppDatabase::class.java, nombreDb)
+            .addMigrations(*migracionesDesde(56))
+            .allowMainThreadQueries()
+            .build()
+        try {
+            val sqlite = db.openHelper.writableDatabase // aquí corre la migración y la validación del esquema
+            assertEquals(VERSION_ACTUAL, sqlite.version)
+            sqlite.query("SELECT codigo, nombre, capturaMovil, conjuntos, usaElementos FROM mant_disciplina_cache ORDER BY orden").use { c ->
+                val filas = mutableListOf<String>()
+                while (c.moveToNext()) filas += "${c.getString(0)}|${c.getString(1)}|${c.getInt(2)}|${c.getString(3)}|${c.getInt(4)}"
+                assertEquals(
+                    listOf("CIVIL|Civil|1|NO|0", "ELECTRICO|Eléctrico|1|OPCIONAL|1", "ELECTROMECANICO|Electromecánico|0|OBLIGATORIO|1"),
+                    filas
+                )
             }
         } finally {
             db.close()
