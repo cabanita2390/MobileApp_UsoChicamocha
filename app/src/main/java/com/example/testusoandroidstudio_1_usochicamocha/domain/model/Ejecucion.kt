@@ -1,6 +1,8 @@
 package com.example.testusoandroidstudio_1_usochicamocha.domain.model
 
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.EjecucionEntity
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.marcasAJson
+import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.otrosAJson
 
 /**
  * Ejecución de mantenimiento civil de subestaciones en la capa de Dominio — el objeto
@@ -44,7 +46,10 @@ data class Ejecucion(
     val conjuntoIds: List<Long> = emptyList(),
     val elementoIds: List<Long> = emptyList(),
     val conjuntoOtro: String? = null,
-    val elementoOtro: String? = null
+    val elementoOtro: String? = null,
+    /** Elementos marcados, cada uno con su conjunto (en vez de [elementoIds], que queda para la cola vieja). */
+    val elementosMarcados: List<ElementoMarcado> = emptyList(),
+    val elementosOtros: List<ElementoOtro> = emptyList()
 )
 
 fun Ejecucion.toEntity(): EjecucionEntity {
@@ -75,6 +80,8 @@ fun Ejecucion.toEntity(): EjecucionEntity {
         conjuntoIds = conjuntoIds.joinToString(","),
         elementoIds = elementoIds.joinToString(","),
         conjuntoOtro = conjuntoOtro,
-        elementoOtro = elementoOtro
+        elementoOtro = elementoOtro,
+        elementosMarcadosJson = marcasAJson(elementosMarcados),
+        elementosOtrosJson = otrosAJson(elementosOtros)
     )
 }

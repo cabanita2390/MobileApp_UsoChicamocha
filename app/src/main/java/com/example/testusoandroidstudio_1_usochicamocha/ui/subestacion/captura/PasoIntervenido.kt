@@ -47,6 +47,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.testusoandroidstudio_1_usochicamocha.domain.model.ElementoDeConjunto
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.ItemIntervenido
 import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.theme.SubestacionColors
 import com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.theme.SubestacionShapes
@@ -88,80 +89,54 @@ private fun iconoPorNombre(nombre: String): ImageVector = when (sinTildes(nombre
     else -> Icons.Filled.Power
 }
 
-/**
- * Elementos que suelen ir con cada conjunto. Solo ordena la lista (sugeridos primero): cualquier
- * elemento se puede marcar con cualquier conjunto. Por nombre, sin tildes ni mayúsculas.
- */
-private val ELEMENTOS_DE_CONJUNTO: Map<String, List<String>> = mapOf(
-    "subestacion" to listOf("subestacion", "transformador", "sistema de puesta a tierra", "breaker", "reconectador"),
-    "gabinetes de control" to listOf(
-        "gabinete electrico", "plc / sistema de control", "variador de velocidad", "arrancador suave",
-        "contactores", "reles de proteccion", "breaker", "cableado y conexiones", "sensores / instrumentacion"
-    ),
-    "red de media tension" to listOf("red media tension", "reconectador", "postes", "cableado y conexiones"),
-    "generador var" to listOf("generador var", "arranque"),
-    "iluminacion" to listOf("iluminacion", "cableado y conexiones"),
-    "motores" to listOf("motor electrico", "variador de velocidad", "arrancador suave", "arranque", "sensores / instrumentacion"),
-    "transformador" to listOf("transformador", "sistema de puesta a tierra"),
-    "postes" to listOf("postes", "red media tension")
-)
-
 internal fun sinTildes(texto: String): String =
     Normalizer.normalize(texto, Normalizer.Form.NFD).replace(Regex("\\p{M}"), "").lowercase().trim()
 
-/** Lo marcado, en una línea, para el resumen del registro ("No aplica" si no hay nada). */
+/**
+ * Lo marcado, para el resumen del registro: cada conjunto con sus elementos ("Transformador: Fusibles,
+ * Estado físico (con óxido)"); "No aplica" si no hay nada.
+ */
 internal fun resumenIntervenido(s: CapturaUiState): String {
-    val nombres = s.conjuntosDisciplina.filter { it.id in s.conjuntosSeleccionados }.map { it.nombre } +
-        s.elementosDisciplina.filter { it.id in s.elementosSeleccionados }.map { it.nombre } +
-        listOfNotNull(
-            s.conjuntoOtro.trim().takeIf { s.conjuntoOtroActivo && it.isNotEmpty() },
-            s.elementoOtro.trim().takeIf { s.elementoOtroActivo && it.isNotEmpty() }
-        )
-    return if (nombres.isEmpty()) "No aplica" else nombres.joinToString(", ")
+    val marcados = s.elementosAEnviar
+    val otros = s.otrosAEnviar.associate { it.conjuntoId to it.texto }
+    val partes = s.conjuntosMarcados.map { c ->
+        val nombres = c.elementos.mapNotNull { e ->
+            marcados.firstOrNull { it.conjuntoId == c.id && it.elementoId == e.id }
+                ?.let { m -> if (m.detalle != null) "${e.nombre} (${m.detalle})" else e.nombre }
+        } + listOfNotNull(otros[c.id])
+        if (nombres.isEmpty()) c.nombre else "${c.nombre}: ${nombres.joinToString(", ")}"
+    } + listOfNotNull(s.conjuntoOtro.trim().takeIf { s.conjuntoOtroActivo && it.isNotEmpty() }?.let { "Otro: $it" }) +
+        listOfNotNull(s.elementosSinConjunto.takeIf { it.isNotEmpty() }?.let { l -> "Sin conjunto: ${l.joinToString(", ") { it.nombre }}" })
+    return if (partes.isEmpty()) "No aplica" else partes.joinToString(" · ")
 }
 
-/** Grupos de elementos a mostrar: los que coinciden con la búsqueda, o los sugeridos primero. */
-internal data class GrupoElementos(val titulo: String, val items: List<ItemIntervenido>)
-
-internal fun gruposDeElementos(s: CapturaUiState): List<GrupoElementos> {
-    val todos = s.elementosDisciplina
-    val busqueda = sinTildes(s.busquedaElemento)
-    if (busqueda.isNotEmpty()) {
-        val hallados = todos.filter { sinTildes(it.nombre).contains(busqueda) }
-        return if (hallados.isEmpty()) emptyList() else listOf(GrupoElementos("${hallados.size} COINCIDEN", hallados))
-    }
-    val sugeridosNombres = s.conjuntosDisciplina
-        .filter { it.id in s.conjuntosSeleccionados }
-        .flatMap { ELEMENTOS_DE_CONJUNTO[sinTildes(it.nombre)].orEmpty() }
-        .distinct()
-    val sugeridos = sugeridosNombres.mapNotNull { n -> todos.find { sinTildes(it.nombre) == n } }
-    if (sugeridos.isEmpty()) return listOf(GrupoElementos("TODOS LOS ELEMENTOS", todos))
-    val demas = todos.filter { it !in sugeridos }
-    return if (s.verTodosElementos) {
-        listOf(GrupoElementos("SUGERIDOS POR LO QUE MARCASTE ARRIBA", sugeridos), GrupoElementos("LOS DEMÁS ELEMENTOS", demas))
-    } else {
-        // Lo ya marcado fuera de los sugeridos sigue a la vista aunque el resto esté plegado.
-        listOf(GrupoElementos("SUGERIDOS POR LO QUE MARCASTE ARRIBA", sugeridos + demas.filter { it.id in s.elementosSeleccionados }))
-    }
+/** Elementos de un conjunto que coinciden con la búsqueda (todos si no se busca nada). */
+internal fun elementosVisibles(conjunto: ItemIntervenido, busqueda: String): List<ElementoDeConjunto> {
+    val q = sinTildes(busqueda)
+    return if (q.isEmpty()) conjunto.elementos else conjunto.elementos.filter { sinTildes(it.nombre).contains(q) }
 }
 
 /**
- * Paso «¿Qué se intervino?» (solo Eléctrico; preguntas 9 y 11 del formulario). Conjuntos en mosaicos
- * con ícono y elementos en casillas, primero los sugeridos según los conjuntos marcados. Todo es
- * opcional: no marcar nada equivale a "No aplica".
+ * Paso «¿Qué se intervino?» (preguntas 9 y 11 del formulario). Primero los conjuntos en mosaicos con
+ * ícono; después, los elementos que tiene adentro cada conjunto marcado: con uno solo, su lista; con
+ * varios, separados bajo el nombre de cada conjunto, para saber de cuál es cada elemento. El conjunto
+ * es obligatorio donde la disciplina lo pide; los elementos, siempre opcionales.
  */
 @Composable
 internal fun PasoIntervenido(uiState: CapturaUiState, viewModel: CapturaViewModel) {
     val conjuntos = uiState.conjuntosDisciplina
-    val grupos = gruposDeElementos(uiState)
-    val haySugeridos = uiState.busquedaElemento.isBlank() && uiState.conjuntosSeleccionados.isNotEmpty() &&
-        grupos.firstOrNull()?.titulo?.startsWith("SUGERIDOS") == true
+    val marcados = uiState.conjuntosMarcados
     val nConjuntos = uiState.conjuntosSeleccionados.size + if (uiState.conjuntoOtroActivo && uiState.conjuntoOtro.isNotBlank()) 1 else 0
-    val nElementos = uiState.elementosSeleccionados.size + if (uiState.elementoOtroActivo && uiState.elementoOtro.isNotBlank()) 1 else 0
+    val nElementos = uiState.elementosAEnviar.size + uiState.otrosAEnviar.size
+    val totalElementos = marcados.sumOf { it.elementos.size }
 
     LazyColumn(Modifier.fillMaxSize().padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         item {
-            EncabezadoPregunta(1, "¿En qué conjunto trabajaste?", "Puedes marcar varios · opcional", nConjuntos)
+            EncabezadoPregunta(
+                1, "¿En qué conjunto trabajaste?",
+                if (uiState.conjuntoObligatorio) "Puedes marcar varios · obligatorio" else "Puedes marcar varios · opcional",
+                nConjuntos, obligatorio = uiState.conjuntoObligatorio
+            )
         }
         if (conjuntos.isEmpty()) {
             item { SubestacionType.Hint("Los conjuntos aún no se han sincronizado. Puedes escribirlo en «Otro».", color = SubestacionColors.Red) }
@@ -191,95 +166,129 @@ internal fun PasoIntervenido(uiState: CapturaUiState, viewModel: CapturaViewMode
         item { Box(Modifier.fillMaxWidth().height(1.dp).background(SubestacionColors.PurpleBorderLight)) }
 
         item {
-            EncabezadoPregunta(2, "¿Qué elementos revisaste?", "Inspeccionados o intervenidos · opcional", nElementos)
+            EncabezadoPregunta(2, "¿Qué elementos revisaste?", "Inspeccionados o intervenidos · opcional", nElementos, obligatorio = false)
         }
-        item {
-            OutlinedTextField(
-                value = uiState.busquedaElemento,
-                onValueChange = viewModel::onBusquedaElementoChange,
-                placeholder = { Text("Buscar elemento…") },
-                leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null, tint = SubestacionColors.TextTertiary) },
-                singleLine = true,
-                shape = SubestacionShapes.Input,
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = SubestacionColors.Purple,
-                    unfocusedBorderColor = SubestacionColors.PurpleBorder
-                ),
-                modifier = Modifier.fillMaxWidth()
-            )
+        if (marcados.isEmpty()) {
+            item { SubestacionType.Hint("Marca primero un conjunto: aquí aparecen los elementos que tiene adentro.") }
         }
-        grupos.forEach { grupo ->
+        // Con muchos elementos, un buscador que filtra dentro de los conjuntos marcados.
+        if (totalElementos > 8) {
             item {
-                Text(
-                    grupo.titulo, color = SubestacionColors.TextTertiary, fontWeight = FontWeight.ExtraBold,
-                    fontSize = 10.5.sp, letterSpacing = 0.6.sp
+                OutlinedTextField(
+                    value = uiState.busquedaElemento,
+                    onValueChange = viewModel::onBusquedaElementoChange,
+                    placeholder = { Text("Buscar elemento…") },
+                    leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null, tint = SubestacionColors.TextTertiary) },
+                    singleLine = true,
+                    shape = SubestacionShapes.Input,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = SubestacionColors.Purple,
+                        unfocusedBorderColor = SubestacionColors.PurpleBorder
+                    ),
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
-            grupo.items.chunked(2).forEach { fila ->
-                item {
+        }
+        marcados.forEach { conjunto ->
+            val visibles = elementosVisibles(conjunto, uiState.busquedaElemento)
+            // Con varios conjuntos, cada uno con su título: así no se confunden los nombres repetidos.
+            if (marcados.size > 1) {
+                item(key = "titulo_${conjunto.id}") { TituloConjunto(conjunto) }
+            }
+            if (conjunto.elementos.isEmpty()) {
+                item(key = "vacio_${conjunto.id}") { SubestacionType.Hint("Este conjunto no tiene elementos en la lista. Usa «Otro elemento».") }
+            } else if (visibles.isEmpty()) {
+                item(key = "nada_${conjunto.id}") { SubestacionType.Hint("Ningún elemento de ${conjunto.nombre} coincide.") }
+            }
+            visibles.chunked(2).forEachIndexed { i, fila ->
+                item(key = "fila_${conjunto.id}_$i") {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         fila.forEach { e ->
-                            CasillaElemento(e.nombre, e.id in uiState.elementosSeleccionados, Modifier.weight(1f)) {
-                                viewModel.onElementoToggle(e.id)
-                            }
+                            val on = MarcaElemento(conjunto.id, e.id) in uiState.elementosMarcados
+                            CasillaElemento(e.nombre, on, Modifier.weight(1f)) { viewModel.onElementoToggle(conjunto.id, e.id) }
                         }
                         if (fila.size == 1) Spacer(Modifier.weight(1f))
                     }
                 }
             }
-        }
-        if (uiState.busquedaElemento.isNotBlank() && grupos.isEmpty()) {
-            item { SubestacionType.Hint("Ningún elemento coincide. Usa «Otro elemento».") }
-        }
-        if (haySugeridos) {
-            item {
-                Box(
-                    Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = 44.dp)
-                        .clip(SubestacionShapes.Input)
-                        .background(SubestacionColors.PurpleSurface)
-                        .clickable { viewModel.onVerTodosElementosToggle() },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        if (uiState.verTodosElementos) "Ver solo los sugeridos" else "Ver los ${uiState.elementosDisciplina.size} elementos",
-                        color = SubestacionColors.Purple, fontWeight = FontWeight.ExtraBold, fontSize = 13.sp
+            // Los marcados que piden texto: cómo se encuentra (opcional).
+            conjunto.elementos.filter { it.pideDetalle && MarcaElemento(conjunto.id, it.id) in uiState.elementosMarcados }.forEach { e ->
+                item(key = "detalle_${conjunto.id}_${e.id}") {
+                    CampoOtro(
+                        "${e.nombre} · ¿cómo se encuentra?",
+                        uiState.detallesElemento[MarcaElemento(conjunto.id, e.id)] ?: "",
+                        "Ej. Con óxido en la tapa",
+                        { viewModel.onDetalleElementoChange(conjunto.id, e.id, it) },
+                        unaLinea = false
+                    )
+                }
+            }
+            item(key = "otro_${conjunto.id}") {
+                BotonOtroElemento(
+                    if (marcados.size > 1) "Otro elemento de ${conjunto.nombre}" else "Otro elemento que no está en la lista",
+                    conjunto.id in uiState.otrosElementosActivos
+                ) { viewModel.onElementoOtroToggle(conjunto.id) }
+            }
+            if (conjunto.id in uiState.otrosElementosActivos) {
+                item(key = "otro_campo_${conjunto.id}") {
+                    CampoOtro(
+                        "¿Qué otro elemento?", uiState.otrosElementos[conjunto.id] ?: "", "Ej. Bornera auxiliar",
+                        { viewModel.onElementoOtroChange(conjunto.id, it) }
                     )
                 }
             }
         }
-        item {
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 48.dp)
-                    .clip(SubestacionShapes.Input)
-                    .background(if (uiState.elementoOtroActivo) SubestacionColors.PurpleTint else Color.White)
-                    .border(
-                        2.dp,
-                        if (uiState.elementoOtroActivo) SubestacionColors.Purple else SubestacionColors.DashedUploadBorder,
-                        SubestacionShapes.Input
-                    )
-                    .clickable { viewModel.onElementoOtroToggle() }
-                    .padding(horizontal = 14.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                Icon(Icons.Filled.Add, contentDescription = null, tint = SubestacionColors.Purple, modifier = Modifier.size(18.dp))
-                Text("Otro elemento que no está en la lista", color = SubestacionColors.Purple, fontWeight = FontWeight.ExtraBold, fontSize = 13.sp)
-            }
-        }
-        if (uiState.elementoOtroActivo) {
+        if (uiState.elementosSinConjunto.isNotEmpty()) {
             item {
-                CampoOtro("¿Qué otro elemento?", uiState.elementoOtro, "Ej. Celda de medida", viewModel::onElementoOtroChange)
+                SubestacionType.Hint(
+                    "Registrado antes sin conjunto: ${uiState.elementosSinConjunto.joinToString(", ") { it.nombre }}. Se conserva."
+                )
             }
         }
     }
 }
 
 @Composable
-private fun EncabezadoPregunta(numero: Int, titulo: String, sub: String, marcados: Int) {
+private fun TituloConjunto(conjunto: ItemIntervenido) {
+    Row(
+        Modifier.fillMaxWidth().padding(top = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        Box(
+            Modifier.size(26.dp).clip(RoundedCornerShape(8.dp)).background(AmbarSuave),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(iconoConjunto(conjunto), contentDescription = null, tint = SubestacionColors.Amber, modifier = Modifier.size(16.dp))
+        }
+        Text(
+            conjunto.nombre.uppercase(), color = SubestacionColors.TextSecondary, fontWeight = FontWeight.ExtraBold,
+            fontSize = 11.5.sp, letterSpacing = 0.5.sp
+        )
+    }
+}
+
+@Composable
+private fun BotonOtroElemento(texto: String, activo: Boolean, onClick: () -> Unit) {
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .heightIn(min = 48.dp)
+            .clip(SubestacionShapes.Input)
+            .background(if (activo) SubestacionColors.PurpleTint else Color.White)
+            .border(2.dp, if (activo) SubestacionColors.Purple else SubestacionColors.DashedUploadBorder, SubestacionShapes.Input)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Icon(Icons.Filled.Add, contentDescription = null, tint = SubestacionColors.Purple, modifier = Modifier.size(18.dp))
+        Text(texto, color = SubestacionColors.Purple, fontWeight = FontWeight.ExtraBold, fontSize = 13.sp)
+    }
+}
+
+@Composable
+private fun EncabezadoPregunta(numero: Int, titulo: String, sub: String, marcados: Int, obligatorio: Boolean) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         Box(
             Modifier
@@ -305,7 +314,7 @@ private fun EncabezadoPregunta(numero: Int, titulo: String, sub: String, marcado
         ) {
             Text(
                 when (marcados) {
-                    0 -> "Opcional"
+                    0 -> if (obligatorio) "Obligatorio" else "Opcional"
                     1 -> "1 marcado"
                     else -> "$marcados marcados"
                 },
@@ -415,14 +424,15 @@ private fun CasillaElemento(nombre: String, seleccionado: Boolean, modifier: Mod
 }
 
 @Composable
-private fun CampoOtro(etiqueta: String, valor: String, ejemplo: String, onChange: (String) -> Unit) {
+private fun CampoOtro(etiqueta: String, valor: String, ejemplo: String, onChange: (String) -> Unit, unaLinea: Boolean = true) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(etiqueta, color = SubestacionColors.TextSecondary, fontWeight = FontWeight.Bold, fontSize = 11.sp)
         OutlinedTextField(
             value = valor,
             onValueChange = onChange,
             placeholder = { Text(ejemplo) },
-            singleLine = true,
+            singleLine = unaLinea,
+            maxLines = if (unaLinea) 1 else 4,
             shape = SubestacionShapes.Input,
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = SubestacionColors.Purple,

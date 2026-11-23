@@ -55,7 +55,8 @@ class NoProgramadasPaginadasTest {
         repo = SubestacionRepositoryImpl(
             context, db.ejecucionDao(), db.estacionCacheDao(), db.actividadCacheDao(), db.imageDao(), api,
             db.cumplimientoCacheDao(), db.ejecucionDetalleCacheDao(), db.ejecucionNoProgramadaCacheDao(),
-            db.ordenAsignadaCacheDao(), mockk(relaxed = true), db.itemIntervenidoCacheDao(), db.disciplinaCacheDao()
+            db.ordenAsignadaCacheDao(), mockk(relaxed = true), db.itemIntervenidoCacheDao(), db.disciplinaCacheDao(),
+            db.conjuntoElementoCacheDao()
         )
     }
 

@@ -22,5 +22,9 @@ data class EjecucionEditRequestDto(
     @SerializedName("conjuntoIds") val conjuntoIds: List<Long>? = null,
     @SerializedName("elementoIds") val elementoIds: List<Long>? = null,
     @SerializedName("conjuntoOtro") val conjuntoOtro: String? = null,
-    @SerializedName("elementoOtro") val elementoOtro: String? = null
+    @SerializedName("elementoOtro") val elementoOtro: String? = null,
+    /** Elementos marcados, cada uno con su conjunto (backend V54). */
+    @SerializedName("elementosMarcados") val elementosMarcados: List<ElementoMarcadoDto>? = null,
+    /** "Otro" en los elementos de un conjunto. */
+    @SerializedName("elementosOtros") val elementosOtros: List<ElementoOtroDto>? = null
 )

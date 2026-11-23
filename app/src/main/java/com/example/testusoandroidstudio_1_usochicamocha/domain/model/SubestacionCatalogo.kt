@@ -25,13 +25,35 @@ data class ItemIntervenido(
     val disciplina: String,
     val tipo: String,
     /** Solo conjuntos: código del ícono elegido en la web (SUBESTACION, GABINETE…); null = genérico. */
-    val icono: String? = null
+    val icono: String? = null,
+    /** Solo conjuntos: lo que tiene adentro, en orden (el conjunto es la caja y estos su contenido). */
+    val elementos: List<ElementoDeConjunto> = emptyList()
 ) {
     companion object {
         const val CONJUNTO = "CONJUNTO"
         const val ELEMENTO = "ELEMENTO"
     }
 }
+
+/** Un elemento dentro de un conjunto. [pideDetalle]: al marcarlo se escribe cómo se encuentra. */
+data class ElementoDeConjunto(
+    val id: Long,
+    val nombre: String,
+    val pideDetalle: Boolean = false
+)
+
+/** Un elemento marcado en la visita, dentro de su conjunto, con el texto si lo pide. */
+data class ElementoMarcado(
+    val conjuntoId: Long,
+    val elementoId: Long,
+    val detalle: String? = null
+)
+
+/** "Otro" en los elementos de un conjunto: el backend lo agrega a ese conjunto para la próxima vez. */
+data class ElementoOtro(
+    val conjuntoId: Long,
+    val texto: String
+)
 
 /**
  * Una cita del cronograma con su estado de cumplimiento, para las pantallas Cronograma/Pendientes.

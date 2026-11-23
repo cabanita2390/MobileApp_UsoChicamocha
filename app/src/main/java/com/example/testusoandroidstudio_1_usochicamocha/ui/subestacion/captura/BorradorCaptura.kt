@@ -1,6 +1,9 @@
 package com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.captura
 
 import android.net.Uri
+import com.example.testusoandroidstudio_1_usochicamocha.domain.model.ElementoMarcado
+import com.example.testusoandroidstudio_1_usochicamocha.domain.model.ElementoOtro
+import com.example.testusoandroidstudio_1_usochicamocha.domain.model.ItemRef
 import com.google.gson.Gson
 
 /**
@@ -35,9 +38,12 @@ internal data class BorradorCaptura(
     // Nulos en borradores de versiones anteriores (sin Eléctrico): Gson no usa los valores por defecto.
     val disciplina: String? = null,
     val conjuntos: List<Long>? = null,
-    val elementos: List<Long>? = null,
     val conjuntoOtro: String? = null,
-    val elementoOtro: String? = null
+    // Elementos por conjunto (los borradores anteriores traían "elementos" sin conjunto: se ignoran).
+    val marcas: List<ElementoMarcado>? = null,
+    /** "Otro elemento" abierto por conjunto, con lo escrito (puede estar vacío). */
+    val otros: List<ElementoOtro>? = null,
+    val sinConjunto: List<ItemRef>? = null
 ) {
     fun aplicarA(s: CapturaUiState): CapturaUiState = s.copy(
         currentStep = currentStep,
@@ -61,11 +67,13 @@ internal data class BorradorCaptura(
         fotos = fotos.map(Uri::parse),
         disciplinaSeleccionada = disciplina ?: "CIVIL",
         conjuntosSeleccionados = conjuntos.orEmpty().toSet(),
-        elementosSeleccionados = elementos.orEmpty().toSet(),
         conjuntoOtroActivo = conjuntoOtro != null,
         conjuntoOtro = conjuntoOtro ?: "",
-        elementoOtroActivo = elementoOtro != null,
-        elementoOtro = elementoOtro ?: ""
+        elementosMarcados = marcas.orEmpty().map { MarcaElemento(it.conjuntoId, it.elementoId) }.toSet(),
+        detallesElemento = marcas.orEmpty().mapNotNull { m -> m.detalle?.let { MarcaElemento(m.conjuntoId, m.elementoId) to it } }.toMap(),
+        otrosElementosActivos = otros.orEmpty().map { it.conjuntoId }.toSet(),
+        otrosElementos = otros.orEmpty().associate { it.conjuntoId to it.texto },
+        elementosSinConjunto = sinConjunto.orEmpty()
     )
 
     fun aJson(): String = gson.toJson(this)
@@ -96,9 +104,10 @@ internal data class BorradorCaptura(
             fotos = s.fotos.map(Uri::toString),
             disciplina = s.disciplinaSeleccionada,
             conjuntos = s.conjuntosSeleccionados.toList(),
-            elementos = s.elementosSeleccionados.toList(),
             conjuntoOtro = s.conjuntoOtro.takeIf { s.conjuntoOtroActivo },
-            elementoOtro = s.elementoOtro.takeIf { s.elementoOtroActivo }
+            marcas = s.elementosMarcados.map { ElementoMarcado(it.conjuntoId, it.elementoId, s.detallesElemento[it]) },
+            otros = s.otrosElementosActivos.map { ElementoOtro(it, s.otrosElementos[it] ?: "") },
+            sinConjunto = s.elementosSinConjunto
         )
 
         fun desdeJson(json: String?): BorradorCaptura? =

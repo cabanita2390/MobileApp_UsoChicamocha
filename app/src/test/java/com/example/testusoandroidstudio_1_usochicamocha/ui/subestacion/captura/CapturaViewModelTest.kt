@@ -1,5 +1,10 @@
 package com.example.testusoandroidstudio_1_usochicamocha.ui.subestacion.captura
 
+import com.example.testusoandroidstudio_1_usochicamocha.domain.model.Disciplina
+import com.example.testusoandroidstudio_1_usochicamocha.domain.model.DisciplinasVigentes
+import com.example.testusoandroidstudio_1_usochicamocha.domain.model.ElementoDeConjunto
+import com.example.testusoandroidstudio_1_usochicamocha.domain.model.ElementoMarcado
+import com.example.testusoandroidstudio_1_usochicamocha.domain.model.ElementoOtro
 import android.content.Context
 import com.example.testusoandroidstudio_1_usochicamocha.data.local.TokenManager
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.ActividadCatalogo
@@ -1028,16 +1033,47 @@ class CapturaViewModelTest {
     // ---- Disciplina Eléctrico: catálogo propio y paso «¿Qué se intervino?» ----
 
     private val actividadElectrica = ActividadCatalogo(id = 21L, nombre = "Inspección eléctrica general", disciplina = "ELECTRICO")
-    private val gabinetes = ItemIntervenido(id = 101L, nombre = "Gabinetes de control", disciplina = "ELECTRICO", tipo = ItemIntervenido.CONJUNTO)
-    private val breaker = ItemIntervenido(id = 203L, nombre = "Breaker", disciplina = "ELECTRICO", tipo = ItemIntervenido.ELEMENTO)
+    private val transformador = ItemIntervenido(
+        id = 101L, nombre = "Transformador", disciplina = "ELECTRICO", tipo = ItemIntervenido.CONJUNTO,
+        elementos = listOf(ElementoDeConjunto(301L, "Fusibles"), ElementoDeConjunto(302L, "Estado físico", pideDetalle = true))
+    )
+    private val subestacion = ItemIntervenido(
+        id = 102L, nombre = "Subestación", disciplina = "ELECTRICO", tipo = ItemIntervenido.CONJUNTO,
+        elementos = listOf(ElementoDeConjunto(301L, "Fusibles"), ElementoDeConjunto(303L, "Medidor de energía"))
+    )
+
+    /** Lo que sirve el backend desde V54: en Eléctrico el conjunto es obligatorio. */
+    private fun conDisciplinasDelBackend() = DisciplinasVigentes.actualizar(
+        listOf(
+            Disciplina("CIVIL", "Civil", "C", 1, true, Disciplina.CONJUNTOS_NO, false, false, false),
+            Disciplina("ELECTRICO", "Eléctrico", "E", 2, true, Disciplina.CONJUNTOS_OBLIGATORIO, true, false, false),
+            Disciplina("ELECTROMECANICO", "Electromecánico", "M", 3, false, Disciplina.CONJUNTOS_OBLIGATORIO, true, false, false)
+        )
+    )
+
+    @After
+    fun sinDisciplinas() = DisciplinasVigentes.actualizar(emptyList())
 
     private fun conCatalogoElectrico() {
+        conDisciplinasDelBackend()
         every { obtenerActividadesCacheUseCase() } returns flowOf(listOf(actividad, actividadElectrica))
-        every { obtenerItemsIntervenidosUseCase() } returns flowOf(listOf(gabinetes, breaker))
+        every { obtenerItemsIntervenidosUseCase() } returns flowOf(listOf(transformador, subestacion))
+    }
+
+    /** Lleva un registro libre de Eléctrico hasta el paso «¿Qué se intervino?». */
+    private fun kotlinx.coroutines.test.TestScope.hastaIntervenido() {
+        viewModel.onEstacionSeleccionada(estacion)
+        viewModel.onDisciplinaSeleccionada("ELECTRICO")
+        viewModel.onSiguiente()
+        viewModel.onTipoActividadChange("INSPECCION")
+        viewModel.onTipoMantenimientoChange("PREVENTIVO")
+        viewModel.onActividadSeleccionada(actividadElectrica)
+        advanceUntilIdle()
+        viewModel.onSiguiente()
     }
 
     @Test
-    fun `electrico agrega el paso Que se intervino y usa su catalogo de actividades`() = runTest {
+    fun `electrico agrega el paso Que se intervino y exige un conjunto`() = runTest {
         conCatalogoElectrico()
         createViewModel()
         advanceUntilIdle()
@@ -1049,9 +1085,10 @@ class CapturaViewModelTest {
         val s = viewModel.uiState.value
         assertEquals(listOf(PASO_CONTEXTO, PASO_ACTIVIDAD, PASO_INTERVENIDO, PASO_RESULTADO, PASO_EVIDENCIA), s.pasos)
         assertEquals(listOf(actividadElectrica), s.actividadesDisciplina)
-        assertEquals(listOf(gabinetes), s.conjuntosDisciplina)
-        // Todo opcional: sin marcar nada se puede seguir ("No aplica").
-        assertTrue(viewModel.esPasoValido(3))
+        assertEquals(listOf(transformador, subestacion), s.conjuntosDisciplina)
+        assertFalse("Sin conjunto no se sabe dónde se trabajó", viewModel.esPasoValido(3))
+        viewModel.onConjuntoToggle(transformador.id)
+        assertTrue("Los elementos son opcionales", viewModel.esPasoValido(3))
     }
 
     @Test
@@ -1061,7 +1098,8 @@ class CapturaViewModelTest {
         advanceUntilIdle()
         viewModel.onDisciplinaSeleccionada("ELECTRICO")
         viewModel.onActividadSeleccionada(actividadElectrica)
-        viewModel.onConjuntoToggle(gabinetes.id)
+        viewModel.onConjuntoToggle(transformador.id)
+        viewModel.onElementoToggle(transformador.id, 301L)
 
         viewModel.onDisciplinaSeleccionada("CIVIL")
 
@@ -1069,12 +1107,15 @@ class CapturaViewModelTest {
         assertEquals("CIVIL", s.disciplinaSeleccionada)
         assertNull(s.actividadId)
         assertTrue(s.conjuntosSeleccionados.isEmpty())
+        assertTrue(s.elementosMarcados.isEmpty())
         assertEquals(4, s.nSteps)
     }
 
     @Test
     fun `electromecanico muestra el aviso y no cambia la disciplina`() = runTest {
+        conDisciplinasDelBackend()
         createViewModel()
+        advanceUntilIdle()
         viewModel.onDisciplinaSeleccionada("ELECTROMECANICO")
 
         assertTrue(viewModel.uiState.value.mostrarAlertaDisciplinaEnDesarrollo)
@@ -1084,26 +1125,64 @@ class CapturaViewModelTest {
     }
 
     @Test
-    fun `al guardar un registro electrico lleva su disciplina, lo marcado y el texto de Otro`() = runTest {
+    fun `los elementos salen de los conjuntos marcados y el mismo elemento cuenta en cada uno`() = runTest {
+        conCatalogoElectrico()
+        createViewModel()
+        advanceUntilIdle()
+        hastaIntervenido()
+        assertEquals(PASO_INTERVENIDO, viewModel.uiState.value.pasoActual)
+        assertTrue(viewModel.uiState.value.conjuntosMarcados.isEmpty())
+
+        viewModel.onConjuntoToggle(transformador.id)
+        viewModel.onConjuntoToggle(subestacion.id)
+        viewModel.onElementoToggle(transformador.id, 301L)
+        viewModel.onElementoToggle(subestacion.id, 301L)
+
+        val s = viewModel.uiState.value
+        assertEquals(listOf(transformador, subestacion), s.conjuntosMarcados)
+        assertEquals(
+            listOf(ElementoMarcado(transformador.id, 301L), ElementoMarcado(subestacion.id, 301L)),
+            s.elementosAEnviar.sortedBy { it.conjuntoId }
+        )
+        assertEquals(4, s.totalIntervenido)
+    }
+
+    @Test
+    fun `desmarcar un conjunto se lleva sus elementos, su texto y su Otro`() = runTest {
+        conCatalogoElectrico()
+        createViewModel()
+        advanceUntilIdle()
+        hastaIntervenido()
+        viewModel.onConjuntoToggle(transformador.id)
+        viewModel.onElementoToggle(transformador.id, 302L)
+        viewModel.onDetalleElementoChange(transformador.id, 302L, "Con óxido")
+        viewModel.onElementoOtroToggle(transformador.id)
+        viewModel.onElementoOtroChange(transformador.id, "Bornera auxiliar")
+
+        viewModel.onConjuntoToggle(transformador.id)
+
+        val s = viewModel.uiState.value
+        assertTrue(s.elementosMarcados.isEmpty())
+        assertTrue(s.detallesElemento.isEmpty())
+        assertTrue(s.otrosAEnviar.isEmpty())
+    }
+
+    @Test
+    fun `al guardar un registro electrico lleva cada elemento con su conjunto, su texto y el Otro`() = runTest {
         val guardada = io.mockk.slot<Ejecucion>()
         coEvery { guardarEjecucionLocalUseCase(capture(guardada), any()) } just Runs
         conCatalogoElectrico()
         createViewModel()
         advanceUntilIdle()
-        viewModel.onEstacionSeleccionada(estacion)
-        viewModel.onDisciplinaSeleccionada("ELECTRICO")
-        viewModel.onSiguiente()
-        viewModel.onTipoActividadChange("INSPECCION")
-        viewModel.onTipoMantenimientoChange("PREVENTIVO")
-        viewModel.onActividadSeleccionada(actividadElectrica)
-        advanceUntilIdle()
-        viewModel.onSiguiente()
-        assertEquals(PASO_INTERVENIDO, viewModel.uiState.value.pasoActual)
-        viewModel.onConjuntoToggle(gabinetes.id)
-        viewModel.onElementoToggle(breaker.id)
-        viewModel.onElementoOtroToggle()
-        viewModel.onElementoOtroChange("  Celda de medida ")
-        assertEquals(3, viewModel.uiState.value.totalIntervenido)
+        hastaIntervenido()
+        viewModel.onConjuntoToggle(transformador.id)
+        viewModel.onElementoToggle(transformador.id, 301L)
+        viewModel.onElementoToggle(transformador.id, 302L)
+        viewModel.onDetalleElementoChange(transformador.id, 302L, "  Con óxido ")
+        viewModel.onElementoOtroToggle(transformador.id)
+        viewModel.onElementoOtroChange(transformador.id, "  Bornera auxiliar ")
+        assertEquals("Transformador: Fusibles, Estado físico (Con óxido), Bornera auxiliar",
+            resumenIntervenido(viewModel.uiState.value))
         viewModel.onSiguiente()
         viewModel.onResultadoChange("CONFORME")
         viewModel.onObservacionesChange("Sin novedades")
@@ -1112,11 +1191,15 @@ class CapturaViewModelTest {
         advanceUntilIdle()
 
         assertTrue(viewModel.uiState.value.saveCompleted)
-        assertEquals("ELECTRICO", guardada.captured.disciplina)
-        assertEquals(listOf(gabinetes.id), guardada.captured.conjuntoIds)
-        assertEquals(listOf(breaker.id), guardada.captured.elementoIds)
-        assertNull(guardada.captured.conjuntoOtro)
-        assertEquals("Celda de medida", guardada.captured.elementoOtro)
+        val e = guardada.captured
+        assertEquals("ELECTRICO", e.disciplina)
+        assertEquals(listOf(transformador.id), e.conjuntoIds)
+        assertTrue("La lista vieja sin conjunto ya no se usa", e.elementoIds.isEmpty())
+        assertEquals(
+            setOf(ElementoMarcado(transformador.id, 301L), ElementoMarcado(transformador.id, 302L, "Con óxido")),
+            e.elementosMarcados.toSet()
+        )
+        assertEquals(listOf(ElementoOtro(transformador.id, "Bornera auxiliar")), e.elementosOtros)
     }
 
     @Test
@@ -1147,6 +1230,7 @@ class CapturaViewModelTest {
 
     @Test
     fun `una orden de trabajo electrica se registra en Electrico`() = runTest {
+        conDisciplinasDelBackend()
         coEvery { obtenerOrdenAsignadaUseCase(8L) } returns orden.copy(id = 8L, disciplina = "ELECTRICO")
         createViewModel()
         viewModel.cargarDesdeOrden(8L)
@@ -1157,12 +1241,16 @@ class CapturaViewModelTest {
     }
 
     @Test
-    fun `editar un registro electrico carga lo marcado y envia lo que quede, aunque se quite todo`() = runTest {
+    fun `editar carga lo marcado por conjunto y conserva lo viejo sin conjunto`() = runTest {
         conCatalogoElectrico()
         coEvery { obtenerDetalleEjecucionUseCase(55L) } returns Result.success(
             detalleFixture().copy(
                 id = 55L, disciplina = "ELECTRICO",
-                conjuntos = listOf(ItemRef(gabinetes.id, gabinetes.nombre)), elementos = emptyList(),
+                conjuntos = listOf(ItemRef(transformador.id, transformador.nombre)),
+                elementos = listOf(
+                    ItemRef(302L, "Estado físico", conjuntoId = transformador.id, detalle = "Bien"),
+                    ItemRef(999L, "Breaker")
+                ),
                 conjuntoOtro = "Tablero auxiliar", elementoOtro = null
             )
         )
@@ -1173,18 +1261,38 @@ class CapturaViewModelTest {
         advanceUntilIdle()
 
         val s = viewModel.uiState.value
-        assertEquals(setOf(gabinetes.id), s.conjuntosSeleccionados)
-        assertTrue(s.conjuntoOtroActivo)
-        assertEquals("Tablero auxiliar", s.conjuntoOtro)
+        assertEquals(setOf(transformador.id), s.conjuntosSeleccionados)
+        assertEquals(setOf(MarcaElemento(transformador.id, 302L)), s.elementosMarcados)
+        assertEquals("Bien", s.detallesElemento[MarcaElemento(transformador.id, 302L)])
+        assertEquals(listOf(999L), s.elementosSinConjunto.map { it.id })
 
-        viewModel.onConjuntoToggle(gabinetes.id)
+        viewModel.onDetalleElementoChange(transformador.id, 302L, "Con fuga de aceite")
         viewModel.onConjuntoOtroToggle()
-        viewModel.onMotivoEdicionChange("Se marcó el conjunto equivocado")
+        viewModel.onMotivoEdicionChange("Se corrige el estado del transformador")
         repeat(s.nSteps) { viewModel.onSiguiente() }
         advanceUntilIdle()
 
-        assertEquals(emptyList<Long>(), enviada?.conjuntoIds)
+        assertEquals(listOf(transformador.id), enviada?.conjuntoIds)
         assertEquals("", enviada?.conjuntoOtro)
+        assertEquals(listOf(ElementoMarcado(transformador.id, 302L, "Con fuga de aceite")), enviada?.elementosMarcados)
+        assertEquals("Lo viejo sin conjunto se conserva", listOf(999L), enviada?.elementoIds)
+    }
+
+    @Test
+    fun `editar sin conjuntos en Electrico no deja guardar`() = runTest {
+        conCatalogoElectrico()
+        coEvery { obtenerDetalleEjecucionUseCase(56L) } returns Result.success(
+            detalleFixture().copy(id = 56L, disciplina = "ELECTRICO",
+                conjuntos = listOf(ItemRef(transformador.id, transformador.nombre)), elementos = emptyList())
+        )
+        createViewModel()
+        viewModel.cargarParaEditar(56L)
+        advanceUntilIdle()
+
+        viewModel.onConjuntoToggle(transformador.id)
+
+        val paso = viewModel.uiState.value.pasos.indexOf(PASO_INTERVENIDO) + 1
+        assertFalse(viewModel.esPasoValido(paso))
     }
 
     @Test

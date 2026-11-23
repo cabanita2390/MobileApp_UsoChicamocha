@@ -15,6 +15,10 @@ import com.example.testusoandroidstudio_1_usochicamocha.domain.model.Disciplinas
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.capturaMovil
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.usaIntervenido
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.ItemIntervenido
+import com.example.testusoandroidstudio_1_usochicamocha.domain.model.ElementoMarcado
+import com.example.testusoandroidstudio_1_usochicamocha.domain.model.ElementoOtro
+import com.example.testusoandroidstudio_1_usochicamocha.domain.model.ItemRef
+import com.example.testusoandroidstudio_1_usochicamocha.domain.model.de
 import com.example.testusoandroidstudio_1_usochicamocha.domain.repository.claveObsFrecuentes
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.subestacion.ObtenerItemsIntervenidosUseCase
 import com.example.testusoandroidstudio_1_usochicamocha.domain.usecase.LocalSyncCoordinator
@@ -113,15 +117,20 @@ data class CapturaUiState(
     val citaSugerida: CitaProgramada? = null,
     val citaSugeridaEstado: EstadoCita? = null,
 
-    // Paso «¿Qué se intervino?» (solo Eléctrico): conjuntos y elementos marcados y sus "Otro".
+    // Paso «¿Qué se intervino?»: conjuntos marcados y, dentro de cada uno, sus elementos.
     val conjuntosSeleccionados: Set<Long> = emptySet(),
-    val elementosSeleccionados: Set<Long> = emptySet(),
     val conjuntoOtroActivo: Boolean = false,
     val conjuntoOtro: String = "",
-    val elementoOtroActivo: Boolean = false,
-    val elementoOtro: String = "",
+    /** Elementos marcados, cada uno dentro de su conjunto ("Fusibles" del Transformador ≠ de la Subestación). */
+    val elementosMarcados: Set<MarcaElemento> = emptySet(),
+    /** Texto de los elementos que lo piden ("Estado físico": cómo se encuentra). */
+    val detallesElemento: Map<MarcaElemento, String> = emptyMap(),
+    /** Conjuntos con "Otro elemento" abierto, y lo escrito en cada uno. */
+    val otrosElementosActivos: Set<Long> = emptySet(),
+    val otrosElementos: Map<Long, String> = emptyMap(),
+    /** Al editar una visita anterior al ajuste: sus elementos sin conjunto, que se conservan tal cual. */
+    val elementosSinConjunto: List<ItemRef> = emptyList(),
     val busquedaElemento: String = "",
-    val verTodosElementos: Boolean = false,
 
     // Paso 3 — Resultado
     val resultado: String = "",
@@ -199,14 +208,31 @@ data class CapturaUiState(
     val conjuntosDisciplina: List<ItemIntervenido>
         get() = itemsIntervenidos.filter { it.tipo == ItemIntervenido.CONJUNTO && it.disciplina == disciplinaSeleccionada }
 
-    val elementosDisciplina: List<ItemIntervenido>
-        get() = itemsIntervenidos.filter { it.tipo == ItemIntervenido.ELEMENTO && it.disciplina == disciplinaSeleccionada }
+    /** Conjuntos marcados, en el orden del catálogo: sus elementos se muestran debajo, por conjunto. */
+    val conjuntosMarcados: List<ItemIntervenido>
+        get() = conjuntosDisciplina.filter { it.id in conjuntosSeleccionados }
+
+    /** En esta disciplina hay que marcar al menos un conjunto (si no, no se sabe dónde se trabajó). */
+    val conjuntoObligatorio: Boolean
+        get() = disciplinas.de(disciplinaSeleccionada)?.conjuntos == Disciplina.CONJUNTOS_OBLIGATORIO
+
+    val hayConjunto: Boolean
+        get() = conjuntosSeleccionados.isNotEmpty() || (conjuntoOtroActivo && conjuntoOtro.isNotBlank())
+
+    /** Lo que se envía: solo los elementos de conjuntos que siguen marcados, con su texto. */
+    val elementosAEnviar: List<ElementoMarcado>
+        get() = elementosMarcados.filter { it.conjuntoId in conjuntosSeleccionados }.map { m ->
+            ElementoMarcado(m.conjuntoId, m.elementoId, detallesElemento[m]?.trim()?.takeIf { it.isNotEmpty() })
+        }
+
+    val otrosAEnviar: List<ElementoOtro>
+        get() = otrosElementosActivos.filter { it in conjuntosSeleccionados }
+            .mapNotNull { c -> otrosElementos[c]?.trim()?.takeIf { it.isNotEmpty() }?.let { ElementoOtro(c, it) } }
 
     /** Cuántas cosas lleva marcadas en «¿Qué se intervino?» (los "Otro" con texto cuentan). */
     val totalIntervenido: Int
-        get() = conjuntosSeleccionados.size + elementosSeleccionados.size +
-            (if (conjuntoOtroActivo && conjuntoOtro.isNotBlank()) 1 else 0) +
-            (if (elementoOtroActivo && elementoOtro.isNotBlank()) 1 else 0)
+        get() = conjuntosSeleccionados.size + (if (conjuntoOtroActivo && conjuntoOtro.isNotBlank()) 1 else 0) +
+            elementosAEnviar.size + otrosAEnviar.size
 
     private val obsHistorial: List<String>?
         get() = obsFrecuentes[claveObsFrecuentes(disciplinaSeleccionada, tipoActividad)]
@@ -238,6 +264,9 @@ const val PASO_CITA = "CITA"
 const val PASO_CONTEXTO = "CONTEXTO"
 const val PASO_ACTIVIDAD = "ACTIVIDAD"
 const val PASO_INTERVENIDO = "INTERVENIDO"
+
+/** Un elemento marcado dentro de un conjunto (la llave de lo marcado y de su texto). */
+data class MarcaElemento(val conjuntoId: Long, val elementoId: Long)
 const val PASO_RESULTADO = "RESULTADO"
 const val PASO_EVIDENCIA = "EVIDENCIA"
 
@@ -513,11 +542,13 @@ class CapturaViewModel @Inject constructor(
                             observaciones = d.observaciones,
                             disciplinaSeleccionada = d.disciplina,
                             conjuntosSeleccionados = d.conjuntos.map { c -> c.id }.toSet(),
-                            elementosSeleccionados = d.elementos.map { e -> e.id }.toSet(),
                             conjuntoOtroActivo = !d.conjuntoOtro.isNullOrBlank(),
                             conjuntoOtro = d.conjuntoOtro ?: "",
-                            elementoOtroActivo = !d.elementoOtro.isNullOrBlank(),
-                            elementoOtro = d.elementoOtro ?: ""
+                            elementosMarcados = d.elementos.mapNotNull { e -> e.conjuntoId?.let { MarcaElemento(it, e.id) } }.toSet(),
+                            detallesElemento = d.elementos
+                                .mapNotNull { e -> e.conjuntoId?.let { c -> e.detalle?.let { MarcaElemento(c, e.id) to it } } }
+                                .toMap(),
+                            elementosSinConjunto = d.elementos.filter { e -> e.conjuntoId == null }
                         )
                     }
                 }
@@ -676,13 +707,13 @@ class CapturaViewModel @Inject constructor(
                     citaSugerida = null,
                     citaSugeridaEstado = null,
                     conjuntosSeleccionados = emptySet(),
-                    elementosSeleccionados = emptySet(),
                     conjuntoOtroActivo = false,
                     conjuntoOtro = "",
-                    elementoOtroActivo = false,
-                    elementoOtro = "",
-                    busquedaElemento = "",
-                    verTodosElementos = false
+                    elementosMarcados = emptySet(),
+                    detallesElemento = emptyMap(),
+                    otrosElementosActivos = emptySet(),
+                    otrosElementos = emptyMap(),
+                    busquedaElemento = ""
                 )
             }
         }
@@ -695,16 +726,36 @@ class CapturaViewModel @Inject constructor(
 
     // ---- «¿Qué se intervino?» (Eléctrico) ----
 
+    /** Desmarcar un conjunto se lleva lo que se marcó adentro (si no, se enviaría algo que ya no se ve). */
     fun onConjuntoToggle(id: Long) {
         _uiState.update { s ->
-            s.copy(conjuntosSeleccionados = if (id in s.conjuntosSeleccionados) s.conjuntosSeleccionados - id else s.conjuntosSeleccionados + id)
+            if (id in s.conjuntosSeleccionados) {
+                s.copy(
+                    conjuntosSeleccionados = s.conjuntosSeleccionados - id,
+                    elementosMarcados = s.elementosMarcados.filterNot { it.conjuntoId == id }.toSet(),
+                    detallesElemento = s.detallesElemento.filterKeys { it.conjuntoId != id },
+                    otrosElementosActivos = s.otrosElementosActivos - id,
+                    otrosElementos = s.otrosElementos - id
+                )
+            } else {
+                s.copy(conjuntosSeleccionados = s.conjuntosSeleccionados + id)
+            }
         }
     }
 
-    fun onElementoToggle(id: Long) {
+    fun onElementoToggle(conjuntoId: Long, elementoId: Long) {
+        val marca = MarcaElemento(conjuntoId, elementoId)
         _uiState.update { s ->
-            s.copy(elementosSeleccionados = if (id in s.elementosSeleccionados) s.elementosSeleccionados - id else s.elementosSeleccionados + id)
+            if (marca in s.elementosMarcados) {
+                s.copy(elementosMarcados = s.elementosMarcados - marca, detallesElemento = s.detallesElemento - marca)
+            } else {
+                s.copy(elementosMarcados = s.elementosMarcados + marca)
+            }
         }
+    }
+
+    fun onDetalleElementoChange(conjuntoId: Long, elementoId: Long, texto: String) {
+        _uiState.update { it.copy(detallesElemento = it.detallesElemento + (MarcaElemento(conjuntoId, elementoId) to texto.take(LARGO_MAXIMO_DETALLE))) }
     }
 
     /** Apagar "Otro" borra lo escrito: si no, se enviaría un texto que ya no se ve. */
@@ -716,20 +767,23 @@ class CapturaViewModel @Inject constructor(
         _uiState.update { it.copy(conjuntoOtro = texto.take(LARGO_MAXIMO_OTRO)) }
     }
 
-    fun onElementoOtroToggle() {
-        _uiState.update { it.copy(elementoOtroActivo = !it.elementoOtroActivo, elementoOtro = if (it.elementoOtroActivo) "" else it.elementoOtro) }
+    /** "Otro elemento" dentro de un conjunto; apagarlo borra lo escrito. */
+    fun onElementoOtroToggle(conjuntoId: Long) {
+        _uiState.update { s ->
+            if (conjuntoId in s.otrosElementosActivos) {
+                s.copy(otrosElementosActivos = s.otrosElementosActivos - conjuntoId, otrosElementos = s.otrosElementos - conjuntoId)
+            } else {
+                s.copy(otrosElementosActivos = s.otrosElementosActivos + conjuntoId)
+            }
+        }
     }
 
-    fun onElementoOtroChange(texto: String) {
-        _uiState.update { it.copy(elementoOtro = texto.take(LARGO_MAXIMO_OTRO)) }
+    fun onElementoOtroChange(conjuntoId: Long, texto: String) {
+        _uiState.update { it.copy(otrosElementos = it.otrosElementos + (conjuntoId to texto.take(LARGO_MAXIMO_OTRO))) }
     }
 
     fun onBusquedaElementoChange(texto: String) {
         _uiState.update { it.copy(busquedaElemento = texto) }
-    }
-
-    fun onVerTodosElementosToggle() {
-        _uiState.update { it.copy(verTodosElementos = !it.verTodosElementos) }
     }
 
     fun onMesManualChange(mes: Int) {
@@ -884,8 +938,8 @@ class CapturaViewModel @Inject constructor(
             PASO_CONTEXTO -> s.estacionId != null && s.fecha.isNotBlank()
             PASO_ACTIVIDAD -> s.tipoActividad.isNotBlank() && s.tipoMantenimiento.isNotBlank() &&
                 (if (s.modoLibre) s.descripcionLibre.trim().length > 3 else s.actividadId != null)
-            // Todo opcional: no marcar nada es "No aplica".
-            PASO_INTERVENIDO -> true
+            // El conjunto es obligatorio donde la disciplina lo pide; los elementos, siempre opcionales.
+            PASO_INTERVENIDO -> !s.conjuntoObligatorio || s.hayConjunto
             PASO_RESULTADO -> s.resultado.isNotBlank() && s.observaciones.isNotBlank()
             PASO_EVIDENCIA -> if (s.esEdicion) s.motivoEdicion.trim().length >= 15
                 else (!s.fotoObligatoria || s.fotos.isNotEmpty())
@@ -940,9 +994,9 @@ class CapturaViewModel @Inject constructor(
                 descripcionLibre = if (s.modoLibre) s.descripcionLibre.trim() else null,
                 disciplina = s.disciplinaSeleccionada,
                 conjuntoIds = if (s.conIntervenido) s.conjuntosSeleccionados.toList() else emptyList(),
-                elementoIds = if (s.conIntervenido) s.elementosSeleccionados.toList() else emptyList(),
                 conjuntoOtro = s.conjuntoOtro.trim().takeIf { s.conIntervenido && s.conjuntoOtroActivo && it.isNotEmpty() },
-                elementoOtro = s.elementoOtro.trim().takeIf { s.conIntervenido && s.elementoOtroActivo && it.isNotEmpty() }
+                elementosMarcados = if (s.conIntervenido) s.elementosAEnviar else emptyList(),
+                elementosOtros = if (s.conIntervenido) s.otrosAEnviar else emptyList()
             )
             guardarEjecucionLocalUseCase(ejecucion, s.fotos.map { it.toString() })
             observarEnvio(ejecucion.uuidCliente)
@@ -992,9 +1046,11 @@ class CapturaViewModel @Inject constructor(
                 motivoEdicion = s.motivoEdicion.trim(),
                 // Eléctrico envía siempre lo marcado ("" o lista vacía = se quitó); Civil no lo envía.
                 conjuntoIds = if (s.conIntervenido) s.conjuntosSeleccionados.toList() else null,
-                elementoIds = if (s.conIntervenido) s.elementosSeleccionados.toList() else null,
+                // Los elementos "sin conjunto" de una visita vieja se conservan; el "Otro" suelto viejo no se toca (null).
+                elementoIds = if (s.conIntervenido) s.elementosSinConjunto.map { it.id } else null,
                 conjuntoOtro = if (s.conIntervenido) (if (s.conjuntoOtroActivo) s.conjuntoOtro.trim() else "") else null,
-                elementoOtro = if (s.conIntervenido) (if (s.elementoOtroActivo) s.elementoOtro.trim() else "") else null
+                elementosMarcados = if (s.conIntervenido) s.elementosAEnviar else null,
+                elementosOtros = if (s.conIntervenido) s.otrosAEnviar else null
             )
             editarEjecucionUseCase(id, edicion)
                 .onSuccess { _uiState.update { it.copy(isSaving = false, saveCompleted = true) } }
@@ -1025,3 +1081,6 @@ internal const val LARGO_MAXIMO_TEXTO = 500
 
 /** Textos de "Otro" en «¿Qué se intervino?»: la columna del backend es de 200. */
 internal const val LARGO_MAXIMO_OTRO = 200
+
+/** Tope del texto de un elemento que lo pide (columna VARCHAR(500) del backend). */
+internal const val LARGO_MAXIMO_DETALLE = 500

@@ -244,9 +244,11 @@ fun CapturaScreen(
                         SubestacionType.Hint(uiState.errorEdicion!!, color = SubestacionColors.Red, modifier = Modifier.padding(bottom = 8.dp))
                     }
                     val label = when {
-                        uiState.pasoActual == PASO_INTERVENIDO ->
-                            if (uiState.totalIntervenido == 0) "Continuar sin marcar"
-                            else "Continuar · ${uiState.totalIntervenido} ${if (uiState.totalIntervenido == 1) "marcado" else "marcados"}"
+                        uiState.pasoActual == PASO_INTERVENIDO -> when {
+                            uiState.conjuntoObligatorio && !uiState.hayConjunto -> "Marca al menos un conjunto"
+                            uiState.totalIntervenido == 0 -> "Continuar sin marcar"
+                            else -> "Continuar · ${uiState.totalIntervenido} ${if (uiState.totalIntervenido == 1) "marcado" else "marcados"}"
+                        }
                         uiState.currentStep < uiState.nSteps -> "Continuar"
                         !puedeAvanzar && uiState.esEdicion -> "Falta el motivo de la edición"
                         !puedeAvanzar -> "Falta al menos una fotografía"

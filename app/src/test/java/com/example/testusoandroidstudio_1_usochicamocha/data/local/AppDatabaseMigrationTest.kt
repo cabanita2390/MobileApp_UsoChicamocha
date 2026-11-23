@@ -28,7 +28,7 @@ class AppDatabaseMigrationTest {
     private val nombreDb = "migracion_test.db"
 
     private companion object {
-        const val VERSION_ACTUAL = 57
+        const val VERSION_ACTUAL = 58
     }
 
     @Before
@@ -43,7 +43,7 @@ class AppDatabaseMigrationTest {
      */
     private fun migracionesDesde(version: Int) = listOf(
         AppDatabase.MIGRATION_53_54, AppDatabase.MIGRATION_54_55, AppDatabase.MIGRATION_55_56,
-        AppDatabase.MIGRATION_56_57
+        AppDatabase.MIGRATION_56_57, AppDatabase.MIGRATION_57_58
     ).filter { it.startVersion >= version }.toTypedArray()
 
     private fun crearBaseEnVersion(version: Int): SQLiteDatabase {
@@ -180,6 +180,51 @@ class AppDatabaseMigrationTest {
                     listOf("CIVIL|Civil|1|NO|0", "ELECTRICO|Eléctrico|1|OPCIONAL|1", "ELECTROMECANICO|Electromecánico|0|OBLIGATORIO|1"),
                     filas
                 )
+            }
+        } finally {
+            db.close()
+        }
+    }
+
+    @Test
+    fun una_base_nueva_trae_las_disciplinas_sembradas() {
+        val db = Room.databaseBuilder(context, AppDatabase::class.java, nombreDb)
+            .addCallback(AppDatabase.SEMBRAR_AL_CREAR)
+            .allowMainThreadQueries()
+            .build()
+        try {
+            db.openHelper.writableDatabase.query(
+                "SELECT codigo, capturaMovil, conjuntos FROM mant_disciplina_cache ORDER BY orden"
+            ).use { c ->
+                val filas = buildList { while (c.moveToNext()) add("${c.getString(0)}:${c.getInt(1)}:${c.getString(2)}") }
+                assertEquals(listOf("CIVIL:1:NO", "ELECTRICO:1:OBLIGATORIO", "ELECTROMECANICO:0:OBLIGATORIO"), filas)
+            }
+        } finally {
+            db.close()
+        }
+    }
+
+    @Test
+    fun migracion_57_a_58_siembra_las_disciplinas_si_faltan_y_no_toca_las_del_backend() {
+        crearBaseEnVersion(57).apply {
+            execSQL("DELETE FROM mant_disciplina_cache")
+            execSQL(
+                "INSERT INTO mant_disciplina_cache (codigo, nombre, sigla, orden, capturaMovil, conjuntos, usaElementos, usaEquipos, usaControles) " +
+                    "VALUES ('CIVIL', 'Civil del backend', 'C', 1, 1, 'NO', 0, 0, 0)"
+            )
+            close()
+        }
+
+        val db = Room.databaseBuilder(context, AppDatabase::class.java, nombreDb)
+            .addMigrations(*migracionesDesde(57))
+            .allowMainThreadQueries()
+            .build()
+        try {
+            val sqlite = db.openHelper.writableDatabase
+            assertEquals(VERSION_ACTUAL, sqlite.version)
+            sqlite.query("SELECT codigo, nombre FROM mant_disciplina_cache ORDER BY orden").use { c ->
+                val filas = buildList { while (c.moveToNext()) add("${c.getString(0)}:${c.getString(1)}") }
+                assertEquals(listOf("CIVIL:Civil del backend", "ELECTRICO:Eléctrico", "ELECTROMECANICO:Electromecánico"), filas)
             }
         } finally {
             db.close()

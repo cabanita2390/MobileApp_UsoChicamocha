@@ -77,9 +77,10 @@ import com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.Ejecuc
         com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.OrdenAsignadaCacheEntity::class,
         com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.LlantaConfigCacheEntity::class,
         com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.ItemIntervenidoCacheEntity::class,
-        com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.DisciplinaCacheEntity::class
+        com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.DisciplinaCacheEntity::class,
+        com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.ConjuntoElementoCacheEntity::class
     ],
-    version = 57,
+    version = 58,
     exportSchema = true
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -953,6 +954,46 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * Cada conjunto con sus elementos (backend V54): caché de lo que tiene adentro cada conjunto, y en
+         * la cola cada elemento marcado con su conjunto (JSON). Las visitas encoladas antes siguen
+         * enviando `elementoIds` (sin conjunto).
+         */
+        /**
+         * Las disciplinas como las sirve hoy el backend (V54), para una base recién creada (instalación
+         * nueva o borrada). Sin ellas la app no sabe qué disciplinas registrar y el inicio mostraba
+         * "0 citas" hasta que una sincronización las trajera (sin red o con un backend anterior a V53,
+         * nunca). La primera sincronización del catálogo las reemplaza con lo del backend.
+         */
+        private const val SEMILLA_DISCIPLINAS =
+            "INSERT OR IGNORE INTO `mant_disciplina_cache` (`codigo`, `nombre`, `sigla`, `orden`, `capturaMovil`, " +
+                "`conjuntos`, `usaElementos`, `usaEquipos`, `usaControles`) VALUES " +
+                "('CIVIL', 'Civil', 'C', 1, 1, 'NO', 0, 0, 0), " +
+                "('ELECTRICO', 'Eléctrico', 'E', 2, 1, 'OBLIGATORIO', 1, 0, 0), " +
+                "('ELECTROMECANICO', 'Electromecánico', 'M', 3, 0, 'OBLIGATORIO', 1, 0, 0)"
+
+        /** Siembra las disciplinas al crear la base (ver [SEMILLA_DISCIPLINAS]). */
+        val SEMBRAR_AL_CREAR = object : RoomDatabase.Callback() {
+            override fun onCreate(db: SupportSQLiteDatabase) {
+                db.execSQL(SEMILLA_DISCIPLINAS)
+            }
+        }
+
+        val MIGRATION_57_58 = object : Migration(57, 58) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL(
+                    "CREATE TABLE IF NOT EXISTS `mant_conjunto_elemento_cache` (`conjuntoId` INTEGER NOT NULL, " +
+                        "`elementoId` INTEGER NOT NULL, `nombre` TEXT NOT NULL, `pideDetalle` INTEGER NOT NULL, " +
+                        "`orden` INTEGER NOT NULL, PRIMARY KEY(`conjuntoId`, `elementoId`))"
+                )
+                database.execSQL("ALTER TABLE `pending_mant_ejecucion` ADD COLUMN `elementosMarcadosJson` TEXT NOT NULL DEFAULT ''")
+                database.execSQL("ALTER TABLE `pending_mant_ejecucion` ADD COLUMN `elementosOtrosJson` TEXT NOT NULL DEFAULT ''")
+                // Un teléfono que nunca recibió disciplinas (instalado sin red o contra un backend sin V53)
+                // queda con la lista vacía; INSERT OR IGNORE no toca las que ya trajo del backend.
+                database.execSQL(SEMILLA_DISCIPLINAS)
+            }
+        }
+
         /** Foto pendiente cuyo archivo ya no existe: deja de reintentarse y la Cola lo avisa. */
         val MIGRATION_48_49 = object : Migration(48, 49) {
             override fun migrate(database: SupportSQLiteDatabase) {
@@ -988,4 +1029,5 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun llantaConfigCacheDao(): com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.LlantaConfigCacheDao
     abstract fun itemIntervenidoCacheDao(): com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.ItemIntervenidoCacheDao
     abstract fun disciplinaCacheDao(): com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.DisciplinaCacheDao
+    abstract fun conjuntoElementoCacheDao(): com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.ConjuntoElementoCacheDao
 }

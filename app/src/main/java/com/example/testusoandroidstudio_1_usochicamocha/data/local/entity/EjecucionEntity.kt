@@ -4,6 +4,8 @@ import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.Ejecucion
+import com.example.testusoandroidstudio_1_usochicamocha.domain.model.ElementoMarcado
+import com.example.testusoandroidstudio_1_usochicamocha.domain.model.ElementoOtro
 
 @Entity(tableName = "pending_mant_ejecucion")
 data class EjecucionEntity(
@@ -38,8 +40,26 @@ data class EjecucionEntity(
     @ColumnInfo(defaultValue = "") val conjuntoIds: String = "",
     @ColumnInfo(defaultValue = "") val elementoIds: String = "",
     val conjuntoOtro: String? = null,
-    val elementoOtro: String? = null
+    val elementoOtro: String? = null,
+    /** Elementos marcados con su conjunto, en JSON ("" = ninguno o registro anterior a Room 58). */
+    @ColumnInfo(defaultValue = "") val elementosMarcadosJson: String = "",
+    /** "Otro" por conjunto, en JSON ("" = ninguno). */
+    @ColumnInfo(defaultValue = "") val elementosOtrosJson: String = ""
 )
+
+private val gsonMarcas = com.google.gson.Gson()
+
+fun marcasAJson(marcas: List<ElementoMarcado>): String = if (marcas.isEmpty()) "" else gsonMarcas.toJson(marcas)
+
+fun otrosAJson(otros: List<ElementoOtro>): String = if (otros.isEmpty()) "" else gsonMarcas.toJson(otros)
+
+internal fun marcasDeJson(json: String): List<ElementoMarcado> =
+    if (json.isBlank()) emptyList()
+    else runCatching { gsonMarcas.fromJson(json, Array<ElementoMarcado>::class.java).toList() }.getOrDefault(emptyList())
+
+internal fun otrosDeJson(json: String): List<ElementoOtro> =
+    if (json.isBlank()) emptyList()
+    else runCatching { gsonMarcas.fromJson(json, Array<ElementoOtro>::class.java).toList() }.getOrDefault(emptyList())
 
 /** "3,7,12" → [3, 7, 12]; "" → []. */
 internal fun idsDeCsv(csv: String): List<Long> = csv.split(',').mapNotNull { it.trim().toLongOrNull() }
@@ -72,6 +92,8 @@ fun EjecucionEntity.toDomain(): Ejecucion {
         conjuntoIds = idsDeCsv(conjuntoIds),
         elementoIds = idsDeCsv(elementoIds),
         conjuntoOtro = conjuntoOtro,
-        elementoOtro = elementoOtro
+        elementoOtro = elementoOtro,
+        elementosMarcados = marcasDeJson(elementosMarcadosJson),
+        elementosOtros = otrosDeJson(elementosOtrosJson)
     )
 }

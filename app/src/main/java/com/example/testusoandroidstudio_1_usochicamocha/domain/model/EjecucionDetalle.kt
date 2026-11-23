@@ -32,10 +32,16 @@ data class EjecucionDetalle(
     val elementoOtro: String? = null
 )
 
-/** Conjunto o elemento marcado en una visita (id para editar, nombre para mostrar). */
+/**
+ * Conjunto o elemento marcado en una visita (id para editar, nombre para mostrar). En los elementos,
+ * [conjuntoId] es el conjunto donde se trabajó (null = visita anterior al ajuste, "sin conjunto") y
+ * [detalle] el texto de los que lo piden ("Estado físico").
+ */
 data class ItemRef(
     val id: Long,
-    val nombre: String
+    val nombre: String,
+    val conjuntoId: Long? = null,
+    val detalle: String? = null
 )
 
 data class EvidenciaDetalle(

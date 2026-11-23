@@ -55,7 +55,10 @@ data class EjecucionResponseDto(
 
 data class ItemRefDto(
     @SerializedName("id") val id: Long,
-    @SerializedName("nombre") val nombre: String
+    @SerializedName("nombre") val nombre: String,
+    /** Solo elementos (backend V54): conjunto donde se trabajó; null = "sin conjunto". */
+    @SerializedName("conjuntoId") val conjuntoId: Long? = null,
+    @SerializedName("detalle") val detalle: String? = null
 )
 
 data class OrdenRefDto(
@@ -89,9 +92,14 @@ fun EjecucionResponseDto.toEntity(localId: Int): EjecucionEntity {
         isSyncing = false,
         disciplina = disciplina,
         conjuntoIds = conjuntos.orEmpty().joinToString(",") { it.id.toString() },
-        elementoIds = elementos.orEmpty().joinToString(",") { it.id.toString() },
+        elementoIds = elementos.orEmpty().filter { it.conjuntoId == null }.joinToString(",") { it.id.toString() },
         conjuntoOtro = conjuntoOtro,
-        elementoOtro = elementoOtro
+        elementoOtro = elementoOtro,
+        elementosMarcadosJson = com.example.testusoandroidstudio_1_usochicamocha.data.local.entity.marcasAJson(
+            elementos.orEmpty().mapNotNull { e ->
+                e.conjuntoId?.let { com.example.testusoandroidstudio_1_usochicamocha.domain.model.ElementoMarcado(it, e.id, e.detalle) }
+            }
+        )
     )
 }
 
@@ -120,7 +128,7 @@ fun EjecucionResponseDto.toDomain(): EjecucionDetalle {
         ediciones = ediciones.map { EdicionDetalle(it.usuario, it.motivo, it.editadoEn) },
         deOrden = orden != null,
         conjuntos = conjuntos.orEmpty().map { ItemRef(it.id, it.nombre) },
-        elementos = elementos.orEmpty().map { ItemRef(it.id, it.nombre) },
+        elementos = elementos.orEmpty().map { ItemRef(it.id, it.nombre, it.conjuntoId, it.detalle) },
         conjuntoOtro = conjuntoOtro,
         elementoOtro = elementoOtro
     )

@@ -17,5 +17,8 @@ data class EjecucionEdicion(
     val conjuntoIds: List<Long>? = null,
     val elementoIds: List<Long>? = null,
     val conjuntoOtro: String? = null,
-    val elementoOtro: String? = null
+    val elementoOtro: String? = null,
+    /** Elementos marcados con su conjunto. null = no se envía (Civil). */
+    val elementosMarcados: List<ElementoMarcado>? = null,
+    val elementosOtros: List<ElementoOtro>? = null
 )

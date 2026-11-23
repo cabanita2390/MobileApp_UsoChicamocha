@@ -192,13 +192,21 @@ private fun DetalleContenido(d: EjecucionDetalle, disciplinas: List<Disciplina>,
                 if (disciplinas.usaIntervenido(d.disciplina) || d.conjuntos.isNotEmpty() || d.elementos.isNotEmpty() ||
                     !d.conjuntoOtro.isNullOrBlank() || !d.elementoOtro.isNullOrBlank()) {
                     SeccionEncabezado("QUÉ SE INTERVINO")
-                    val conjuntos = d.conjuntos.map { it.nombre } + listOfNotNull(d.conjuntoOtro?.takeIf { it.isNotBlank() }?.let { "Otro: $it" })
-                    val elementos = d.elementos.map { it.nombre } + listOfNotNull(d.elementoOtro?.takeIf { it.isNotBlank() }?.let { "Otro: $it" })
-                    if (conjuntos.isEmpty() && elementos.isEmpty()) {
+                    // Una fila por conjunto con los elementos que se marcaron adentro (y el texto de los que lo piden).
+                    val etiqueta = { e: com.example.testusoandroidstudio_1_usochicamocha.domain.model.ItemRef ->
+                        if (e.detalle.isNullOrBlank()) e.nombre else "${e.nombre}: ${e.detalle}"
+                    }
+                    val sueltos = d.elementos.filter { e -> e.conjuntoId == null || d.conjuntos.none { it.id == e.conjuntoId } }
+                        .map(etiqueta) + listOfNotNull(d.elementoOtro?.takeIf { it.isNotBlank() }?.let { "Otro: $it" })
+                    if (d.conjuntos.isEmpty() && d.conjuntoOtro.isNullOrBlank() && sueltos.isEmpty()) {
                         FilaDetalle("Conjuntos y elementos", "No aplica")
                     } else {
-                        if (conjuntos.isNotEmpty()) FilaDetalle("Conjuntos", conjuntos.joinToString(", "))
-                        if (elementos.isNotEmpty()) FilaDetalle("Elementos", elementos.joinToString(", "))
+                        d.conjuntos.forEach { c ->
+                            val adentro = d.elementos.filter { it.conjuntoId == c.id }.map(etiqueta)
+                            FilaDetalle(c.nombre, if (adentro.isEmpty()) "Sin elementos marcados" else adentro.joinToString(", "))
+                        }
+                        d.conjuntoOtro?.takeIf { it.isNotBlank() }?.let { FilaDetalle("Otro conjunto", it) }
+                        if (sueltos.isNotEmpty()) FilaDetalle("Sin conjunto", sueltos.joinToString(", "))
                     }
                 }
 

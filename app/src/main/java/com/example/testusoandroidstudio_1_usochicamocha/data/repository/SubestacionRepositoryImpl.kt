@@ -22,7 +22,9 @@ import com.example.testusoandroidstudio_1_usochicamocha.data.remote.mensajeError
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.EjecucionEditRequestDto
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.EjecucionRequestDto
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.EjecucionResponseDto
+import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.elementosCache
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.toDomain
+import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.toDto
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.toEntity
 import com.example.testusoandroidstudio_1_usochicamocha.data.remote.dto.toNoProgramadaCacheEntity
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.ActividadCatalogo
@@ -62,7 +64,8 @@ class SubestacionRepositoryImpl @Inject constructor(
     private val ordenAsignadaCacheDao: com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.OrdenAsignadaCacheDao,
     private val dataStore: androidx.datastore.core.DataStore<androidx.datastore.preferences.core.Preferences>,
     private val itemIntervenidoCacheDao: com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.ItemIntervenidoCacheDao,
-    private val disciplinaCacheDao: com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.DisciplinaCacheDao
+    private val disciplinaCacheDao: com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.DisciplinaCacheDao,
+    private val conjuntoElementoCacheDao: com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.ConjuntoElementoCacheDao
 ) : SubestacionRepository {
 
     init {
@@ -175,7 +178,9 @@ class SubestacionRepositoryImpl @Inject constructor(
                 conjuntoIds = ejecucion.conjuntoIds.takeIf { it.isNotEmpty() },
                 elementoIds = ejecucion.elementoIds.takeIf { it.isNotEmpty() },
                 conjuntoOtro = ejecucion.conjuntoOtro,
-                elementoOtro = ejecucion.elementoOtro
+                elementoOtro = ejecucion.elementoOtro,
+                elementosMarcados = ejecucion.elementosMarcados.map { it.toDto() }.takeIf { it.isNotEmpty() },
+                elementosOtros = ejecucion.elementosOtros.map { it.toDto() }.takeIf { it.isNotEmpty() }
             )
             val response = apiService.registrarEjecucionSubestacion(request)
 
@@ -273,8 +278,18 @@ class SubestacionRepositoryImpl @Inject constructor(
         return actividadCacheDao.getAllFlow().map { entities -> entities.map { it.toDomain() } }
     }
 
+    /** Conjuntos y elementos, cada conjunto con lo que tiene adentro (en su orden). */
     override fun getItemsIntervenidosCache(): Flow<List<com.example.testusoandroidstudio_1_usochicamocha.domain.model.ItemIntervenido>> =
-        itemIntervenidoCacheDao.getAllFlow().map { lista -> lista.map { it.toDomain() } }
+        combine(itemIntervenidoCacheDao.getAllFlow(), conjuntoElementoCacheDao.getAllFlow()) { items, contenido ->
+            val porConjunto = contenido.groupBy { it.conjuntoId }
+            items.map { item ->
+                val base = item.toDomain()
+                if (base.tipo != com.example.testusoandroidstudio_1_usochicamocha.domain.model.ItemIntervenido.CONJUNTO) base
+                else base.copy(elementos = porConjunto[item.id].orEmpty().sortedBy { it.orden }.map {
+                    com.example.testusoandroidstudio_1_usochicamocha.domain.model.ElementoDeConjunto(it.elementoId, it.nombre, it.pideDetalle)
+                })
+            }
+        }
 
     /**
      * Disciplinas y lo que hace cada una. Si falla (sin red, backend anterior a V53) se conservan las
@@ -308,6 +323,8 @@ class SubestacionRepositoryImpl @Inject constructor(
             val tipoElemento = com.example.testusoandroidstudio_1_usochicamocha.domain.model.ItemIntervenido.ELEMENTO
             if (conjuntos.isSuccessful && conjuntos.body() != null) {
                 itemIntervenidoCacheDao.reemplazar(tipoConjunto, conjuntos.body()!!.map { it.toEntity(tipoConjunto) })
+                // Lo que tiene adentro cada conjunto; un backend anterior a V54 no lo manda y queda vacío.
+                conjuntoElementoCacheDao.reemplazar(conjuntos.body()!!.flatMap { it.elementosCache() })
             } else {
                 Log.w(TAG, "Conjuntos no disponibles: ${conjuntos.code()}")
             }
@@ -509,7 +526,9 @@ class SubestacionRepositoryImpl @Inject constructor(
                 conjuntoIds = edicion.conjuntoIds,
                 elementoIds = edicion.elementoIds,
                 conjuntoOtro = edicion.conjuntoOtro,
-                elementoOtro = edicion.elementoOtro
+                elementoOtro = edicion.elementoOtro,
+                elementosMarcados = edicion.elementosMarcados?.map { it.toDto() },
+                elementosOtros = edicion.elementosOtros?.map { it.toDto() }
             )
             val response = apiService.editarEjecucionSubestacion(id, request)
             if (response.isSuccessful && response.body() != null) {

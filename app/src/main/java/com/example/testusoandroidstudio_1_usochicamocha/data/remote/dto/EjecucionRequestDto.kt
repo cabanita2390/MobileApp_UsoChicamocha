@@ -24,5 +24,28 @@ data class EjecucionRequestDto(
     @SerializedName("conjuntoIds") val conjuntoIds: List<Long>? = null,
     @SerializedName("elementoIds") val elementoIds: List<Long>? = null,
     @SerializedName("conjuntoOtro") val conjuntoOtro: String? = null,
-    @SerializedName("elementoOtro") val elementoOtro: String? = null
+    @SerializedName("elementoOtro") val elementoOtro: String? = null,
+    /** Elementos marcados, cada uno con su conjunto (backend V54). */
+    @SerializedName("elementosMarcados") val elementosMarcados: List<ElementoMarcadoDto>? = null,
+    /** "Otro" en los elementos de un conjunto. */
+    @SerializedName("elementosOtros") val elementosOtros: List<ElementoOtroDto>? = null
 )
+
+/** Espejo de ElementoMarcadoRequest del backend. */
+data class ElementoMarcadoDto(
+    @SerializedName("conjuntoId") val conjuntoId: Long,
+    @SerializedName("elementoId") val elementoId: Long,
+    @SerializedName("detalle") val detalle: String? = null
+)
+
+/** Espejo de ElementoOtroRequest del backend. */
+data class ElementoOtroDto(
+    @SerializedName("conjuntoId") val conjuntoId: Long,
+    @SerializedName("texto") val texto: String
+)
+
+fun com.example.testusoandroidstudio_1_usochicamocha.domain.model.ElementoMarcado.toDto() =
+    ElementoMarcadoDto(conjuntoId = conjuntoId, elementoId = elementoId, detalle = detalle)
+
+fun com.example.testusoandroidstudio_1_usochicamocha.domain.model.ElementoOtro.toDto() =
+    ElementoOtroDto(conjuntoId = conjuntoId, texto = texto)

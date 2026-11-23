@@ -61,8 +61,11 @@ object DatabaseModule {
                 AppDatabase.MIGRATION_53_54,
                 AppDatabase.MIGRATION_54_55,
                 AppDatabase.MIGRATION_55_56,
-                AppDatabase.MIGRATION_56_57
+                AppDatabase.MIGRATION_56_57,
+                AppDatabase.MIGRATION_57_58
             )
+            // Base recién creada: con las disciplinas sembradas, para no mostrar "0 citas" sin red.
+            .addCallback(AppDatabase.SEMBRAR_AL_CREAR)
             .build()
     }
 
@@ -164,6 +167,11 @@ object DatabaseModule {
     @Singleton
     fun provideLlantaConfigCacheDao(db: AppDatabase): com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.LlantaConfigCacheDao =
         db.llantaConfigCacheDao()
+
+    @Provides
+    @Singleton
+    fun provideConjuntoElementoCacheDao(db: AppDatabase): com.example.testusoandroidstudio_1_usochicamocha.data.local.dao.ConjuntoElementoCacheDao =
+        db.conjuntoElementoCacheDao()
 
     @Provides
     @Singleton
