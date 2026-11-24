@@ -43,6 +43,7 @@ import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.inspection.Sea
 import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.inspection.SegmentedOptionSelector
 import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.llantas.PresionLlantasAvisoDialog
 import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.llantas.PresionLlantasSection
+import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.llantas.TITULO_PRESION_LLANTAS
 import android.content.Intent
 import android.net.Uri
 
@@ -269,9 +270,9 @@ fun MotocicletaScreen(
             }
 
             // 4b. PRESIÓN DE LLANTAS (solo si la moto tiene perfil)
-            if (uiState.presionLlantas.aplica) {
+            if (uiState.presionLlantas.seMuestra) {
                 item {
-                    SectionCard("Presión de Llantas (PSI) (*)", modifier = Modifier.testTag("section_presion_llantas")) {
+                    SectionCard(TITULO_PRESION_LLANTAS, modifier = Modifier.testTag("section_presion_llantas")) {
                         PresionLlantasSection(
                             state = uiState.presionLlantas,
                             onValorChange = { codigo, texto -> viewModel.onPresionLlantaChange(codigo, texto) },

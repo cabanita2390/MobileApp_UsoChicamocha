@@ -151,11 +151,9 @@ class MotocicletaViewModelTest {
 
         val presion = viewModel.uiState.value.presionLlantas
         assertEquals(config, presion.config)
-        assertEquals(false, presion.completa)
 
         viewModel.onPresionLlantaChange("DEL", "22")
         viewModel.onPresionLlantaChange("TRA", "32")
-        assertEquals(true, viewModel.uiState.value.presionLlantas.completa)
         assertEquals(listOf("DEL"), viewModel.uiState.value.presionLlantas.fueraDeRango().map { it.posicion.codigo })
     }
 

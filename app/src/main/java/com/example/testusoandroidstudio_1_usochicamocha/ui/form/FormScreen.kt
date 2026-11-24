@@ -165,7 +165,7 @@ MachineSelector(
             item { Divider(modifier = Modifier.padding(vertical = 8.dp)) }
             item { StatusSelector("Estado de Llantas y/o Carriles (*)", uiState.estadoLlantasCarriles) { viewModel.onEstadoChange("LlantasCarriles", it) } }
             item { Divider(modifier = Modifier.padding(vertical = 8.dp)) }
-            if (uiState.presionLlantas.aplica) {
+            if (uiState.presionLlantas.seMuestra) {
                 item {
                     PresionLlantasSection(
                         state = uiState.presionLlantas,

@@ -771,7 +771,6 @@ class MotocicletaViewModel @Inject constructor(
                 s.checkNivelAceite.isNotBlank() &&
                 s.checkEstadoLlantas.isNotBlank() &&
                 s.checkEstadoLuces.isNotBlank() &&
-                s.presionLlantas.completa &&
                 s.documentosVencidos.isEmpty()
 
         _uiState.update { it.copy(isSaveButtonEnabled = valid) }

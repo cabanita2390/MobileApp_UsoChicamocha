@@ -9,13 +9,23 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.After
 import org.junit.Test
+import java.time.LocalDate
 
 class PresionLlantasStateTest {
 
     private val del = PosicionLlanta("DEL", "Delantera", 1, 28.0, 30.0, 33.0)
     private val tra = PosicionLlanta("TRA", "Trasera", 2, 30.0, null, 36.0)
-    private val conPerfil = PresionLlantasState(config = ConfigLlantas("Moto 2 llantas", listOf(del, tra)))
+    private val perfil = ConfigLlantas("Moto 2 llantas", listOf(del, tra))
+    private val conPerfil = PresionLlantasState(config = perfil, tocaMedir = true)
+
+    private val lunes = LocalDate.of(2026, 11, 23)
+
+    @After
+    fun relojReal() {
+        DiaMedicionLlantas.hoy = { LocalDate.now() }
+    }
 
     @Test
     fun `evaluar respeta los bordes del rango igual que el backend`() {
@@ -43,23 +53,38 @@ class PresionLlantasStateTest {
     fun `sin perfil la seccion no aplica y no frena el guardado`() {
         val sinPerfil = PresionLlantasState()
         assertFalse(sinPerfil.aplica)
-        assertTrue(sinPerfil.completa)
+        assertFalse(sinPerfil.seMuestra)
         assertFalse(sinPerfil.requiereAviso)
         assertTrue(sinPerfil.lecturas().isEmpty())
     }
 
     @Test
-    fun `con perfil exige todas las llantas`() {
-        assertFalse(conPerfil.completa)
-        val una = conPerfil.conValor("DEL", "30")
-        assertFalse(una.completa)
-        assertTrue(una.conValor("TRA", "31").completa)
+    fun `se pide solo los lunes`() {
+        DiaMedicionLlantas.hoy = { lunes }
+        assertTrue(DiaMedicionLlantas.tocaMedir())
+        assertTrue(PresionLlantasState().paraActivo(perfil).seMuestra)
+        for (dias in 1L..6L) {
+            DiaMedicionLlantas.hoy = { lunes.plusDays(dias) }
+            val s = PresionLlantasState().paraActivo(perfil)
+            assertTrue("el activo sigue teniendo perfil", s.aplica)
+            assertFalse("${lunes.plusDays(dias).dayOfWeek} no se pide", s.seMuestra)
+        }
+        DiaMedicionLlantas.hoy = { lunes.plusWeeks(1) }
+        assertTrue(PresionLlantasState().paraActivo(perfil).seMuestra)
+    }
+
+    @Test
+    fun `nunca bloquea: con llantas sin medir envia solo las medidas`() {
+        assertTrue(conPerfil.lecturas().isEmpty())
+        assertFalse(conPerfil.requiereAviso)
+        val una = conPerfil.conValor("DEL", "30").conValor("TRA", "")
+        assertEquals(listOf("DEL"), una.lecturas().map { it.codigoPosicion })
+        assertFalse(una.requiereAviso)
     }
 
     @Test
     fun `presion baja pide aviso una vez y no bloquea`() {
         val s = conPerfil.conValor("DEL", "22").conValor("TRA", "40")
-        assertTrue(s.completa)
         assertEquals(listOf(ResultadoPresionLlanta.BAJA, ResultadoPresionLlanta.ALTA), s.fueraDeRango().map { it.resultado })
         assertTrue(s.requiereAviso)
         assertFalse(s.copy(avisoConfirmado = true).requiereAviso)

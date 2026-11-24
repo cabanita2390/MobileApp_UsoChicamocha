@@ -5,6 +5,18 @@ import com.example.testusoandroidstudio_1_usochicamocha.domain.model.EvaluadorPr
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.LecturaPresionLlanta
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.PosicionLlanta
 import com.example.testusoandroidstudio_1_usochicamocha.domain.model.ResultadoPresionLlanta
+import java.time.DayOfWeek
+import java.time.LocalDate
+
+/**
+ * La presión de llantas se pide una vez por semana, los lunes. Los demás días la sección no sale
+ * en las inspecciones. [hoy] se puede cambiar en las pruebas.
+ */
+object DiaMedicionLlantas {
+    val DIA: DayOfWeek = DayOfWeek.MONDAY
+    var hoy: () -> LocalDate = { LocalDate.now() }
+    fun tocaMedir(): Boolean = hoy().dayOfWeek == DIA
+}
 
 /** Una llanta fuera de rango, para el aviso de "calibrar después". */
 data class LlantaFueraDeRango(
@@ -15,8 +27,8 @@ data class LlantaFueraDeRango(
 
 /**
  * Estado de la sección "Presión de llantas", compartido por los formularios de vehículo, moto y
- * maquinaria. Si el activo no tiene perfil asignado ([config] null) la sección no se muestra y no
- * cuenta para habilitar el guardado.
+ * maquinaria. Sale solo los lunes ([seMuestra]) y en activos con perfil asignado. Nunca frena el
+ * guardado: el operario puede dejar llantas sin medir; se envían las que tengan una presión válida.
  */
 data class PresionLlantasState(
     val config: ConfigLlantas? = null,
@@ -25,13 +37,15 @@ data class PresionLlantasState(
     /** Aviso previo al guardado; el operario puede guardar igual (no bloquea). */
     val mostrarAvisoCalibrar: Boolean = false,
     /** El operario ya vio el aviso y decidió guardar. */
-    val avisoConfirmado: Boolean = false
+    val avisoConfirmado: Boolean = false,
+    /** Hoy toca medir (lunes). Se fija al elegir el activo. */
+    val tocaMedir: Boolean = DiaMedicionLlantas.tocaMedir()
 ) {
+    /** El activo tiene perfil de llantas. */
     val aplica: Boolean get() = config != null && config.posiciones.isNotEmpty()
 
-    /** Todas las llantas del perfil tienen una presión válida (obligatorio cuando aplica). */
-    val completa: Boolean
-        get() = !aplica || config!!.posiciones.all { EvaluadorPresionLlanta.parsear(valores[it.codigo].orEmpty()) != null }
+    /** La sección se ve en el formulario: activo con perfil y hoy es lunes. */
+    val seMuestra: Boolean get() = aplica && tocaMedir
 
     fun resultado(posicion: PosicionLlanta): ResultadoPresionLlanta? =
         EvaluadorPresionLlanta.parsear(valores[posicion.codigo].orEmpty())?.let { EvaluadorPresionLlanta.evaluar(it, posicion) }
@@ -63,5 +77,6 @@ data class PresionLlantasState(
     }
 
     /** Al cambiar de activo se descartan las presiones digitadas del anterior. */
-    fun paraActivo(config: ConfigLlantas?): PresionLlantasState = PresionLlantasState(config = config)
+    fun paraActivo(config: ConfigLlantas?): PresionLlantasState =
+        PresionLlantasState(config = config, tocaMedir = DiaMedicionLlantas.tocaMedir())
 }

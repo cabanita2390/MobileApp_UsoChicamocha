@@ -41,6 +41,7 @@ import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.inspection.KmB
 import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.inspection.KmWarningAlertDialog
 import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.llantas.PresionLlantasAvisoDialog
 import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.llantas.PresionLlantasSection
+import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.llantas.TITULO_PRESION_LLANTAS
 import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.inspection.DocumentoVencidoBlockingDialog
 import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.inspection.DocumentoPorVencerWarningDialog
 import com.example.testusoandroidstudio_1_usochicamocha.ui.shared.inspection.SearchableSelectorField
@@ -361,9 +362,9 @@ fun VehiculoScreen(
             }
 
             // ── 2b. PRESIÓN DE LLANTAS (solo si el vehículo tiene perfil) ─────
-            if (uiState.presionLlantas.aplica) {
+            if (uiState.presionLlantas.seMuestra) {
                 item {
-                    SectionCard("Presión de Llantas (PSI) (*)") {
+                    SectionCard(TITULO_PRESION_LLANTAS) {
                         PresionLlantasSection(
                             state = uiState.presionLlantas,
                             onValorChange = { codigo, texto -> viewModel.onPresionLlantaChange(codigo, texto) },
@@ -413,7 +414,10 @@ fun VehiculoScreen(
                         "CondicionParaConducir" to ("¿Se siente en CONDICIONES para Conducir? (*)"                                    to uiState.condicionParaConducir)
                     )
                     saludItems.forEachIndexed { i, (key, pair) ->
-                        YesNoSelector(pair.first, pair.second) { viewModel.onSaludChange(key, it) }
+                        // En Medicamentos lo bueno es el "No" (no consume nada que afecte los sentidos).
+                        YesNoSelector(pair.first, pair.second, siEsBueno = key != "Medicamentos") {
+                            viewModel.onSaludChange(key, it)
+                        }
                         if (i < saludItems.lastIndex) Divider(Modifier.padding(vertical = 10.dp))
                     }
                 }
@@ -606,12 +610,25 @@ fun VehicleStatusSelector(label: String, selectedOption: String, onOptionSelecte
 }
 
 @Composable
-fun YesNoSelector(label: String, selectedOption: String, onOptionSelected: (String) -> Unit) {
+/**
+ * Pregunta Sí/No. El color sigue el sentido de la pregunta: la respuesta buena en verde y la otra en
+ * rojo. Casi siempre lo bueno es "Si"; con [siEsBueno] = false (p. ej. "¿Consume medicamentos que
+ * afecten los sentidos?") se invierte.
+ */
+fun YesNoSelector(
+    label: String,
+    selectedOption: String,
+    siEsBueno: Boolean = true,
+    onOptionSelected: (String) -> Unit
+) {
     SegmentedOptionSelector(
         label = label,
         selectedOption = selectedOption,
         onOptionSelected = onOptionSelected,
-        options = listOf("Si" to ColorBueno, "No" to ColorMalo),
+        options = listOf(
+            "Si" to if (siEsBueno) ColorBueno else ColorMalo,
+            "No" to if (siEsBueno) ColorMalo else ColorBueno
+        ),
         optionFontSize = 16.sp
     )
 }

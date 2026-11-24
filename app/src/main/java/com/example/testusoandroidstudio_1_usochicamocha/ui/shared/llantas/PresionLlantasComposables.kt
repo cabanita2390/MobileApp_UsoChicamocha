@@ -33,6 +33,9 @@ private val ColorBueno = Color(0xFF4CAF50)
 private val ColorMalo = Color(0xFFD32F2F)
 private val ColorRegular = Color(0xFFFFA000)
 
+/** Título de la sección; no lleva (*) porque no es obligatoria. */
+const val TITULO_PRESION_LLANTAS = "Presión de Llantas (PSI) · lunes"
+
 private fun Double.psi(): String = if (this % 1.0 == 0.0) toInt().toString() else toString()
 
 private fun PosicionLlanta.rango(): String {
@@ -41,10 +44,10 @@ private fun PosicionLlanta.rango(): String {
 }
 
 /**
- * Sección "Presión de llantas (PSI)": un campo por cada llanta del perfil del activo. Muestra al
- * momento si la presión está baja o alta, pero nunca bloquea: calibrar es tarea del operario.
- * No dibuja nada si el activo no tiene perfil asignado. Con [mostrarTitulo] = false va dentro de
- * una SectionCard que ya pone el título.
+ * Sección "Presión de llantas (PSI)": un campo por cada llanta del perfil del activo. Sale los lunes.
+ * Muestra al momento si la presión está baja o alta, pero nunca bloquea: ni el valor ni dejar una
+ * llanta sin medir frenan el guardado (calibrar es tarea del operario). No dibuja nada si no se
+ * muestra. Con [mostrarTitulo] = false va dentro de una SectionCard que ya pone el título.
  */
 @Composable
 fun PresionLlantasSection(
@@ -53,18 +56,19 @@ fun PresionLlantasSection(
     modifier: Modifier = Modifier,
     mostrarTitulo: Boolean = true
 ) {
+    if (!state.seMuestra) return
     val config = state.config ?: return
-    if (config.posiciones.isEmpty()) return
 
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         if (mostrarTitulo) {
             Text(
-                "Presión de Llantas (PSI) (*)",
+                TITULO_PRESION_LLANTAS,
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, fontSize = 17.sp)
             )
         }
         Text(
-            "Perfil: ${config.perfilNombre}. Mida cada llanta con el calibrador.",
+            "Hoy es lunes: mida cada llanta con el calibrador (perfil ${config.perfilNombre}). " +
+                "Si no alcanza a medir alguna, puede guardar igual.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )

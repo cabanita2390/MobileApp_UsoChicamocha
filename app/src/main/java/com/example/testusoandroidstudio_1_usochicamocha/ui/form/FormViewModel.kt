@@ -133,7 +133,6 @@ class FormViewModel @Inject constructor(
                 state.greasingStatus.isNotBlank() &&
                 (state.greasingStatus == "No" || (state.greasingStatus == "Sí" && state.greasingAction.isNotBlank())) &&
                 state.vigenciaExtintor.isNotBlank() && // AÑADIDO: Validar que la fecha del extintor esté seleccionada
-                state.presionLlantas.completa &&
                 state.documentosVencidos.isEmpty()
 
         _uiState.update { it.copy(isSaveButtonEnabled = isFormValid) }

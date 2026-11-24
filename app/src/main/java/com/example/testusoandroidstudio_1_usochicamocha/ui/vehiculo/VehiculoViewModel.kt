@@ -639,7 +639,6 @@ class VehiculoViewModel @Inject constructor(
                 s.conscienteResponsabilidad.isNotBlank() &&
                 s.aprobadoRuta.isNotBlank() &&
                 s.responsableInspeccion.isNotBlank() &&
-                s.presionLlantas.completa &&
                 s.documentosVencidos.isEmpty()
         _uiState.update { it.copy(isSaveButtonEnabled = valid) }
     }
